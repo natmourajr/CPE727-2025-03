@@ -1,49 +1,13 @@
-# CPE727-2025-03/Seminarios
-Pasta a ser utilizada para o desenvolvimento dos seminários
+# CPE727-2025-03/Seminarios/5 - CNN
+Pasta a ser utilizada para o desenvolvimento do seminário sobre Redes Neurais Convolucionais
 
+## Objetivo do Seminário
 
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![Unlicense License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+O objetivo de um seminário sobre CNNs (Convolutional Neural Networks) e sua aplicação em visão computacional, no contexto de um curso de aprendizado profundo, é proporcionar aos alunos uma compreensão sólida tanto do impacto histórico desses modelos quanto de sua fundamentação matemática. As CNNs marcaram um divisor de águas na inteligência artificial ao possibilitar o tratamento eficiente de imagens e sinais multidimensionais, sendo responsáveis por avanços que vão desde o reconhecimento de dígitos manuscritos (com o LeNet, de Yann LeCun, nos anos 1990) até o triunfo em competições como o ImageNet, em 2012, com o AlexNet. Esses marcos históricos consolidaram as CNNs como a espinha dorsal da visão computacional moderna, inspirando desenvolvimentos em diversas áreas, como veículos autônomos, diagnóstico médico por imagem e sistemas de vigilância inteligente.
 
+O seminário enfatiza a necessidade de “abrir” todas as equações que regem o treinamento e a inferência das CNNs, de modo a proporcionar uma visão transparente do funcionamento interno do modelo. Isso inclui a formulação da operação de convolução discreta, a definição de filtros e kernels, o cálculo das ativações por meio de funções não lineares (ReLU, sigmoid, tanh), as expressões para subamostragem (pooling) e o mapeamento para camadas totalmente conectadas. Além disso, será detalhado o processo de retropropagação do erro (backpropagation) em camadas convolucionais e de pooling, mostrando como os gradientes são calculados e atualizados durante o treinamento. Esse nível de detalhamento matemático permitirá que os alunos dominem não apenas o uso prático de CNNs, mas também a base analítica que garante sua eficácia.
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[contributors-url]: https://github.com/natmourajr/CPE727-2025-03/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[forks-url]: https://github.com/natmourajr/CPE727-2025-03/network/members
-[stars-shield]: https://img.shields.io/github/stars/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[stars-url]: https://github.com/natmourajr/CPE727-2025-03/stargazers
-[issues-shield]: https://img.shields.io/github/issues/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[issues-url]: https://github.com/natmourajr/CPE727-2025-03/issues
-[license-shield]: https://img.shields.io/github/license/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[license-url]: https://github.com/natmourajr/CPE727-2025-03/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: www.linkedin.com/in/natanael-moura-junior-425a3294
+Outro ponto central será discutir como a estrutura das CNNs mitiga problemas de dimensionalidade em imagens de alta resolução por meio do compartilhamento de pesos e da invariância espacial. Ao mesmo tempo, o seminário mostrará como os avanços recentes — como arquiteturas ResNet, Inception e EfficientNet — evoluíram a partir dos princípios fundamentais das primeiras CNNs, mantendo a essência matemática da convolução e da otimização.
 
-
-## Seminários
-
-1. [Deep Feedforward Networks](https://arxiv.org/abs/2404.19756)
-2. [Regularization for Deep Learning]()
-3. [Optimization for Training Deep Models]()
-4. [Restricted Boltzmann Machine and Deep Belief Networks]()
-5. [Convolutional Networks]() 
-6. [Sequence Modeling: Recurrent and Recursive Nets]()
-7. [Autoencoders and Representation Learning]()
-8. [Structured Probabilistic Models for Deep Learning and Probabilist Diffusion Models]()
-9. [Generative Adversarial Networks]()
-
+Assim, o seminário tem como objetivo formar uma compreensão completa: de um lado, situar as CNNs em sua trajetória histórica como catalisadoras do progresso da visão computacional; de outro, reforçar a importância de dominar as equações que regem seu treinamento e inferência. Ao final, os alunos estarão preparados não apenas para aplicar CNNs em diferentes contextos, mas também para compreender criticamente seus fundamentos, adaptar suas estruturas e avançar no desenvolvimento de novos modelos para desafios emergentes da área.
 
