@@ -11,3 +11,5 @@ Outro ponto central será discutir como a estrutura das CNNs mitiga problemas de
 
 Assim, o seminário tem como objetivo formar uma compreensão completa: de um lado, situar as CNNs em sua trajetória histórica como catalisadoras do progresso da visão computacional; de outro, reforçar a importância de dominar as equações que regem seu treinamento e inferência. Ao final, os alunos estarão preparados não apenas para aplicar CNNs em diferentes contextos, mas também para compreender criticamente seus fundamentos, adaptar suas estruturas e avançar no desenvolvimento de novos modelos para desafios emergentes da área.
 
+teste
+
