@@ -36,7 +36,7 @@ Pasta a ser utilizada para o desenvolvimento dos seminários
 
 ## Seminários
 
-1. [Deep Feedforward Networks](https://arxiv.org/abs/2404.19756)
+1. [Deep Feedforward Networks](https://github.com/natmourajr/CPE727-2025-03/tree/b90a4f003da77668480529911ec03df1c1c3891e/Seminarios/1%20-%20DeepNN)
 2. [Regularization for Deep Learning]()
 3. [Optimization for Training Deep Models]()
 4. [Restricted Boltzmann Machine and Deep Belief Networks]()
