@@ -39,7 +39,7 @@ Repositório para ser utilizado durante a disciplina do PEE (Programa de Engenha
 
 Este projeto conta com um módulo de **dataloader** desenvolvido para fornecer dados de forma eficiente, escalável e reprodutível aos modelos de aprendizado de máquina nas etapas de treinamento, validação e teste.
 
-#### 🔍 Objetivo
+#### Objetivo
 
 O objetivo do dataloader é automatizar e otimizar o processo de ingestão de dados, garantindo:
 - Leitura eficiente de grandes volumes de dados
@@ -47,30 +47,6 @@ O objetivo do dataloader é automatizar e otimizar o processo de ingestão de da
 - Geração de lotes (batches) compatíveis com os frameworks de ML utilizados
 - Controle sobre a aleatoriedade e reprodutibilidade dos experimentos
 - Flexibilidade para diferentes formatos e tipos de dados (imagens, séries temporais, texto, etc.)
-
-#### 🛠️ Processo de Desenvolvimento
-
-O desenvolvimento do dataloader seguiu as seguintes etapas:
-
-1. **Análise Estrutural dos Dados**  
-   Diferentes formatos devem ser contemplados durante o desenvolvimento (ex.: `.csv`, `.json`, `.jpg`, `.npy`). Além disso, variáveis envolvidas e a necessidade de tratamento de dados ausentes, normalização e categorização de alvos devem ser avaliadas.
-   Obs: neste ponto, tipicamente é interessante ter um conhecimento mais aprofundado dos dados e começar o desenvolvimento de uma EDA (Exploratory Data Analysis)
-
-2. **Construção da Pipeline de Pré-processamento**  
-   Definidas transformações a serem aplicadas, a construção de um pipeline (ex: [Scikit-Learn Pipeline](https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html)), incluindo normalizações, codificações, conversão de tipos, recorte de imagens, padronização de tamanho, etc.
-
-3. **Implementação Modular**  
-   Utilizando APIs do framework principal (ex.: `torch.utils.data.Dataset`), o dataloader deve ser estruturado para permitir:
-   - Carregamento preguiçoso (*lazy loading*)
-   - Execução paralela via `num_workers` (paralelismo)
-   - Amostragem estratificada (implementação de processo de Validação Cruzada)
-   - Configuração flexível por meio de arquivos `.yaml` ou `.json`
-
-4. **Testes e Verificações**  
-   O desenvolvimento deve contemplar testes automatizados e verificações manuais de integridade, incluindo distribuição de classes, consistência de rótulos e validação do pipeline de transformação.
-
-5. **Reprodutibilidade e Versionamento**  
-   Integração com ferramentas como DVC (Data Version Control) e controle de semente (`random seed`) para garantir a reprodutibilidade dos experimentos.
 
 #### Exemplo de Uso
 
@@ -95,19 +71,10 @@ loader = DataLoader(
 3. Séries temporais: .npy, .hdf5
 4. Dados anotados: .json, .xml
 
-#### 🚧 Melhorias Futuras
-1. Suporte a carregamento em tempo real via streaming
-2. Integração com armazenamento em nuvem (AWS S3, Google Cloud, etc.)
-3. Aumento de dados (data augmentation) com técnicas avançadas
-4. Cache inteligente para acelerar a preparação dos lotes
 
 ### Modelos a serem estudados
 
-A rápida evolução das técnicas de aprendizado de máquina tem impulsionado avanços significativos em diversas áreas da engenharia, ciência e tecnologia. No entanto, muitos dos modelos mais recentes e inovadores ainda não foram plenamente incorporados às disciplinas tradicionais dos programas de pós-graduação, o que limita a formação de profissionais e pesquisadores frente ao estado da arte. Com base nessa lacuna, esta disciplina do Programa de Engenharia Elétrica da Coppe/UFRJ, no âmbito da área de Inteligência Computacional, tem por objetivo apresentar, discutir criticamente e aprofundar o estudo de modelos emergentes de aprendizado de máquina que representam as novas fronteiras do conhecimento e da pesquisa aplicada.
-
-Diferenciando-se das demais disciplinas do programa, este curso busca expor os alunos a abordagens contemporâneas que têm ganhado destaque na literatura científica internacional, mas que ainda são pouco exploradas no currículo regular. Entre os temas centrais estão os Kolmogorov-Arnold Networks (KAN), redes neurais baseadas em decomposição funcional e interpretabilidade; os Diffusion Probabilistic Models, que reformulam a geração de dados sintéticos por meio de processos estocásticos reversíveis; as Capsule Networks, que introduzem hierarquias estruturais para superar limitações de invariância em redes convolucionais tradicionais; os Attention Models, base conceitual para arquiteturas como os Transformers, com grande impacto em processamento de linguagem natural e visão computacional; e os Neural Operators (como os DeepONets), que representam uma nova classe de modelos capazes de aprender operadores em espaços funcionais, com aplicações promissoras em modelagem física e simulações científicas.
-
-Além de fornecer uma base teórica sólida sobre os princípios matemáticos e computacionais que sustentam esses modelos, a disciplina incentivará a experimentação prática, análise crítica de publicações recentes e o desenvolvimento de projetos aplicados. Ao final do curso, espera-se que os alunos estejam capacitados a compreender o funcionamento interno desses modelos, avaliar suas vantagens e limitações, e aplicá-los de forma inovadora em suas respectivas áreas de pesquisa.
+#### Baselines
 
 #### KAN: Kolmogorov-Arnold Networks
 1. [KAN: Kolmogorov-Arnold Networks (artigo base)](https://arxiv.org/abs/2404.19756)
