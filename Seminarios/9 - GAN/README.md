@@ -1,49 +1,12 @@
-# CPE727-2025-03/Seminarios
-Pasta a ser utilizada para o desenvolvimento dos seminários
+# CPE727-2025-03/Seminarios/9 - GAN
+Pasta a ser utilizada para o desenvolvimento do seminário sobre Generative Adversarial Networks
 
+## Objetivo do Seminário
 
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![Unlicense License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+O objetivo de um seminário sobre os GANs (Generative Adversarial Networks) em um curso de aprendizado profundo é introduzir os alunos a um dos marcos mais disruptivos da inteligência artificial moderna, ao mesmo tempo em que se aprofunda no rigor matemático que sustenta seu funcionamento. Propostos por Ian Goodfellow em 2014, os GANs revolucionaram a área de modelos generativos, estabelecendo uma estrutura inovadora baseada em um jogo de soma zero entre dois modelos: o gerador, responsável por criar amostras sintéticas, e o discriminador, que avalia a autenticidade dessas amostras. Essa formulação adversarial tornou-se um divisor de águas na capacidade das redes neurais de gerar imagens, áudio e outros tipos de dados altamente realistas.
 
+O seminário busca destacar a importância histórica dos GANs como ponto de inflexão no aprendizado profundo, evidenciando como eles abriram caminho para inúmeras variantes (DCGAN, WGAN, CycleGAN, StyleGAN) e aplicações práticas em domínios como visão computacional, síntese de voz, geração de dados médicos e até criação artística. Mais do que um modelo, os GANs introduziram uma nova forma de pensar a interação entre redes neurais, inspirando avanços subsequentes em aprendizado não supervisionado e auto-supervisionado.
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[contributors-url]: https://github.com/natmourajr/CPE727-2025-03/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[forks-url]: https://github.com/natmourajr/CPE727-2025-03/network/members
-[stars-shield]: https://img.shields.io/github/stars/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[stars-url]: https://github.com/natmourajr/CPE727-2025-03/stargazers
-[issues-shield]: https://img.shields.io/github/issues/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[issues-url]: https://github.com/natmourajr/CPE727-2025-03/issues
-[license-shield]: https://img.shields.io/github/license/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[license-url]: https://github.com/natmourajr/CPE727-2025-03/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: www.linkedin.com/in/natanael-moura-junior-425a3294
+Outro aspecto central do seminário será a necessidade de “abrir” todas as equações que regem tanto o treinamento quanto a inferência do modelo. Isso inclui a formulação da função de custo adversarial minimax, a dedução das distribuições de probabilidade implícitas do gerador, a função de verossimilhança do discriminador, bem como o cálculo dos gradientes envolvidos no processo de retropropagação. Também será analisado o papel das funções de perda alternativas — como a perda de Wasserstein — na estabilização do treinamento, tradicionalmente considerado um dos maiores desafios dos GANs. Ao detalhar essas equações, os alunos terão uma compreensão clara de como o equilíbrio entre gerador e discriminador é alcançado e por que ele é matematicamente complexo.
 
-
-## Seminários
-
-1. [Deep Feedforward Networks](https://arxiv.org/abs/2404.19756)
-2. [Regularization for Deep Learning]()
-3. [Optimization for Training Deep Models]()
-4. [Restricted Boltzmann Machine and Deep Belief Networks]()
-5. [Convolutional Networks]() 
-6. [Sequence Modeling: Recurrent and Recursive Nets]()
-7. [Autoencoders and Representation Learning]()
-8. [Structured Probabilistic Models for Deep Learning and Probabilist Diffusion Models]()
-9. [Generative Adversarial Networks]()
-
-
+Assim, o seminário tem como objetivo duplo: de um lado, apresentar os GANs em seu contexto histórico como catalisadores de uma nova era no aprendizado profundo; de outro, consolidar a formação teórica dos alunos ao explorar minuciosamente as equações que regem seu funcionamento. Ao final, espera-se que os participantes compreendam não apenas a intuição e o impacto dos GANs, mas também a estrutura matemática que permite seu treinamento e inferência, desenvolvendo a maturidade necessária para aplicar e estender esses modelos em problemas reais e pesquisas avançadas.

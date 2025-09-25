@@ -1,49 +1,12 @@
-# CPE727-2025-03/Seminarios
-Pasta a ser utilizada para o desenvolvimento dos seminários
+# CPE727-2025-03/Seminarios/7 - AE
+Pasta a ser utilizada para o desenvolvimento do seminário sobre AutoEncoders
 
+## Objetivo do Seminário
 
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![Unlicense License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+O objetivo de um seminário sobre AutoEncoders e o conceito de Aprendizado por Representação em um curso de aprendizado profundo é introduzir aos alunos uma das arquiteturas mais influentes na formação da área moderna de redes neurais, ao mesmo tempo em que se aprofunda no rigor matemático que fundamenta seu funcionamento. Historicamente, os AutoEncoders desempenharam um papel central ao demonstrar que redes neurais poderiam aprender representações compactas e informativas dos dados de forma não supervisionada, em contraste com o foco exclusivo em tarefas de classificação. Esses modelos serviram como base para o avanço de técnicas de redução de dimensionalidade, compressão de dados, detecção de anomalias e até para a construção de arquiteturas mais sofisticadas, como os Variational AutoEncoders (VAEs) e os modelos generativos modernos.
 
+No seminário, será enfatizada a importância de “abrir” todas as equações que regem o treinamento e a inferência dos AutoEncoders, para garantir que os alunos dominem os aspectos matemáticos por trás da intuição. Isso inclui a formulação da transformação de codificação, que mapeia os dados de entrada para um espaço latente de menor dimensão, e da decodificação, que reconstrói a entrada a partir dessa representação. Serão exploradas em detalhe as funções de perda (como o erro quadrático médio ou a entropia cruzada), o processo de retropropagação dos gradientes para atualizar os pesos, bem como a relação entre dimensionalidade do espaço latente e capacidade de generalização. Esse nível de detalhamento permitirá compreender como e por que os AutoEncoders conseguem extrair características relevantes, mesmo sem rótulos explícitos.
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[contributors-url]: https://github.com/natmourajr/CPE727-2025-03/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[forks-url]: https://github.com/natmourajr/CPE727-2025-03/network/members
-[stars-shield]: https://img.shields.io/github/stars/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[stars-url]: https://github.com/natmourajr/CPE727-2025-03/stargazers
-[issues-shield]: https://img.shields.io/github/issues/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[issues-url]: https://github.com/natmourajr/CPE727-2025-03/issues
-[license-shield]: https://img.shields.io/github/license/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[license-url]: https://github.com/natmourajr/CPE727-2025-03/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: www.linkedin.com/in/natanael-moura-junior-425a3294
+O seminário também discutirá o impacto histórico dos AutoEncoders no desenvolvimento do aprendizado por representação, um paradigma que se tornou a base para grande parte das arquiteturas modernas em visão computacional, processamento de linguagem natural e outras áreas. Ao aprender representações latentes, os modelos tornam-se mais eficientes, generalizáveis e capazes de transferir conhecimento entre tarefas distintas, estabelecendo um elo direto com conceitos de pré-treinamento e aprendizado auto-supervisionado.
 
-
-## Seminários
-
-1. [Deep Feedforward Networks](https://arxiv.org/abs/2404.19756)
-2. [Regularization for Deep Learning]()
-3. [Optimization for Training Deep Models]()
-4. [Restricted Boltzmann Machine and Deep Belief Networks]()
-5. [Convolutional Networks]() 
-6. [Sequence Modeling: Recurrent and Recursive Nets]()
-7. [Autoencoders and Representation Learning]()
-8. [Structured Probabilistic Models for Deep Learning and Probabilist Diffusion Models]()
-9. [Generative Adversarial Networks]()
-
-
+Assim, o objetivo do seminário é duplo: por um lado, situar os AutoEncoders como marcos históricos que abriram caminho para o aprendizado de representações ricas e reutilizáveis; por outro, consolidar a formação matemática dos alunos ao explorar todas as equações que regem seu funcionamento, tanto no processo de treinamento quanto na fase de inferência. Ao final, os participantes estarão aptos a compreender criticamente os fundamentos desses modelos, aplicá-los em diferentes contextos e perceber sua relevância no ecossistema mais amplo do aprendizado profundo contemporâneo.

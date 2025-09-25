@@ -1,49 +1,12 @@
-# CPE727-2025-03/Seminarios
-Pasta a ser utilizada para o desenvolvimento dos seminários
+# CPE727-2025-03/Seminarios/6 - RNN
+Pasta a ser utilizada para o desenvolvimento do seminário sobre Redes Neurais Recorrentes
 
+## Objetivo do Seminário
 
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![Unlicense License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+O objetivo de um seminário sobre RNNs (Recurrent Neural Networks) e seu papel no processamento de sequências, dentro de um curso de aprendizado profundo, é fornecer aos alunos uma compreensão abrangente da relevância histórica desses modelos e do rigor matemático que sustenta seu funcionamento. As RNNs representam um marco no aprendizado profundo por terem introduzido a capacidade de lidar diretamente com dados sequenciais, como séries temporais, sinais de áudio e, sobretudo, texto em linguagem natural. Sua popularização, principalmente nas décadas de 1990 e 2000, abriu caminho para aplicações inovadoras em tradução automática, reconhecimento de fala e modelagem de dependências temporais de longo prazo, sendo o alicerce para arquiteturas mais avançadas, como LSTM, GRU e, mais recentemente, os modelos baseados em atenção.
 
+O seminário busca enfatizar a importância de “abrir” todas as equações que regem o treinamento e a inferência das RNNs, de forma a desmistificar seu funcionamento. Isso envolve detalhar a equação de atualização do estado oculto, que incorpora tanto a entrada atual quanto a memória do passado, a definição das funções de ativação utilizadas, e a formulação da saída em cada passo temporal. Além disso, será dada ênfase ao processo de retropropagação no tempo (BPTT – Backpropagation Through Time), explicitando como os gradientes se propagam ao longo da sequência e discutindo os problemas clássicos de explosão e desaparecimento de gradientes. Esses detalhes matemáticos permitirão que os alunos compreendam em profundidade os desafios de treinar redes recorrentes e as soluções propostas ao longo da evolução da área.
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[contributors-url]: https://github.com/natmourajr/CPE727-2025-03/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[forks-url]: https://github.com/natmourajr/CPE727-2025-03/network/members
-[stars-shield]: https://img.shields.io/github/stars/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[stars-url]: https://github.com/natmourajr/CPE727-2025-03/stargazers
-[issues-shield]: https://img.shields.io/github/issues/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[issues-url]: https://github.com/natmourajr/CPE727-2025-03/issues
-[license-shield]: https://img.shields.io/github/license/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[license-url]: https://github.com/natmourajr/CPE727-2025-03/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: www.linkedin.com/in/natanael-moura-junior-425a3294
+Do ponto de vista histórico, o seminário também situará as RNNs como uma transição fundamental entre as redes neurais tradicionais, voltadas para dados fixos e independentes, e os modelos modernos capazes de capturar relações temporais complexas. Ao compreender as equações e limitações das RNNs, os alunos poderão perceber claramente como surgiram as melhorias introduzidas por arquiteturas subsequentes e como os princípios básicos ainda sustentam muitas técnicas atuais de processamento de sequências.
 
-
-## Seminários
-
-1. [Deep Feedforward Networks](https://arxiv.org/abs/2404.19756)
-2. [Regularization for Deep Learning]()
-3. [Optimization for Training Deep Models]()
-4. [Restricted Boltzmann Machine and Deep Belief Networks]()
-5. [Convolutional Networks]() 
-6. [Sequence Modeling: Recurrent and Recursive Nets]()
-7. [Autoencoders and Representation Learning]()
-8. [Structured Probabilistic Models for Deep Learning and Probabilist Diffusion Models]()
-9. [Generative Adversarial Networks]()
-
-
+Assim, o seminário tem como objetivo não apenas ensinar os fundamentos práticos das RNNs, mas também consolidar a formação analítica dos alunos ao explorar todas as equações de treinamento e inferência. Dessa forma, os participantes estarão aptos a aplicar as RNNs de maneira crítica, a compreender suas limitações e a reconhecer sua importância histórica como ponto de partida para a evolução das arquiteturas de aprendizado profundo voltadas ao processamento sequencial.

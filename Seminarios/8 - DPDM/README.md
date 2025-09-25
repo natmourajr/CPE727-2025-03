@@ -1,49 +1,12 @@
-# CPE727-2025-03/Seminarios
-Pasta a ser utilizada para o desenvolvimento dos seminários
+# CPE727-2025-03/Seminarios/8 - DPDM
+Pasta a ser utilizada para o desenvolvimento do seminário sobre Deep Probabilist Diffusion Models
 
+## Objetivo do Seminário
 
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![Unlicense License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+O objetivo de um seminário sobre Structured Probabilistic Models for Deep Learning e Probabilistic Diffusion Models, no contexto de um curso de aprendizado profundo, é oferecer aos alunos uma visão histórica e conceitual da evolução dos modelos probabilísticos dentro do campo, destacando sua relevância tanto teórica quanto prática. Esses modelos representam duas frentes complementares: de um lado, os modelos probabilísticos estruturados (como modelos gráficos, variacionais e hierárquicos) foram essenciais para formalizar a relação entre variáveis observáveis e latentes, criando as bases do aprendizado profundo moderno ao integrar inferência aproximada com arquiteturas neurais. De outro, os modelos de difusão probabilística surgem como uma das abordagens mais recentes e poderosas para geração de dados realistas, revolucionando áreas como a síntese de imagens, áudio e vídeo, além de inspirar novos paradigmas em aprendizado auto-supervisionado.
 
+O seminário busca enfatizar a importância de “abrir” todas as equações que regem tanto o treinamento quanto a inferência desses modelos. No caso dos Structured Probabilistic Models, isso envolve a formulação das distribuições conjuntas e condicionais, a função de evidência, as aproximações variacionais, bem como a dedução dos gradientes que permitem otimizar funções de ELBO (Evidence Lower Bound). Já para os Diffusion Models, será fundamental detalhar a equação de degradação progressiva de dados (forward process), a construção do processo reverso de reconstrução, a definição explícita das distribuições de transição e a forma como os parâmetros da rede neural são ajustados para aproximar a dinâmica inversa. Esse rigor matemático é indispensável para que os alunos compreendam não apenas a intuição desses métodos, mas também a base formal que os sustenta.
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[contributors-url]: https://github.com/natmourajr/CPE727-2025-03/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[forks-url]: https://github.com/natmourajr/CPE727-2025-03/network/members
-[stars-shield]: https://img.shields.io/github/stars/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[stars-url]: https://github.com/natmourajr/CPE727-2025-03/stargazers
-[issues-shield]: https://img.shields.io/github/issues/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[issues-url]: https://github.com/natmourajr/CPE727-2025-03/issues
-[license-shield]: https://img.shields.io/github/license/natmourajr/CPE727-2025-03.svg?style=for-the-badge
-[license-url]: https://github.com/natmourajr/CPE727-2025-03/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: www.linkedin.com/in/natanael-moura-junior-425a3294
+Do ponto de vista histórico, o seminário situará os modelos probabilísticos estruturados como pilares do aprendizado de representações latentes, cuja importância foi determinante no surgimento de arquiteturas como os VAEs (Variational Autoencoders). Em seguida, mostrará como os modelos de difusão representam uma continuidade desse legado, ao combinar princípios probabilísticos com alta capacidade expressiva, culminando em resultados de qualidade superior em tarefas generativas.
 
-
-## Seminários
-
-1. [Deep Feedforward Networks](https://arxiv.org/abs/2404.19756)
-2. [Regularization for Deep Learning]()
-3. [Optimization for Training Deep Models]()
-4. [Restricted Boltzmann Machine and Deep Belief Networks]()
-5. [Convolutional Networks]() 
-6. [Sequence Modeling: Recurrent and Recursive Nets]()
-7. [Autoencoders and Representation Learning]()
-8. [Structured Probabilistic Models for Deep Learning and Probabilist Diffusion Models]()
-9. [Generative Adversarial Networks]()
-
-
+Assim, o seminário tem como objetivo integrar a perspectiva histórica com a fundamentação matemática, capacitando os alunos a compreender a evolução desses modelos, dominar as equações de treinamento e inferência, e refletir criticamente sobre como as ideias probabilísticas continuam a moldar o futuro do aprendizado profundo. Ao final, espera-se que os participantes estejam aptos não apenas a aplicar esses métodos, mas também a estender seus conceitos a novos cenários de pesquisa e desenvolvimento.
