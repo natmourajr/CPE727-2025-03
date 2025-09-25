@@ -1,0 +1,12 @@
+# CPE727-2025-03/Seminarios/3 - Optimization
+Pasta a ser utilizada para o desenvolvimento do seminário de Otimização
+
+## Objetivo do seminário
+
+O objetivo de um seminário sobre otimização em um curso de aprendizado profundo é fornecer aos alunos uma compreensão aprofundada dos principais algoritmos responsáveis pelo treinamento de redes neurais profundas, tais como SGD (Stochastic Gradient Descent), Adam, RProp, L-BFGS e RMSProp. Esses métodos estão no núcleo do processo de aprendizado, pois determinam como os parâmetros da rede são ajustados ao longo das iterações para minimizar a função de perda. Em arquiteturas com muitas camadas, a escolha e a configuração do otimizador tornam-se ainda mais críticas, pois problemas como desaparecimento ou explosão do gradiente, lentidão na convergência e má generalização podem comprometer o desempenho final do modelo.
+
+O seminário busca destacar que a otimização não se resume apenas a encontrar mínimos locais da função de custo, mas também a garantir que o modelo generalize adequadamente. Uma rede com grande profundidade possui milhões de parâmetros, o que amplia o risco de sobreajuste (overfitting). Dessa forma, é necessário empregar algoritmos de otimização que, além de acelerar a convergência, contribuam para uma exploração mais equilibrada do espaço de parâmetros, evitando que o modelo memorize excessivamente os dados de treinamento.
+
+Serão discutidos aspectos fundamentais, como a influência da taxa de aprendizado, o uso de momentum, a adaptação dinâmica de passos em algoritmos como Adam e RMSProp, bem como o papel de métodos de segunda ordem, como o L-BFGS, em cenários de maior complexidade. O seminário também abordará a interação entre algoritmos de otimização e técnicas de regularização, ressaltando que uma escolha criteriosa do otimizador pode reforçar a robustez da rede e mitigar a degradação da performance em dados novos.
+
+Assim, o seminário tem como meta preparar os alunos para entender não apenas os mecanismos internos de cada algoritmo de otimização, mas também suas vantagens, limitações e contextos de aplicação. Ao final, espera-se que os participantes estejam aptos a selecionar e ajustar otimizadores de forma consciente, construindo redes profundas mais estáveis, eficientes e, sobretudo, capazes de generalizar de maneira confiável em problemas reais.

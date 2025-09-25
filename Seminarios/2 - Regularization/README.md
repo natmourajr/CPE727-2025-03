@@ -1,0 +1,12 @@
+# CPE727-2025-03/Seminarios/2 - Regularization
+Pasta a ser utilizada para o desenvolvimento do seminário sobre Regularização
+
+## Objetivo do seminário
+
+O objetivo de um seminário sobre regularização no âmbito de um curso de aprendizado profundo é discutir e aprofundar as principais técnicas utilizadas para enfrentar um dos maiores desafios das redes neurais profundas: a perda de capacidade de generalização causada pela grande quantidade de camadas e parâmetros. Redes com muitas camadas apresentam alta expressividade, mas essa complexidade frequentemente leva ao risco de sobreajuste (overfitting), no qual o modelo aprende excessivamente os detalhes dos dados de treinamento, comprometendo seu desempenho em dados inéditos.
+
+Nesse contexto, o seminário busca apresentar de forma estruturada as ferramentas que têm sido desenvolvidas para mitigar esses efeitos, destacando métodos clássicos e modernos de regularização. Entre eles, serão exploradas abordagens baseadas em penalizações nos pesos, como regularização L1 e L2, que incentivam simplicidade e reduzem a magnitude dos parâmetros. Também serão discutidas técnicas estocásticas como o dropout, que promove a robustez do modelo ao desligar neurônios de forma aleatória durante o treinamento, evitando dependências excessivas entre unidades. Outro ponto central será o estudo de estratégias como a batch normalization, que normaliza as ativações intermediárias e contribui tanto para estabilizar o treinamento quanto para reduzir a sensibilidade a variações iniciais.
+
+Além disso, o seminário abordará métodos mais recentes e avançados de regularização, incentivando a reflexão crítica sobre sua aplicação em diferentes cenários e arquiteturas profundas. A ênfase será colocada não apenas nos fundamentos teóricos, mas também na análise prática, mostrando como essas técnicas impactam diretamente o desempenho e a robustez dos modelos em situações reais.
+
+Assim, o seminário tem como meta capacitar os alunos a compreenderem e aplicarem adequadamente diferentes técnicas de regularização, tornando-os aptos a construir modelos de aprendizado profundo que não apenas tenham alto desempenho em treinamento, mas que também consigam generalizar de forma eficaz, garantindo resultados confiáveis em contextos complexos e desafiadores.
