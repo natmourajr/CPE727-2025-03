@@ -76,9 +76,8 @@ loader = DataLoader(
 
 #### Baselines
 1. [Árvores de Decisão](https://scikit-learn.org/stable/modules/tree.html)
-2. [Máquinas de Vetor Suporte](https://scikit-learn.org/stable/modules/svm.html)
+2. [Máquinas de Vector Suporte](https://scikit-learn.org/stable/modules/svm.html)
 3. [Multilayer Perceptron](https://pytorch.org/)
-
 
 ## Seminários
 
