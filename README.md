@@ -76,26 +76,14 @@ loader = DataLoader(
 
 #### Baselines
 
-#### KAN: Kolmogorov-Arnold Networks
-1. [KAN: Kolmogorov-Arnold Networks (artigo base)](https://arxiv.org/abs/2404.19756)
-2. [A Survey on Kolmogorov-Arnold Network](https://arxiv.org/abs/2411.06078)
-3. [Convolutional Kolmogorov-Arnold Networks](https://arxiv.org/abs/2406.13155)
-4. [KAN-ODEs: Kolmogorov–Arnold network ordinary differential equations for learning dynamical systems and hidden physics](https://www.sciencedirect.com/science/article/pii/S0045782524006522)
-5. [Kolmogorov-Arnold Graph Neural Networks](https://arxiv.org/abs/2406.18354)
-6. [Kolmogorov-Arnold Networks (KANs) for Time Series Analysis](https://arxiv.org/abs/2405.08790)
-7. [Kolmogorov-Arnold Networks are Radial Basis Function Networks](https://arxiv.org/abs/2405.06721)
-8. [Kolmogorov-Arnold Transformer](https://arxiv.org/abs/2409.10594)
-9. [seqKAN: Sequence processing with Kolmogorov-Arnold Networks](https://arxiv.org/abs/2502.14681)
-10. [TKAN: Temporal Kolmogorov-Arnold Networks](https://arxiv.org/abs/2405.07344)
+## Seminários
 
-#### Diffusion Probabilistic Models
-1. [Diffusion Probabilistic Models (artigo base)](https://arxiv.org/abs/2006.11239)
-
-#### Capsule Networks
-1. [Dynamic Routing Between Capsules](https://arxiv.org/abs/1710.09829v2)
-
-#### Attention Models
-1. [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
-
-#### Neural Operators
-1. [DeepONet: Learning nonlinear operators for identifying differential equations based on the universal approximation theorem of operators](https://arxiv.org/abs/1910.03193)
+    1. [Deep Feedforward Networks](https://github.com/natmourajr/CPE727-2025-03/tree/b90a4f003da77668480529911ec03df1c1c3891e/Seminarios/1%20-%20DeepNN)
+    2. [Regularization for Deep Learning](https://github.com/natmourajr/CPE727-2025-03/tree/b90a4f003da77668480529911ec03df1c1c3891e/Seminarios/2%20-%20Regularization)
+    3. [Optimization for Training Deep Models](https://github.com/natmourajr/CPE727-2025-03/tree/b90a4f003da77668480529911ec03df1c1c3891e/Seminarios/3%20-%20Optimization)
+    4. [Restricted Boltzmann Machine and Deep Belief Networks](https://github.com/natmourajr/CPE727-2025-03/tree/b90a4f003da77668480529911ec03df1c1c3891e/Seminarios/4%20-%20RBM)
+    5. [Convolutional Networks](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/5%20-%20CNN) 
+    6. [Sequence Modeling: Recurrent and Recursive Nets](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/6%20-%20RNN)
+    7. [Autoencoders and Representation Learning](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/7%20-%20AE)
+    8. [Structured Probabilistic Models for Deep Learning and Probabilist Diffusion Models](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/8%20-%20DPDM)
+    9. [Generative Adversarial Networks](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/9%20-%20GAN)
