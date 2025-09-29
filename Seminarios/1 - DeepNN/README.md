@@ -10,3 +10,7 @@ Entre os tópicos a serem abordados, destacam-se técnicas como regularização 
 
 Dessa forma, o seminário não apenas introduz os fundamentos teóricos das redes profundas, mas também estimula a reflexão crítica sobre o seu uso prático, preparando os alunos para desenvolverem modelos mais confiáveis e capazes de generalizar bem em ambientes desafiadores.
 
+
+## Material Complementar
+
+1. [Deep neural network topology optimization against neural attacks](https://www.sciencedirect.com/science/article/pii/S0957417425020937?casa_token=kQijMU-7O9EAAAAA:fiPwyHuCwH4EQFxqRXxYEis0Qv4MzG8WQeOwwFCM4rc23h7piBqgMSVdndkeis9GCFpaRjgA6Bc)
