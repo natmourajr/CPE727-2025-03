@@ -85,8 +85,36 @@ loader = DataLoader(
 2. [Regularization for Deep Learning](https://github.com/natmourajr/CPE727-2025-03/tree/b90a4f003da77668480529911ec03df1c1c3891e/Seminarios/2%20-%20Regularization)
 3. [Optimization for Training Deep Models](https://github.com/natmourajr/CPE727-2025-03/tree/b90a4f003da77668480529911ec03df1c1c3891e/Seminarios/3%20-%20Optimization)
 4. [Restricted Boltzmann Machine and Deep Belief Networks](https://github.com/natmourajr/CPE727-2025-03/tree/b90a4f003da77668480529911ec03df1c1c3891e/Seminarios/4%20-%20RBM)
-5. [Convolutional Networks](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/5%20-%20CNN) 
+5. [Convolutional Networks](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/5%20-%20CNN) (Brenn Rodrigues, Gabriel Guimarães)
 6. [Sequence Modeling: Recurrent and Recursive Nets](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/6%20-%20RNN)
 7. [Autoencoders and Representation Learning](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/7%20-%20AE)
 8. [Structured Probabilistic Models for Deep Learning and Probabilist Diffusion Models](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/8%20-%20DPDM)
 9. [Generative Adversarial Networks](https://github.com/natmourajr/CPE727-2025-03/tree/131c2798fab077d985cd4eb8965632ec57d4a12e/Seminarios/9%20-%20GAN)
+
+
+## Estrutura de diretórios
+
+```Bash
+/
+├── Semininários/             # Seminários sobre os tópicos da disciplina  
+│
+├── TrabalhoFinal/            # Apresentação final da disciplina
+│
+├── data/                     # Respectivos datasets	
+│
+├── src/                      # Código-fonte principal do projeto
+│   ├── dataloaders/          # DataLoaders customizados
+│   │
+│   ├── models/               # Definições das arquiteturas PyTorch
+│   │
+│   ├── modules/              # Código reutilizável (treinamento, avaliação, otimização, regularização)
+│   │
+│   └── experiments/          # Scripts principais para rodar cada experimento
+│    	  ├── Dockerfile                # Define o ambiente Python/PyTorch/CUDA
+│		  │
+│		  └── requirements.txt          # Lista de dependências Python
+│
+├── results/                  # Saídas dos experimentos (logs, checkpoints, métricas)
+│
+└── README.md                 # Documentação do projeto
+```
