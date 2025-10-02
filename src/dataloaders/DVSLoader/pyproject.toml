@@ -1,0 +1,16 @@
+[project]
+name = "dvsloader"
+version = "0.1.0"
+description = "Data Loaders for Dynamic Vision Sensors (DVS)"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "decolle",
+    "numpy>=2.3.3",
+    "pandas>=2.3.3",
+    "tonic>=1.4.3",
+    "torch>=2.8.0",
+]
+
+[tool.uv.sources]
+decolle = { git = "https://github.com/nmi-lab/decolle-public.git" }
