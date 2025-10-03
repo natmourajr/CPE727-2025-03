@@ -118,3 +118,16 @@ loader = DataLoader(
 │
 └── README.md                 # Documentação do projeto
 ```
+
+## Alocação de Seminários
+
+| Tema | Responsáveis | Data Prevista |
+|----|----|----|
+| Regularização | Breno, Evandro, Rickson, Miguel | 2025-10-14 |
+| Otimização | Ana, Bruno, Emre, Felipe Barreto, Guilherme | 2025-10-21 |
+| RBM+DBN |  | 2025-11-04 |
+| CNN | Brenno Rodrigues, Gabriel, Lucas, Raphael | 2025-11-11 |
+| RNN | Fernanda, Leonardo, Luiza, Rodrigo | 2025-11-18 |
+| AutoEncoders | Felipe Grael, Jefferson, Thalles, Rafael | 2025-11-25 |
+| GAN | João | 2025-12-02 |
+
