@@ -74,17 +74,3 @@ def test_flexible_mlp_different_architectures():
     assert output2.shape == (16, 1)
 
 
-if __name__ == "__main__":
-    print('=== Testing SimpleMLP ===')
-    test_simple_mlp()
-    print('✓ SimpleMLP tests passed')
-
-    print('\n=== Testing FlexibleMLP ===')
-    test_flexible_mlp()
-    print('✓ FlexibleMLP tests passed')
-
-    print('\n=== Testing FlexibleMLP Different Architectures ===')
-    test_flexible_mlp_different_architectures()
-    print('✓ Architecture flexibility tests passed')
-
-    print('\n✓ All tests passed!')
