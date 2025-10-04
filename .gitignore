@@ -208,3 +208,13 @@ __marimo__/
 
 # for MacOS
 .DS_Store
+
+# LaTeX auxiliary files
+*.aux
+*.fdb_latexmk
+*.fls
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.toc
