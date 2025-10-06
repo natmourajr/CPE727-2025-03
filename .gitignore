@@ -218,3 +218,7 @@ __marimo__/
 *.snm
 *.synctex.gz
 *.toc
+
+
+#data
+data/
