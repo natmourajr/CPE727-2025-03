@@ -99,8 +99,8 @@ loader = DataLoader(
 ├── Semininários/             # Seminários sobre os tópicos da disciplina  
 │
 ├── TrabalhoFinal/            # Apresentação final da disciplina
-|
-|── Experimentos/             # Pasta para desenvolvimentos dos Experimentos
+│
+├── Experimentos/             # Pasta para desenvolvimentos dos Experimentos
 │
 ├── Data/                     # Respectivos datasets - esse folder está no gitignore (adicione as pastas no seu computador local)
 │
@@ -125,11 +125,11 @@ loader = DataLoader(
 
 | Tema | Responsáveis | Data Prevista |
 |----|----|----|
-| Regularização | Breno, Evandro, Rickson, Miguel | 2025-10-14 |
+| Regularização | Evandro, Rickson, Miguel | 2025-10-14 |
 | Otimização | Ana, Bruno, Emre, Felipe Barreto | 2025-10-21 |
 | RBM+DBN | Guilherme | 2025-11-04 |
 | CNN | Brenno, Gabriel, Lucas, Raphael | 2025-11-11 |
 | RNN | Fernanda, Leonardo, Luiza, Rodrigo | 2025-11-18 |
 | AutoEncoders | Felipe Grael, Jefferson, Rafael, Thalles | 2025-11-25 |
-| GAN | João | 2025-12-02 |
+| GAN | João, Breno | 2025-12-02 |
 
