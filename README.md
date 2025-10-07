@@ -99,8 +99,10 @@ loader = DataLoader(
 ├── Semininários/             # Seminários sobre os tópicos da disciplina  
 │
 ├── TrabalhoFinal/            # Apresentação final da disciplina
+|
+|── Experimentos/             # Pasta para desenvolvimentos dos Experimentos
 │
-├── data/                     # Respectivos datasets	
+├── Data/                     # Respectivos datasets - esse folder está no gitignore (adicione as pastas no seu computador local)
 │
 ├── src/                      # Código-fonte principal do projeto
 │   ├── dataloaders/          # DataLoaders customizados
