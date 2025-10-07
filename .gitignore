@@ -218,3 +218,6 @@ __marimo__/
 *.snm
 *.synctex.gz
 *.toc
+
+# for Data folder
+Data/*
