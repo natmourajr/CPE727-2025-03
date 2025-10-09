@@ -79,6 +79,63 @@ pip install -e '.[dev]'
 pytest
 ```
 
+## Using in Docker
+
+This dataloader is designed to be used as a local dependency in Docker-based experiments.
+
+**Working Example:** See `src/experiments/WineMLPExperiment/` for a complete implementation.
+
+### Setup in your experiment
+
+**1. Declare dependency in `pyproject.toml`:**
+
+```toml
+# src/experiments/YourExperiment/pyproject.toml
+[project]
+dependencies = [
+    "wine-quality-loader",
+    # ... other dependencies
+]
+
+[tool.uv.sources]
+wine-quality-loader = { path = "../../dataloaders/WineQualityLoader", editable = true }
+```
+
+**2. Configure Dockerfile:**
+
+```dockerfile
+# src/experiments/YourExperiment/Dockerfile
+FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.7.19 /uv /uvx /bin/
+
+# Copy entire repository (needed for local dependencies)
+COPY . /app
+
+WORKDIR /app/src/experiments/YourExperiment
+
+# Setup UV and Python environment
+RUN uv venv /venv
+ENV UV_PROJECT_ENVIRONMENT=/venv
+ENV UV_PYTHON=/venv/bin/python
+ENV PATH=/venv/bin:$PATH
+
+# Install dependencies (including local packages like wine-quality-loader)
+RUN uv sync --locked
+
+CMD ["your-experiment-command"]
+```
+
+**Key points:**
+- `COPY . /app` copies the entire repository (required for local dataloader path)
+- `uv sync --locked` installs wine-quality-loader from the relative path
+- Build Docker image from repository root (not from experiment directory)
+
+**Reference implementation:**
+- Dockerfile: `src/experiments/WineMLPExperiment/Dockerfile:11-23`
+- pyproject.toml: `src/experiments/WineMLPExperiment/pyproject.toml:7-8,23-24`
+
 ## Notes
 
 - The dataset is automatically downloaded from UCI ML Repository on first use
