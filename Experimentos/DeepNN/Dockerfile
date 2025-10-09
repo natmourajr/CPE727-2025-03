@@ -1,6 +1,8 @@
 # Base com CUDA 12.9 no Ubuntu 24.04
 FROM nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04
 
+USER root
+
 # Informações sobre o autor/opcional
 LABEL maintainer="natmourajr@lps.ufrj.br"
 
