@@ -1,6 +1,5 @@
 # Base com CUDA 12.9 no Ubuntu 24.04
-FROM nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04
-
+FROM pytorch/pytorch:2.7.0-cuda11.8-cudnn9-runtime
 USER root
 
 # Informações sobre o autor/opcional
@@ -20,7 +19,7 @@ RUN python3 -m venv /venv
 
 COPY requirements.txt /requirements.txt
 
-RUN pip install -r requirements.txt
+RUN pip install -r /requirements.txt
 
 RUN /venv/bin/python3 -m pip install --upgrade pip
 RUN /venv/bin/python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
