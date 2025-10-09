@@ -32,4 +32,23 @@ Pasta a ser utilizada para o desenvolvimento dos experimentos desenvolvidos na m
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: www.linkedin.com/in/natanael-moura-junior-425a3294
 
+## Para utilizar:
 
+_Abaixo seguem as instruções de utilização do repositório_
+
+
+1. Monte a imagem Docker na sua máquina
+```bash
+docker build . --tag=natmourajr/deepnn:lastest --no-cache
+```
+Obs: `--no-cache` é pra limpar o cache e reiniciar o build
+
+2. Rode a imagem Docker na sua máquina
+```bash
+docker run --rm -it -v $(pwd):/tf/workspace -p 8880:8888 natmourajr/deepnn:lastest 
+```
+
+Obs: Caso esteja no Windows, rode o código abaixo
+```bash
+docker run --rm -it -v ${pwd}:/tf/workspace -p 8880:8888 natmourajr/deepnn:lastest 
+```
