@@ -105,7 +105,12 @@ wine-quality-loader = { path = "../../dataloaders/WineQualityLoader", editable =
 
 ```dockerfile
 # src/experiments/YourExperiment/Dockerfile
-FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04
+ARG BASE_IMAGE=nvidia/cuda:12.6.3-runtime-ubuntu24.04
+
+FROM $BASE_IMAGE
+
+# Set timezone
+ENV TZ=Etc/UTC
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:0.7.19 /uv /uvx /bin/
@@ -121,16 +126,18 @@ ENV UV_PROJECT_ENVIRONMENT=/venv
 ENV UV_PYTHON=/venv/bin/python
 ENV PATH=/venv/bin:$PATH
 
-# Install dependencies (including local packages like wine-quality-loader)
+# Install dependencies (including local packages)
 RUN uv sync --locked
 
-CMD ["your-experiment-command"]
+# Default command: run the experiment
+CMD ["your-experiment-command", "--arg", "value"]
 ```
 
 **Key points:**
+- `ARG BASE_IMAGE` allows building with different base images (CPU/GPU)
 - `COPY . /app` copies the entire repository (required for local dataloader path)
 - `uv sync --locked` installs wine-quality-loader from the relative path
-- Build Docker image from repository root (not from experiment directory)
+- Build Docker image from repository root using `build_image.sh`
 
 **Reference implementation:**
 - Dockerfile: `src/experiments/WineMLPExperiment/Dockerfile:11-23`
