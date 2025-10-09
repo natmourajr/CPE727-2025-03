@@ -19,7 +19,5 @@ RUN python3 -m venv /venv
 
 COPY requirements.txt /requirements.txt
 
-RUN pip install -r /requirements.txt
-
 RUN /venv/bin/python3 -m pip install --upgrade pip
-RUN /venv/bin/python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
+RUN /venv/bin/python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r /requirements.txt
