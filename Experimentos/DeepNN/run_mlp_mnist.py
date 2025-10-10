@@ -36,9 +36,14 @@ def evaluate(model: MLPClassifier, loader: torch.utils.data.DataLoader) -> float
 
 def main():
     # 1) Data
-    cfg = DataConfig(data_dir="./../../Data", batch_size=128, val_split=0.1, num_workers=2, normalize=True)
+    cfg = DataConfig(data_dir="./../../Data/DeepNN", batch_size=128, val_split=0.1, num_workers=2, normalize=True)
     dl = data_loader(cfg)
     train_loader, val_loader, test_loader = dl.get_loaders()
+
+    if os.path.exists(cfg.data_dir):
+        print(f"Dataset MNIST encontrado em: {cfg.data_dir}")
+    else:
+        print(f"Dataset MNIST NÃO encontrado em: {cfg.data_dir}. Será baixado...")  
 
     # 2) Modelo
     model = MLPClassifier(
@@ -88,7 +93,7 @@ def main():
     plt.title(title)
     plt.tight_layout()
     plt.show()
-    plt.savefig("../Data/DeepNN/mlp_mnist_predictions.png", dpi=200)
+    plt.savefig("./../../Data/DeepNN/mlp_mnist_predictions.png", dpi=200)
     plt.close()
 
 if __name__ == "__main__":

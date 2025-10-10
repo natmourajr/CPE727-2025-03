@@ -43,7 +43,7 @@ def accuracy_from_logits(logits: torch.Tensor, targets: torch.Tensor) -> float:
 
 @dataclass
 class DataConfig:
-    data_dir: str = "../Data"
+    data_dir: str = "../../Data"
     batch_size: int = 128
     val_split: float = 0.1
     num_workers: int = 2
