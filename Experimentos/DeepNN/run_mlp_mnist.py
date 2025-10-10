@@ -36,7 +36,7 @@ def evaluate(model: MLPClassifier, loader: torch.utils.data.DataLoader) -> float
 
 def main():
     # 1) Data
-    cfg = DataConfig(data_dir="./data", batch_size=128, val_split=0.1, num_workers=2, normalize=True)
+    cfg = DataConfig(data_dir="./../../Data", batch_size=128, val_split=0.1, num_workers=2, normalize=True)
     dl = data_loader(cfg)
     train_loader, val_loader, test_loader = dl.get_loaders()
 
@@ -65,7 +65,7 @@ def main():
     print(f"Acurácia em TESTE: {test_acc:.4f}")
 
     # 5) Salvar e recarregar
-    save_path = os.path.join("checkpoints", "mlp_mnist.pt")
+    save_path = os.path.join("../../Data/DeepNN/checkpoints", "mlp_mnist.pt")
     model.save_model(save_path)
     loaded = MLPClassifier.load_model(save_path, device=model.device)
 
@@ -88,7 +88,8 @@ def main():
     plt.title(title)
     plt.tight_layout()
     plt.show()
-
+    plt.savefig("../Data/DeepNN/mlp_mnist_predictions.png", dpi=200)
+    plt.close()
 
 if __name__ == "__main__":
     main()
