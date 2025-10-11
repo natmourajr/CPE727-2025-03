@@ -15,6 +15,8 @@ import torch
 from torch import nn
 from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
 
 from mlp_mnist import data_loader, DataConfig, MLPClassifier
 
@@ -35,7 +37,7 @@ def evaluate(model: MLPClassifier, loader: torch.utils.data.DataLoader) -> float
 
 
 def main():
-    # 1) Data
+    # Carga e preparação dos dados
     cfg = DataConfig(data_dir="./../../Data/DeepNN", batch_size=128, val_split=0.1, num_workers=2, normalize=True)
     dl = data_loader(cfg)
     train_loader, val_loader, test_loader = dl.get_loaders()
@@ -45,7 +47,7 @@ def main():
     else:
         print(f"Dataset MNIST NÃO encontrado em: {cfg.data_dir}. Será baixado...")  
 
-    # 2) Modelo
+    # Desenvolvimento do Modelo
     model = MLPClassifier(
         input_size=784,
         hidden_sizes=[512, 256, 128],
@@ -55,7 +57,7 @@ def main():
     )
     print("Dispositivo:", model.device)
 
-    # 3) Treino
+    # Treino
     history = model.fit(
         train_loader=train_loader,
         val_loader=val_loader,
@@ -65,20 +67,47 @@ def main():
         log_every=100,
     )
 
-    # 4) Avaliação no conjunto de teste
+    # Avaliação no conjunto de teste
     test_acc = evaluate(model, test_loader)
     print(f"Acurácia em TESTE: {test_acc:.4f}")
 
-    # 5) Salvar e recarregar
+    # Plotar curvas de treino/validação
+    plt.figure(figsize=(8, 4))
+    plt.plot(history["train_loss"], 'bo-', label="Train Loss")
+    plt.plot(history["val_loss"], 'ro-', label="Val Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.title("Loss Curves")
+    plt.grid()
+    plt.tight_layout()
+    plt.show()
+    for figformat in ["png", "pdf"]:
+        plt.savefig("./../../Data/DeepNN/mlp_mnist_training_curves.%s"%(figformat), dpi=200, bbox_inches='tight')
+    plt.close()
+
+    # Salvar e recarregar
     save_path = os.path.join("../../Data/DeepNN/checkpoints", "mlp_mnist.pt")
     model.save_model(save_path)
     loaded = MLPClassifier.load_model(save_path, device=model.device)
 
-    # 6) Predição (probabilidades opcionais)
+    # Predição (probabilidades opcionais)
     y_pred, y_prob = loaded.predict(test_loader, return_probs=True)
     print("Predições obtidas:", y_pred.shape, "| Probabilidades:", y_prob.shape)
 
-    # 7) Visualizar algumas amostras e suas predições
+    # Plot da matriz de confusão
+    from sklearn.metrics import ConfusionMatrixDisplay
+    import numpy as np
+    all_targets = np.concatenate([targets.numpy() for _, targets in test_loader], axis=0)
+    disp = ConfusionMatrixDisplay.from_predictions(all_targets, y_pred, normalize='true', cmap='Blues', values_format=".2f", colorbar=True)
+    disp.ax_.set_title("Matriz de Confusão (normalizada %)")
+    plt.tight_layout()
+    plt.show()
+    for figformat in ["png", "pdf"]:
+        plt.savefig("./../../Data/DeepNN/mlp_mnist_confusion_matrix.%s"%(figformat), dpi=200, bbox_inches='tight')
+    plt.close() 
+
+    # Visualizar algumas amostras e suas predições
     #    (opcional — útil para verificar o pipeline)
     batch_images, batch_targets = next(iter(test_loader))
     with torch.no_grad():
@@ -93,7 +122,8 @@ def main():
     plt.title(title)
     plt.tight_layout()
     plt.show()
-    plt.savefig("./../../Data/DeepNN/mlp_mnist_predictions.png", dpi=200)
+    for figformat in ["png", "pdf"]:
+        plt.savefig("./../../Data/DeepNN/mlp_mnist_predictions.%s"%(figformat), dpi=200, bbox_inches='tight')
     plt.close()
 
 if __name__ == "__main__":
