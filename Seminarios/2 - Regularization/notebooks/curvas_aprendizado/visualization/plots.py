@@ -42,19 +42,45 @@ class ResultsVisualizer:
         # Loss plot
         ax1.plot(epochs, history['train_loss'], 'b-', label='Train Loss', linewidth=2)
         ax1.plot(epochs, history['val_loss'], 'r-', label='Val Loss', linewidth=2)
+        
+        # Mark best epoch if available
+        if history.get('best_epoch') is not None:
+            best_epoch = history['best_epoch']
+            ax1.axvline(x=best_epoch, color='g', linestyle='--', linewidth=1.5, 
+                       label=f'Best Model (epoch {best_epoch})', alpha=0.7)
+        
+        # Mark early stopping if it occurred
+        if history.get('early_stopped', False) and history.get('stopped_epoch') is not None:
+            stopped_epoch = history['stopped_epoch']
+            ax1.axvline(x=stopped_epoch, color='orange', linestyle=':', linewidth=1.5,
+                       label=f'Early Stop (epoch {stopped_epoch})', alpha=0.7)
+        
         ax1.set_xlabel('Epoch', fontsize=12)
         ax1.set_ylabel('Loss', fontsize=12)
         ax1.set_title(f'{model_name} - Loss Curves', fontsize=14, fontweight='bold')
-        ax1.legend(fontsize=11)
+        ax1.legend(fontsize=10)
         ax1.grid(True, alpha=0.3)
         
         # Accuracy plot
         ax2.plot(epochs, history['train_acc'], 'b-', label='Train Acc', linewidth=2)
         ax2.plot(epochs, history['val_acc'], 'r-', label='Val Acc', linewidth=2)
+        
+        # Mark best epoch if available
+        if history.get('best_epoch') is not None:
+            best_epoch = history['best_epoch']
+            ax2.axvline(x=best_epoch, color='g', linestyle='--', linewidth=1.5,
+                       label=f'Best Model (epoch {best_epoch})', alpha=0.7)
+        
+        # Mark early stopping if it occurred
+        if history.get('early_stopped', False) and history.get('stopped_epoch') is not None:
+            stopped_epoch = history['stopped_epoch']
+            ax2.axvline(x=stopped_epoch, color='orange', linestyle=':', linewidth=1.5,
+                       label=f'Early Stop (epoch {stopped_epoch})', alpha=0.7)
+        
         ax2.set_xlabel('Epoch', fontsize=12)
         ax2.set_ylabel('Accuracy (%)', fontsize=12)
         ax2.set_title(f'{model_name} - Accuracy Curves', fontsize=14, fontweight='bold')
-        ax2.legend(fontsize=11)
+        ax2.legend(fontsize=10)
         ax2.grid(True, alpha=0.3)
         
         plt.tight_layout()

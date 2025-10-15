@@ -54,7 +54,11 @@ class Trainer:
             'val_loss': [],
             'val_acc': [],
             'epoch_times': [],
-            'learning_rates': []
+            'learning_rates': [],
+            'early_stopped': False,
+            'stopped_epoch': None,
+            'best_epoch': None,
+            'total_training_time': 0.0
         }
     
     def train_epoch(self):
@@ -139,18 +143,26 @@ class Trainer:
         
         return val_loss, val_acc
     
-    def train(self):
+    def train(self, early_stopping=None):
         """
-        Full training loop
+        Full training loop with optional early stopping
+        
+        Args:
+            early_stopping: EarlyStopping instance or None. If provided, training
+                          will stop when validation metric stops improving.
         
         Returns:
             dict: Training history
         """
-        print(f"Training for {self.max_epochs} epochs...")
+        print(f"Training for up to {self.max_epochs} epochs...")
         print(f"Device: {self.device}")
         print(f"Model parameters: {sum(p.numel() for p in self.model.parameters()):,}")
         
+        if early_stopping:
+            print(f"Early stopping enabled: patience={early_stopping.patience}, mode={early_stopping.mode}")
+        
         best_val_acc = 0.0
+        training_start_time = time.time()  # Track total training time
         
         for epoch in range(self.max_epochs):
             epoch_start = time.time()
@@ -188,13 +200,42 @@ class Trainer:
             # Track best model
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
+                self.history['best_epoch'] = epoch + 1
+            
+            # Check early stopping
+            if early_stopping:
+                early_stopping(val_loss, self.model, epoch=epoch + 1)
+                if early_stopping.early_stop:
+                    print(f"\n⚠️  Early stopping triggered at epoch {epoch + 1}")
+                    print(f"   No improvement for {early_stopping.patience} consecutive epochs")
+                    print(f"   Best epoch was: {early_stopping.best_epoch}")
+                    if early_stopping.restore_best_weights:
+                        print(f"   ✅ Restored best model weights from epoch {early_stopping.best_epoch}")
+                    
+                    # Update history with early stopping info
+                    self.history['early_stopped'] = True
+                    self.history['stopped_epoch'] = epoch + 1
+                    self.history['best_epoch'] = early_stopping.best_epoch
+                    break
             
             # Print summary
             print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
             print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%")
             print(f"Time: {epoch_time:.2f}s | LR: {current_lr:.6f}")
         
-        print(f"\nBest Validation Accuracy: {best_val_acc:.2f}%")
+        # Calculate total training time
+        total_time = time.time() - training_start_time
+        self.history['total_training_time'] = total_time
+        
+        # Final summary
+        if early_stopping and early_stopping.early_stop:
+            print(f"\nTraining stopped early at epoch {self.history['stopped_epoch']}")
+            print(f"Best epoch: {self.history['best_epoch']}")
+        else:
+            print(f"\nCompleted all {self.max_epochs} epochs")
+        
+        print(f"Best Validation Accuracy: {best_val_acc:.2f}%")
+        print(f"Total Training Time: {total_time/60:.2f} minutes ({total_time:.2f} seconds)")
         
         return self.history
     

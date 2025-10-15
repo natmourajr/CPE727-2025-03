@@ -1,8 +1,9 @@
 """
 Main script for training models on image datasets
 
-Phase 1.0: Basic training without early stopping or double descent
+Phase 1.1: Training with Early Stopping
 - Train MLP, CNN, and ResNet-18 on FashionMNIST dataset
+- Implement early stopping following textbook algorithm
 - Generate training curves and comparison plots
 - Save results to timestamped directory
 """
@@ -15,6 +16,7 @@ from models.mlp import MLP
 from models.cnn import SimpleCNN
 from models.resnet import ResNet18CIFAR
 from training.trainer import Trainer
+from training.early_stopping import EarlyStopping
 from visualization.plots import ResultsVisualizer
 import json
 import os
@@ -51,9 +53,9 @@ def print_header(text):
 def main():
     """Main training loop"""
     
-    print_header("Model Training - Phase 1.0")
-    print("Training MLP and CNN models")
-    print("No early stopping or double descent (yet)")
+    print_header("Model Training - Phase 1.1")
+    print("Training MLP and CNN models with Early Stopping")
+    print("Following textbook algorithm from Goodfellow et al.")
     
     # Set random seed for reproducibility
     set_seed(42)
@@ -125,12 +127,28 @@ def main():
         'data_cap_rate': 20,  # Using 1/20 of data for overfitting experiments
         'lr_scheduler': 'ReduceLROnPlateau',
         'lr_scheduler_patience': 5,
-        'lr_scheduler_factor': 0.5
+        'lr_scheduler_factor': 0.5,
+        
+        # ========================================
+        # Early Stopping Configuration
+        # ========================================
+        # Set 'early_stopping_enabled' to False to disable early stopping
+        # and train for the full 'max_epochs'
+        'early_stopping_enabled': True,          # Toggle: True to enable, False to disable
+        'early_stopping_patience': 10,           # Wait N epochs before stopping
+        'early_stopping_mode': 'min',            # 'min' for loss, 'max' for accuracy
+        'early_stopping_restore_best': True      # Restore best weights when stopping
     }
     
     print("\nTraining Configuration:")
     for key, value in training_config.items():
         print(f"  {key}: {value}")
+    
+    # Highlight early stopping status
+    if training_config['early_stopping_enabled']:
+        print(f"\n⚡ Early stopping: ENABLED (patience={training_config['early_stopping_patience']})")
+    else:
+        print(f"\n⏱️  Early stopping: DISABLED (will train for full {training_config['max_epochs']} epochs)")
     
     # ========================================
     # Setup Results Tracking
@@ -159,6 +177,16 @@ def main():
             min_lr=1e-6          # minimum learning rate
         )
         
+        # Setup early stopping
+        early_stopping = None
+        if training_config['early_stopping_enabled']:
+            early_stopping = EarlyStopping(
+                patience=training_config['early_stopping_patience'],
+                mode=training_config['early_stopping_mode'],
+                restore_best_weights=training_config['early_stopping_restore_best'],
+                verbose=True
+            )
+        
         # Create trainer
         trainer = Trainer(
             model=model,
@@ -172,8 +200,8 @@ def main():
             scheduler=scheduler
         )
         
-        # Train the model
-        history = trainer.train()
+        # Train the model with early stopping
+        history = trainer.train(early_stopping=early_stopping)
         
         # Test the model
         test_acc = trainer.test()
@@ -214,8 +242,25 @@ def main():
         num_params = sum(p.numel() for p in model.parameters())
         model_configs_summary[name] = f"{num_params:,} parameters"
     
+    # Collect early stopping info and training times for summary
+    early_stopping_info = {}
+    training_times = {}
+    for model_name, history in results.items():
+        early_stopping_info[model_name] = {
+            'early_stopped': history.get('early_stopped', False),
+            'stopped_epoch': history.get('stopped_epoch', None),
+            'best_epoch': history.get('best_epoch', None)
+        }
+        total_time = history.get('total_training_time', 0.0)
+        training_times[model_name] = {
+            'seconds': round(total_time, 2),
+            'minutes': round(total_time / 60, 2),
+            'hours': round(total_time / 3600, 3)
+        }
+    
     summary = {
         'test_accuracies': test_accuracies,
+        'training_times': training_times,
         'training_config': training_config,
         'model_configs': model_configs_summary,
         'dataset': data_module.name,
@@ -224,8 +269,9 @@ def main():
             'validation': len(data_module.val_dataset),
             'test': len(data_module.test_dataset)
         },
-        'phase': '1.0 - Basic Training',
-        'notes': f'Overfitting experiment with data_cap_rate={data_module.data_cap_rate}'
+        'early_stopping_info': early_stopping_info,
+        'phase': '1.1 - Early Stopping',
+        'notes': f'Overfitting experiment with data_cap_rate={data_module.data_cap_rate}. Early stopping {"enabled" if training_config["early_stopping_enabled"] else "disabled"}'
     }
     
     visualizer.save_summary(summary)
@@ -238,6 +284,10 @@ def main():
     for model_name, acc in test_accuracies.items():
         print(f"  {model_name}: {acc:.2f}%")
     
+    print("\nTraining Times:")
+    for model_name, times in training_times.items():
+        print(f"  {model_name}: {times['minutes']:.2f} minutes ({times['seconds']:.2f}s)")
+    
     print(f"\n📁 All results saved to: {visualizer.get_save_dir()}")
     print("\nGenerated files:")
     for model_name in models_config.keys():
@@ -247,8 +297,8 @@ def main():
     print("  - Model checkpoints (.pth files)")
     
     print("\n✨ Next steps:")
-    print("  - Phase 1.1: Implement Early Stopping")
     print("  - Phase 1.2: Implement Double Descent experiments")
+    print("  - Phase 2: Create Jupyter Notebooks for analysis")
 
 
 if __name__ == '__main__':
