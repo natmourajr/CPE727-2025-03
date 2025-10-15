@@ -1,0 +1,8 @@
+# IMPORTANT: Use Python 3.11.x (NOT 3.12.11 or 3.13)
+# PyTorch for Mac Silicon (MPS support)
+torch==2.3.1
+torchvision==0.18.1
+numpy>=1.24.0
+matplotlib>=3.7.0
+tqdm>=4.65.0
+
