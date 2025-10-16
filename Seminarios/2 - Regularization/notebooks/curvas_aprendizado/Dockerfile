@@ -1,13 +1,14 @@
-FROM python:3.10-slim
+FROM python:3.10-slim as base
 
 WORKDIR /app
 
-# Copy requirements
+# Copy requirements first for better layer caching
 COPY requirements.txt .
 
-# Install Python dependencies (using precompiled wheels, no compilation needed)
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir torch torchvision numpy matplotlib tqdm
+# Install Python dependencies (using BuildKit cache for faster rebuilds)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
 
 # Copy source code
 COPY . .

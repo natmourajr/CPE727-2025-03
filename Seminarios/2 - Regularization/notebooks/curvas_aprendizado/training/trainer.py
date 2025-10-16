@@ -35,7 +35,8 @@ class Trainer:
         optimizer,
         device,
         max_epochs=100,
-        scheduler=None
+        scheduler=None,
+        verbose=True
     ):
         self.model = model.to(device)
         self.train_loader = train_loader
@@ -46,6 +47,7 @@ class Trainer:
         self.scheduler = scheduler
         self.device = device
         self.max_epochs = max_epochs
+        self.verbose = verbose
         
         # Track training metrics
         self.history = {
@@ -167,7 +169,8 @@ class Trainer:
         for epoch in range(self.max_epochs):
             epoch_start = time.time()
             
-            print(f"\nEpoch {epoch + 1}/{self.max_epochs}")
+            if self.verbose:
+                print(f"\nEpoch {epoch + 1}/{self.max_epochs}")
             
             # Train
             train_loss, train_acc = self.train_epoch()
@@ -194,7 +197,7 @@ class Trainer:
                 self.scheduler.step(val_loss)
                 # Get updated learning rate after scheduler step
                 new_lr = self.optimizer.param_groups[0]['lr']
-                if new_lr != current_lr:
+                if new_lr != current_lr and self.verbose:
                     print(f"⚡ Learning rate reduced: {current_lr:.6f} -> {new_lr:.6f}")
             
             # Track best model
@@ -206,11 +209,12 @@ class Trainer:
             if early_stopping:
                 early_stopping(val_loss, self.model, epoch=epoch + 1)
                 if early_stopping.early_stop:
-                    print(f"\n⚠️  Early stopping triggered at epoch {epoch + 1}")
-                    print(f"   No improvement for {early_stopping.patience} consecutive epochs")
-                    print(f"   Best epoch was: {early_stopping.best_epoch}")
-                    if early_stopping.restore_best_weights:
-                        print(f"   ✅ Restored best model weights from epoch {early_stopping.best_epoch}")
+                    if self.verbose:
+                        print(f"\n⚠️  Early stopping triggered at epoch {epoch + 1}")
+                        print(f"   No improvement for {early_stopping.patience} consecutive epochs")
+                        print(f"   Best epoch was: {early_stopping.best_epoch}")
+                        if early_stopping.restore_best_weights:
+                            print(f"   ✅ Restored best model weights from epoch {early_stopping.best_epoch}")
                     
                     # Update history with early stopping info
                     self.history['early_stopped'] = True
@@ -218,10 +222,11 @@ class Trainer:
                     self.history['best_epoch'] = early_stopping.best_epoch
                     break
             
-            # Print summary
-            print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
-            print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%")
-            print(f"Time: {epoch_time:.2f}s | LR: {current_lr:.6f}")
+            # Print summary (only if verbose)
+            if self.verbose:
+                print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
+                print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%")
+                print(f"Time: {epoch_time:.2f}s | LR: {current_lr:.6f}")
         
         # Calculate total training time
         total_time = time.time() - training_start_time
@@ -229,13 +234,16 @@ class Trainer:
         
         # Final summary
         if early_stopping and early_stopping.early_stop:
-            print(f"\nTraining stopped early at epoch {self.history['stopped_epoch']}")
-            print(f"Best epoch: {self.history['best_epoch']}")
+            if self.verbose:
+                print(f"\nTraining stopped early at epoch {self.history['stopped_epoch']}")
+                print(f"Best epoch: {self.history['best_epoch']}")
         else:
-            print(f"\nCompleted all {self.max_epochs} epochs")
+            if self.verbose:
+                print(f"\nCompleted all {self.max_epochs} epochs")
         
-        print(f"Best Validation Accuracy: {best_val_acc:.2f}%")
-        print(f"Total Training Time: {total_time/60:.2f} minutes ({total_time:.2f} seconds)")
+        if self.verbose:
+            print(f"Best Validation Accuracy: {best_val_acc:.2f}%")
+            print(f"Total Training Time: {total_time/60:.2f} minutes ({total_time:.2f} seconds)")
         
         return self.history
     
