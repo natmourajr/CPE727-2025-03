@@ -114,7 +114,7 @@ print("Modelos definidos com sucesso!")
 
 
 # Hiperparâmetros
-epochs = 50
+epochs = 100
 batch_size = 32
 
 print("=" * 60)
