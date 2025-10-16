@@ -1,0 +1,29 @@
+{
+    "timestamp": "2025-10-16 08:14:07",
+    "configuration": {
+        "subset_size": 1000,
+        "epochs": 25,
+        "batch_size": 32,
+        "dropout_rate": 0.3,
+        "optimizer": "SGD",
+        "learning_rate": 0.01
+    },
+    "sem_dropout": {
+        "train_accuracy": 0.9020000100135803,
+        "test_accuracy": 0.8148999810218811,
+        "train_loss": 0.3383360505104065,
+        "test_loss": 0.6025994420051575,
+        "gap_accuracy": 0.08710002899169922
+    },
+    "com_dropout": {
+        "train_accuracy": 0.39899998903274536,
+        "test_accuracy": 0.44940000772476196,
+        "train_loss": 1.674871802330017,
+        "test_loss": 1.5100969076156616,
+        "gap_accuracy": -0.0504000186920166
+    },
+    "analise": {
+        "reducao_gap_accuracy": 0.13750004768371582,
+        "melhoria_test_accuracy": -0.36549997329711914
+    }
+}

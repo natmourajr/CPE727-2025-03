@@ -1,0 +1,39 @@
+======================================================================
+EXPERIMENTO: Overfitting vs Dropout Regularization
+======================================================================
+
+Data/Hora: 2025-10-16 08:14:07
+
+CONFIGURAÇÃO:
+  - Subset size: 1000
+  - Épocas: 25
+  - Batch size: 32
+  - Dropout rate: 0.3
+  - Optimizer: SGD (lr=0.01)
+
+======================================================================
+RESULTADOS FINAIS
+======================================================================
+
+SEM DROPOUT:
+  Acurácia Treino:     0.902
+  Acurácia Teste:      0.815
+  Gap (Overfitting):   0.087
+  Loss Treino:         0.338
+  Loss Teste:          0.603
+
+COM DROPOUT:
+  Acurácia Treino:     0.399
+  Acurácia Teste:      0.449
+  Gap (Overfitting):   -0.050
+  Loss Treino:         1.675
+  Loss Teste:          1.510
+
+======================================================================
+ANÁLISE
+======================================================================
+
+Redução no Gap de Acurácia:  0.138
+Melhoria na Acurácia de Teste: -0.365
+
+======================================================================

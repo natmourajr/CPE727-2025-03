@@ -25,7 +25,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Input
+from tensorflow.keras.layers import Dense, Dropout, Input,BatchNormalization, Activation
 import matplotlib.pyplot as plt
 
 print(f"TensorFlow version: {tf.__version__}")
@@ -83,19 +83,33 @@ def create_model_without_dropout():
 def create_model_with_dropout():
     """Modelo com Dropout - regularização para melhor generalização"""
     model = Sequential([
-        Dense(2048, activation='relu', input_shape=(784,)),
+        Dense(2048, input_shape=(784,)),
+        BatchNormalization(),
+        Activation('relu'),
         Dropout(0.3),
-        Dense(512, activation='relu'),
+        Dense(512),
+        BatchNormalization(),
+        Activation('relu'),
         Dropout(0.3),
-        Dense(512, activation='relu'),
+        Dense(512),
+        BatchNormalization(),
+        Activation('relu'),
         Dropout(0.3),
-        Dense(256, activation='relu'),
+        Dense(256),
+        BatchNormalization(),
+        Activation('relu'),
         Dropout(0.3),
-        Dense(256, activation='relu'),
+        Dense(256),
+        BatchNormalization(),
+        Activation('relu'),
         Dropout(0.3),
-        Dense(128, activation='relu'),
+        Dense(128),
+        BatchNormalization(),
+        Activation('relu'),
         Dropout(0.3),
-        Dense(64, activation='relu'),
+        Dense(64),
+        BatchNormalization(),
+        Activation('relu'),
         Dropout(0.3),
         Dense(10, activation='softmax')
     ])
