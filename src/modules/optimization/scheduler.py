@@ -94,7 +94,7 @@ class Scheduler:
             power = float(p.pop('power', 2.0))
             max_iter = int(p.pop('max_iter', self.total_steps if self.total_steps > 0 else self.num_epochs))
             if _HAS_POLY:
-                return PolynomialLR(self.optimizer, max_iter=max_iter, power=power)
+                return PolynomialLR(self.optimizer, total_iters=max_iter, power=power)
             else:
                 def poly_lambda(epoch, max_iter=max_iter, power=power):
                     t = min(epoch, max_iter)

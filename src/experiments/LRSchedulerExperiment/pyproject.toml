@@ -3,10 +3,13 @@ name = "template_experiment"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.13.*"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "template-loader",
     "typer>=0.16.0",
+    "torch>=2.7.1",
+    "matplotlib>=3.8.0",
+    "rich>=14.0.0",
 ]
 
 [project.scripts]

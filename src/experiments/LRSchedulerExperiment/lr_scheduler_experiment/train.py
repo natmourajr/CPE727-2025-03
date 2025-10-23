@@ -47,9 +47,24 @@ def _plot_and_save(train_losses: List[float], save_path: str, title: str = "Trai
     plt.savefig(save_path)
     plt.close()
 
+def _plot_lr(lrs: List[List[float]], save_path: str, title: str = "Learning Rate"):
+    if len(lrs) == 0:
+        return
+    plt.figure(figsize=(8, 5))
+    lrs_array = torch.tensor(lrs)  # shape: (epochs, param_groups)
+    for i in range(lrs_array.shape[1]):
+        plt.plot(range(1, lrs_array.shape[0] + 1), lrs_array[:, i].numpy(), marker='o', linewidth=1, label=f'param_group {i}')
+    plt.xlabel('Epoch')
+    plt.ylabel('Learning Rate')
+    plt.title(title)
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
 
 def train_breast_cancer_mlp(
-    epochs=50,
+    epochs=100,
     batch_size=32,
     learning_rate=0.001,
     hidden_size=64,
@@ -161,9 +176,10 @@ def train_breast_cancer_mlp(
 
     # Prepare to record training loss per epoch
     train_losses_per_epoch: List[float] = []
+    lrs_per_epoch: List[List[float]] = []
 
     # Ensure results subdir exists
-    experiment_results_dir = os.path.join(results_dir, 'breast_cancer_mlp')
+    experiment_results_dir = os.path.join(results_dir, 'scheduler')
     _ensure_dir(experiment_results_dir)
 
     # Training loop
@@ -228,7 +244,7 @@ def train_breast_cancer_mlp(
 
         # Scheduler stepping for epoch-based schedulers
         if not scheduler_steps_per_batch:
-            if isinstance(scheduler_obj, lr_scheduler.ReduceLROnPlateau):
+            if isinstance(scheduler_obj, torch.optim.lr_scheduler.ReduceLROnPlateau):
                 scheduler_obj.step(avg_test_loss)
             else:
                 try:
@@ -237,15 +253,23 @@ def train_breast_cancer_mlp(
                     scheduler_obj.step()
 
         # Log metrics
+        current_lrs = [group['lr'] for group in optimizer.param_groups]
+        lrs_per_epoch.append(current_lrs.copy())
+
+        if len(current_lrs) == 1:
+            lr_for_logging = float(current_lrs[0])
+        else:
+            lr_for_logging = ','.join([f'{lr:.6g}' for lr in current_lrs])
+
+
         if (epoch + 1) % 10 == 0 or epoch == 0:
-            current_lrs = [group['lr'] for group in optimizer.param_groups]
             logger.log_metrics(
                 epoch=f'{epoch+1}/{epochs}',
                 metrics_dict={
                     'Train Loss': avg_train_loss,
                     'Test Loss': avg_test_loss,
                     'Accuracy (%)': accuracy,
-                    'LRs': current_lrs
+                    'LR': lr_for_logging
                 }
             )
 
@@ -256,9 +280,16 @@ def train_breast_cancer_mlp(
     logger.log(f'Final Test Accuracy: {accuracy:.2f}%')
 
     # Save train loss plot
-    plot_path = os.path.join(experiment_results_dir, 'train_loss_per_epoch.png')
+    plot_filename = f'train_loss_per_epoch_{scheduler_name}.png'
+    plot_path = os.path.join(experiment_results_dir, plot_filename)
     _plot_and_save(train_losses_per_epoch, plot_path, title='Train Loss per Epoch')
     logger.log(f'Train loss plot saved to: {plot_path}')
+
+    # Save learning rate plot
+    lr_plot_filename = f'learning_rate_per_epoch_{scheduler_name}.png'
+    lr_plot_path = os.path.join(experiment_results_dir, lr_plot_filename)
+    _plot_lr(lrs_per_epoch, lr_plot_path, title='Learning Rate per Epoch')
+    logger.log(f'Learning rate plot saved to: {lr_plot_path}')
 
     # Close logger
     logger.close()

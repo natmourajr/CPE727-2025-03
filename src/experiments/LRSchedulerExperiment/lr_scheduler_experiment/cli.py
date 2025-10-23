@@ -6,9 +6,9 @@ app = Typer()
 
 @app.command()
 def train_breast_cancer_mlp(
-    epochs: int = 50,
+    epochs: int = 100,
     batch_size: int = 32,
-    learning_rate: float = 0.001,
+    learning_rate: float = 0.05,
     hidden_size: int = 64,
     feature_strategy: str = 'onehot',
     target_strategy: str = 'binary',
