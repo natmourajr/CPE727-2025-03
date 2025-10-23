@@ -1,6 +1,6 @@
-# Template Experiment
+# Learning Rate Scheduler Experiment
 
-This is a standard experiment with the following characteristics:
+This is an experiment with the following characteristics:
 
 - Depends on a data loader whose source is located at `../dataloaders/TemplateLoader`. It is installed as a standard Python dependency.
 - Includes a Dockerfile with CUDA support.
