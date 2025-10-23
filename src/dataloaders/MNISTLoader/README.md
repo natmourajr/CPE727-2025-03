@@ -17,7 +17,7 @@ The loader offers two main classes:
 - Support for training and test sets
 - Automatic dataset download when needed
 - Option to add controlled Gaussian noise to images
-- Unit tests included
+- Unit tests
 
 ## Usage
 
@@ -61,9 +61,10 @@ noisy_dataset = NoisyMNISTDataset(
 )
 
 # Access a sample
-noisy_image, clean_image = noisy_dataset[0]
+noisy_image, clean_image, class_label = noisy_dataset[0]
 print(f"Noisy image shape: {noisy_image.shape}")  # (28, 28)
 print(f"Clean image shape: {clean_image.shape}")  # (28, 28)
+print(f"Class label: {class_label}")  # value between 0 and 9
 ```
 
 **Noise Generation Process**:
@@ -91,6 +92,11 @@ This means the final noise has a Gaussian distribution with mean = 0 and standar
 - `train` (bool, default=True): Whether to load the training set (True) or test set (False)
 - `noise_level` (float, default=0.1): Standard deviation (σ) of the Gaussian noise to be added. The noise is sampled from N(0, 1) and multiplied by this value
 - `noise_seed` (int, default=42): Seed for reproducible noise generation
+
+**Returns**: Each sample returns a tuple of three elements: `(noisy_image, clean_image, class_label)`
+- `noisy_image`: The image with added Gaussian noise
+- `clean_image`: The original clean image (normalized to [0, 1])
+- `class_label`: The digit class (0-9)
 
 ## Dataset Structure
 
