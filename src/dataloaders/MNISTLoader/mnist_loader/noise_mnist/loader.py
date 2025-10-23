@@ -28,7 +28,7 @@ class NoisyMNISTDataset(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
+        return self.X[idx], self.y[idx], self.y_classes[idx]
 
     def __add_noise(self, X, seed=42):
         """Private method to add noise to the images"""
