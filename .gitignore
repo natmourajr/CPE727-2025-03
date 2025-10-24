@@ -221,3 +221,13 @@ __marimo__/
 
 # for Data folder
 Data/*
+# --- Custom Exclusions for Deep Learning Project ---
+
+# Ignore the virtual environment folder you are actively using
+venv/
+
+# Ignore the downloaded dataset (CIFAR-10) which is large and auto-downloaded
+data/
+
+# Ignore the generated plots, metrics, and saved models from experiments
+results/
