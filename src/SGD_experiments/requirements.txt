@@ -1,0 +1,5 @@
+torch==2.3.1       # PyTorch framework
+torchvision==0.18.1  # For datasets (CIFAR-10) and models (ResNet)
+numpy==1.26.4      # Numerical operations (often a dependency)
+matplotlib==3.8.4  # For plotting the loss and accuracy curves
+tqdm==4.67.1
