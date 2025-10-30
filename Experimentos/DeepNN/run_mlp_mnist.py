@@ -104,7 +104,7 @@ def main():
     plt.tight_layout()
     plt.show()
     for figformat in ["png", "pdf"]:
-    
+        plt.savefig("./../../Data/DeepNN/mlp_mnist_confusion_matrix.%s"%(figformat), dpi=200, bbox_inches='tight')
     plt.close() 
 
     # Visualizar algumas amostras e suas predições
