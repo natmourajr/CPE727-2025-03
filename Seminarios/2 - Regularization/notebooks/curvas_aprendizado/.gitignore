@@ -1,0 +1,114 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTorch
+*.pth
+*.pt
+*.pkl
+*.pickle
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Environment variables
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Data files (large datasets)
+data/*.tar.gz
+data/*.zip
+data/*.gz
+data/*.pkl
+data/*.pickle
+
+# CIFAR-10 dataset files (very large - ~178MB)
+data/cifar-10-batches-py/
+data/cifar-10-python.tar.gz
+
+# FashionMNIST dataset files (large - ~82MB)
+data/FashionMNIST/
+
+# CIFAR-10 batch files (individual large files)
+data_batch_*
+test_batch
+batches.meta
+
+# Results and outputs (keep structure but ignore large files)
+results/*/
+!results/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Docker
+.dockerignore
+
+# Model checkpoints and weights
+checkpoints/
+weights/
+models/*.pth
+models/*.pt
+
+# Plots and visualizations (optional - uncomment if you don't want to track plots)
+# *.png
+# *.jpg
+# *.jpeg
+# *.pdf
+# *.svg
+
+# Configuration files with sensitive data
+config.ini
+secrets.json
+.secrets

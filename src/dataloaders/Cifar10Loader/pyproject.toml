@@ -1,0 +1,6 @@
+[project]
+name = "cifar_10_loader"
+version = "0.1.0"
+description = "DataLoader for Cifar 10 dataset"
+readme = "README.md"
+requires-python = ">=3.11"
