@@ -1,0 +1,83 @@
+from datetime import datetime
+import pandas as pd
+from cognite.client import CogniteClient, ClientConfig
+from cognite.client.credentials import OAuthClientCredentials
+from sklearn.preprocessing import RobustScaler
+from .segmenter import UnsupervisedStateSegmenter
+import os
+
+# --- CREDENCIAIS ---
+CLIENT_ID = "1b90ede3-271e-401b-81a0-a4d52bea3273"
+CLIENT_SECRET = os.getenv("COGNITE_CLIENT_SECRET")  # Defina a variável de ambiente COGNITE_CLIENT_SECRET com o valor apropriado
+# ----------------------------------
+
+# Configurações do projeto publicdata
+TENANT_ID = "48d5043c-cf70-4c49-881c-c638f5796997"
+COGNITE_PROJECT = "publicdata"
+BASE_URL = "https://api.cognitedata.com"
+
+# Configuração das credenciais
+creds = OAuthClientCredentials(
+    token_url=f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token",
+    client_id=CLIENT_ID,
+    client_secret=CLIENT_SECRET,
+    scopes=[f"{BASE_URL}/.default"],
+)
+
+# Instanciação do client Cognite
+cdf_config = ClientConfig(client_name="eda-compressor-analysis", project=COGNITE_PROJECT, credentials=creds, base_url=BASE_URL)
+client = CogniteClient(cdf_config)
+
+class DataLoader():
+    def __init__(self, start=datetime(2019, 9, 1), end=datetime(2019, 12, 1), granularity="2s", asset_name="23-KA-9101"):
+        compressor_asset_list = client.assets.search(name=asset_name, limit=1)
+
+        compressor_asset = compressor_asset_list[0]
+
+        ts_list = client.time_series.list(asset_ids=[compressor_asset.id], limit=None)
+
+        df_ts_info = ts_list.to_pandas()
+        # Criar dicionário para mapeamento
+        id_to_description = {ts.external_id: ts.description for ts in ts_list if ts.description}
+        external_ids_interesse = df_ts_info['external_id'].tolist()
+
+        print(f"\nBuscando dados para as {len(external_ids_interesse)} séries temporais encontradas.")
+
+        # Define o período de tempo para a análise usando objetos datetime.
+        start_time = start # Tempo disponível no dataset (3 meses)
+        end_time = end
+
+        # Recupera os dados com uma granularidade de 5 minutos
+        df_data = client.time_series.data.retrieve_dataframe(
+            external_id=external_ids_interesse,
+            start=start_time,
+            end=end_time, # Período de 3 meses
+            granularity=granularity, # 5 minutos entre cada ponto de dados
+            aggregates=["average"], # Média para granulidade
+            ignore_unknown_ids=True # Ignora IDs não encontrados
+        )
+
+        # Renomeia as colunas para remover o sufixo do agregado e usar a descrição
+        df_data.columns = [col.split('|')[0] for col in df_data.columns]
+        df_data_descriptive = df_data.rename(columns=id_to_description)
+        self.df = df_data_descriptive.drop(columns=['PH (CBM) 1st Stage Poly Eff Dev']) # Coluna vazia
+
+    def add_segments(self, segments, window, step, path=None, series=None):
+        df = self.df.copy()
+        df.ffill(inplace=True)
+        df.bfill(inplace=True)
+        if series is not None:
+            df = df[series]
+        scaler = RobustScaler()
+        df = pd.DataFrame(scaler.fit_transform(df), columns=df.columns, index=df.index)
+        self.segmenter = UnsupervisedStateSegmenter(k_states=segments, window=window, step=step, device='cuda', min_slice_windows=window)
+        if path is None:
+            self.segmenter.fit(df)
+        else:
+            self.segmenter = self.segmenter.load(path)
+        res = self.segmenter.predict(df)
+        self.df = self.df[:len(res['states'])]
+        self.df['states'] = res['states']
+        self.pred=res
+
+    
