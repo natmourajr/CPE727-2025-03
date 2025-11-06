@@ -1,0 +1,570 @@
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND THEMES
+%----------------------------------------------------------------------------------------
+\documentclass[aspectratio=169,xcolor=dvipsnames, t]{beamer}
+\usepackage{fontspec} % Allows using custom font. MUST be before loading the theme!
+\usepackage[portuguese]{babel}
+\usetheme{SimplePlusAIC}
+\usepackage{hyperref}
+\usepackage{graphicx} % Allows including images
+\usepackage{booktabs} % Allows the use of \toprule, \midrule and  \bottomrule in tables
+\usepackage{svg} %allows using svg figures
+\usepackage{tikz}
+\usepackage{makecell}
+\usepackage{wrapfig}
+\usepackage{ragged2e}
+\usepackage{pifont}
+\usepackage{enumitem}
+\usepackage{algorithm2e}
+\usepackage{algorithmic}
+\usepackage{float}
+\usepackage[font=scriptsize,labelfont=bf]{caption}
+
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+% ADD YOUR PACKAGES BELOW
+
+\def\mydate{\leavevmode\hbox{\twodigits\day/\twodigits\month/\the\year}}
+\def\twodigits#1{\ifnum#1<10 0\fi\the#1}
+
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE CONFIGURATION
+%----------------------------------------------------------------------------------------
+
+\title[Código da Disciplina]{Deep Learning}
+\subtitle{Restricted Boltzmann Machines and Deep Belief Networks}
+
+\author{Guilherme Mota}
+\institute[Coppe/UFRJ]{Electrical Engineering Program \newline Instituto Alberto Luiz Coimbra de Pós-Graduação e Pesquisa de Engenharia\newline Universidade Federal do Rio de Janeiro}
+
+
+\date{      \mydate}
+%----------------------------------------------------------------------------------------
+%	PRESENTATION SLIDES
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+\maketitlepage
+
+\begin{frame}[t]{Overview}
+    \tableofcontents
+\end{frame}
+
+%------------------------------------------------
+
+\makesection{Key Concepts}
+
+%------------------------------------------------
+
+\begin{frame}{The RBM}
+	\vspace{0.5cm}
+	
+	\begin{columns}[c]
+		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[height=0.5\paperheight]{figures/rbm_structure.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		
+		For a binary RBM:
+		
+		\begin{equation}
+%			\label{xxxx}
+			\mathbb{P}(h_j \mid \mathbf{v}) = \sigma(c_j + \mathbf{v}^\intercal \mathbf{W}_{:j})
+		\end{equation}
+		
+		\begin{equation}
+%			\label{xx}
+			\mathbb{P}(v_i \mid \mathbf{h}) = \sigma(b_i + \mathbf{W}_{i:}\mathbf{h})
+		\end{equation}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{The RBM Sampling}
+	
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+		{\small$$
+			\mathbb{P}(v_i \mid \mathbf{h}) = \sigma(b_i + \mathbf{W}_{i:}\mathbf{h})
+			$$}
+		
+		\column{0.5\textwidth}
+		
+	\end{columns}
+	
+	\vspace{0.4cm}
+	
+	\centering
+	\begin{figure}
+		\includegraphics[width=0.9\textwidth]{figures/gibbs_iteration.png}
+		
+	\end{figure}
+	
+	\begin{columns}
+		\column{0.5\textwidth}
+		{\small$$
+			\mathbb{P}(h_j \mid \mathbf{v}) = \sigma(c_j + \mathbf{v}^\intercal \mathbf{W}_{:j})
+			$$}
+		
+		\column{0.5\textwidth}
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{The RBM}
+	
+	The gradients of loss function with respect to each parameter becomes:
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+%		\label{eq:loss_w}
+		\nabla_{\mathbf{W}}\ell(\theta) = \sum_{i=1}^{n}\mathbf{v}_i\cdot \hat{\mathbf{h}}^{\intercal} - \sum_{i=1}^{n} \tilde{\mathbf{v}}_i \tilde{\mathbf{h}}_i^\intercal
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+%		\label{eq:loss_b}
+		\nabla_{\mathbf{b}}\ell(\theta) = \sum_{i=1}^{n}\mathbf{v}_i - \sum_{i=1}^{n} \tilde{\mathbf{v}}_i
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+%		\label{eq:loss_c}
+		\nabla_{\mathbf{c}}\ell(\theta) = \sum_{i=1}^{n}\hat{\mathbf{h}}^{\intercal} - \sum_{i=1}^{n} \tilde{\mathbf{h}}_i^\intercal
+	\end{equation}
+	
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{The DBN}
+	
+	\begin{columns}[c]
+		
+		\column{0.5\textwidth}
+		\centering
+%		\vskip-20pt
+		\begin{figure}
+			\includegraphics[width=0.7\textwidth]{figures/dbn_3layers.png}
+			%			\caption{xx}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.8\textwidth]{figures/dbn_training_as_rbm.png}
+		\end{figure}
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+\makesection{Code Implementations}
+
+%------------------------------------------------
+
+\makesection{Test Results}
+
+%------------------------------------------------
+
+\begin{frame}{(1 RBM) Binary vs. Probability}
+	\begin{columns}
+		\column{0.5\textwidth}
+		\justifying
+		{\small\begin{itemize}
+			\item[$\triangleright$] \textbf{Objective}: Evaluate RBM with binary layers vs. probabilistic layers:
+			\begin{itemize}
+				{\footnotesize\item[$\triangleright$] Binary layers use Bernoulli distribution}
+				{\footnotesize\item[$\triangleright$] Probability layers consider the true values sampled from the conditional distributions}
+			\end{itemize}
+			\item[$\triangleright$] Binary cross entropy as loss function
+			\item[$\triangleright$] Datasets of MNIST and Fashion MNIST:
+			\begin{itemize}
+				{\footnotesize\item[$\triangleright$] 60.000 (Train) and 10.000 (Test) instances}
+			\end{itemize}
+		\end{itemize}}
+		
+		\column{0.5\textwidth}
+		\vspace{1cm}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.5\textwidth]{figures/t1_model.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(1 RBM) MNIST}
+	\begin{columns}[c]
+		\column{0.5\textwidth}
+
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t1_1.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.7\textwidth]{figures/t1_2.png}
+		\end{figure}
+		\begin{figure}
+			\includegraphics[width=0.7\textwidth]{figures/t1_3.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+
+\begin{frame}{(1 RBM) Fashion MNIST}
+	\begin{columns}[c]
+		\column{0.5\textwidth}
+		
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t1_1_fashion.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.7\textwidth]{figures/t1_2_fashion.png}
+		\end{figure}
+		\begin{figure}
+			\includegraphics[width=0.7\textwidth]{figures/t1_3_fashion.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(1 RBM) Results}
+	It's possible to highlight the following:
+	\begin{itemize}
+		{\small \item[$\triangleright$] The worse performance observed in the RBM with binary layers is due to the increased stochastic variance introduced by the Bernoulli sampling of hidden and visible unit}
+		{\small \item[$\triangleright$] The MNIST dataset presents lower training losses than Fashion-MNIST, which can be attributed to its simpler visual structure and less complex feature space}
+		{\small \item[$\triangleright$] The reconstruction performance improves as the number of training epochs increases}
+		{\small \item[$\triangleright$] The binary RBM exhibits significantly noisier reconstructions compared to the probability RBM, particularly when trained on the Fashion-MNIST dataset}
+	\end{itemize}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(2 RBM) Impact of Sampling Iteration}
+	\begin{columns}
+		\column{0.5\textwidth}
+		\justifying
+		{\small\begin{itemize}
+				\item[$\triangleright$] \textbf{Objective}: Evaluate RBM with multiple iterations of Gibbs Sampling
+				\item[$\triangleright$] Binary cross entropy as loss function
+				\item[$\triangleright$] Datasets of MNIST and Fashion MNIST:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] 60.000 (Train) and 10.000 (Test) instances}
+				\end{itemize}
+		\end{itemize}}
+		
+		\column{0.5\textwidth}
+		\vspace{1cm}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.5\textwidth]{figures/t1_model.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(2 RBM) MNIST and Fashion MNIST}
+	\vfill
+	\begin{columns}[c]
+		\column{0.5\textwidth}
+		
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t2_mnist.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t2_fashion_mnist.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+\begin{frame}{(2 RBM) Results}
+	It's possible to highlight the following:
+	\begin{itemize}
+		{\small \item[$\triangleright$] The training performance becomes worse as the number of Gibbs sampling steps increases}
+		{\small \item[$\triangleright$] With more Gibbs sampling steps, the reconstructed samples move further away from the original data distribution - especially in the early stages of training when the weights are still random. Thus, the contrast between the data and model distributions becomes larger, leading to higher reconstruction error}
+	\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+
+\begin{frame}{(3 DBN) Analysis of Greedy Layer-Wise Training}
+	\begin{columns}
+		\column{0.6\textwidth}
+		\justifying
+		{\small\begin{itemize}
+				\item[$\triangleright$] \textbf{Objective}: Evaluate DBN's classification for three scenarios:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] Original procedure (pre-training + fine-tuning)}
+					{\footnotesize\item[$\triangleright$] Without pre-training}
+					{\footnotesize\item[$\triangleright$] Original procedure with ReLU}
+				\end{itemize}
+				\item[$\triangleright$] Model definitions:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] Binary cross entropy for pre-training}
+					{\footnotesize\item[$\triangleright$] Cross entropy loss for supervised training}
+					{\footnotesize\item[$\triangleright$] Adam as optimizer}
+				\end{itemize}
+				\item[$\triangleright$] Datasets of MNIST and Fashion MNIST:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] 60.000 (Train) and 10.000 (Test) instances}
+				\end{itemize}
+		\end{itemize}}
+		
+		\column{0.4\textwidth}
+		\vspace{1cm}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.65\textwidth]{figures/t3_model.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(3 DBN) MNIST}
+	\vfill
+	\begin{columns}[c]
+		\column{0.5\textwidth}
+		
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t3_pretraining_mnist.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t3_results_mnist.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(3 DBN) Fashion MNIST}
+	\vfill
+	\begin{columns}[c]
+		\column{0.5\textwidth}
+		
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t3_pretraining_fashion_mnist.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t3_results_fashion_mnist.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+\begin{frame}{(3 RBM) Results}
+	It's possible to highlight the following:
+	\begin{itemize}
+		{\small \item[$\triangleright$] The best DBN performance was achieved with the pre-training procedure combined with ReLU activation layers}
+		{\small \item[$\triangleright$] However, the DBN's performance improved without the pre-training procedure (green curve) compared to the original DBN (blue curve). This behavior is likely related to the use of the Adam optimizer, whose adaptive learning dynamics reduce the benefits of pre-training by already providing effective parameter updates and stabilization during training}
+	\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+
+\begin{frame}{(4 DBN) Evaluation of Multiple Layers}
+	\begin{columns}
+		\column{0.6\textwidth}
+		\justifying
+		{\small\begin{itemize}
+				\item[$\triangleright$] \textbf{Objective}: Evaluate DBNs with multiple layers:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] Input \leftarrow \ 500 \leftrightarrow \ 500}
+					{\footnotesize\item[$\triangleright$] Input \leftarrow \ 500 \leftarrow \ 500 \leftarrow \ 250 \leftrightarrow \ 250}
+					{\footnotesize\item[$\triangleright$] Input \leftarrow \ 500 \leftarrow \ 500  \leftarrow \ 250 \leftarrow \ 250 \leftarrow \ 125 \leftrightarrow \ 125}
+				\end{itemize}
+				\item[$\triangleright$] Model definitions:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] Binary cross entropy for pre-training}
+					{\footnotesize\item[$\triangleright$] Cross entropy loss for supervised training}
+					{\footnotesize\item[$\triangleright$] Adam as optimizer}
+				\end{itemize}
+				\item[$\triangleright$] Fashion MNIST dataset:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] 60.000 (Train) and 10.000 (Test) instances}
+				\end{itemize}
+		\end{itemize}}
+		
+		\column{0.4\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.4\textwidth]{figures/t4_model.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(4 DBN) Fashion MNIST}
+	\vfill
+	\begin{columns}[c]
+		\column{0.5\textwidth}
+		
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t4_layers_loss.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t4_performance.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+\begin{frame}{(4 RBM) Results}
+	It's possible to highlight the following:
+	\begin{itemize}
+		{\small \item[$\triangleright$] The DBN’s performance worsens as the number of hidden layers increases}
+		{\small \item[$\triangleright$] This degradation likely occurs because deeper architectures become harder to train effectively, leading to vanishing gradients and overfitting, especially when the amount of training data and regularization are limited}
+	\end{itemize}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(5 DBN) Generation of Images}
+	\begin{columns}
+		\column{0.6\textwidth}
+		\justifying
+		{\small\begin{itemize}
+				\item[$\triangleright$] \textbf{Objective}: Use DBN to generate samples:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] The samples were generated from the mean inference for each class}
+				\end{itemize}
+				\item[$\triangleright$] Model definitions:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] Binary cross entropy for pre-training}
+					{\footnotesize\item[$\triangleright$] The supervised training procedure was not implemented}
+				\end{itemize}
+				\item[$\triangleright$] Datasets of MNIST and Fashion MNIST:
+				\begin{itemize}
+					{\footnotesize\item[$\triangleright$] 60.000 (Train) and 10.000 (Test) instances}
+				\end{itemize}
+		\end{itemize}}
+		
+		\column{0.4\textwidth}
+		\vspace{1cm}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.65\textwidth]{figures/t3_model.png}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{(5 DBN) MNIST and Fashion MNIST}
+%	\vfill
+%	\begin{columns}[c]
+%		\column{0.5\textwidth}
+		
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t5_reconstruct_mnist.png}
+		\end{figure}
+		
+%		\column{0.5\textwidth}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.9\textwidth]{figures/t5_reconstruct.png}
+		\end{figure}
+%	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+
+\begin{frame}{(5 RBM) Results}
+	It's possible to highlight the following:
+	\begin{itemize}
+		{\small \item[$\triangleright$] The DBN could be successfully applied to data generation, even for the more complex Fashion-MNIST dataset}
+		{\small \item[$\triangleright$] This suggests that the model was able to capture meaningful representations of the input distribution, allowing it to synthesize realistic samples based on mean-valued latent representations}
+	\end{itemize}
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+% Final PAGE
+% Set the text that is showed on the final slide
+\finalpagetext{Thank you for your attention}
+%----------------------------------------------------------------------------------------
+\makefinalpage
+%-------------------------------------------------------------------
+
+\end{document}

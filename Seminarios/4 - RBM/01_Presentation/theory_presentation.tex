@@ -1,0 +1,1555 @@
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND THEMES
+%----------------------------------------------------------------------------------------
+\documentclass[aspectratio=169,xcolor=dvipsnames, t]{beamer}
+\usepackage{fontspec} % Allows using custom font. MUST be before loading the theme!
+\usepackage[portuguese]{babel}
+\usetheme{SimplePlusAIC}
+\usepackage{hyperref}
+\usepackage{graphicx} % Allows including images
+\usepackage{booktabs} % Allows the use of \toprule, \midrule and  \bottomrule in tables
+\usepackage{svg} %allows using svg figures
+\usepackage{tikz}
+\usepackage{makecell}
+\usepackage{wrapfig}
+\usepackage{ragged2e}
+\usepackage{pifont}
+\usepackage{enumitem}
+\usepackage{algorithm2e}
+\usepackage{algorithmic}
+\usepackage{float}
+\usepackage[font=scriptsize,labelfont=bf]{caption}
+
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+% ADD YOUR PACKAGES BELOW
+
+\def\mydate{\leavevmode\hbox{\twodigits\day/\twodigits\month/\the\year}}
+\def\twodigits#1{\ifnum#1<10 0\fi\the#1}
+
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE CONFIGURATION
+%----------------------------------------------------------------------------------------
+
+\title[Código da Disciplina]{Deep Learning}
+\subtitle{Restricted Boltzmann Machines and Deep Belief Networks}
+
+\author{Guilherme Mota}
+\institute[Coppe/UFRJ]{Electrical Engineering Program \newline Instituto Alberto Luiz Coimbra de Pós-Graduação e Pesquisa de Engenharia\newline Universidade Federal do Rio de Janeiro}
+
+
+\date{      \mydate}
+%----------------------------------------------------------------------------------------
+%	PRESENTATION SLIDES
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+\maketitlepage
+
+\begin{frame}[t]{Overview}
+    \tableofcontents
+\end{frame}
+
+%------------------------------------------------
+
+\makesection{From Perceptron to DBNs}
+
+%------------------------------------------------
+
+\begin{frame}{From Perceptron to DBNs}
+	
+	\begin{columns}
+		
+		\column{0.3\textwidth}
+		\centering
+		\vspace{-20px}
+		\begin{figure}
+			\includegraphics[height=0.75\paperheight]{figures/timeline.png}
+%			\caption{Example of an RBM}
+		\end{figure}
+		
+		\column{0.7\textwidth}
+		\vspace{-15px}
+		\begin{itemize}[leftmargin=*]
+			\item[(1958)] Rosenblatt \cite{rosenblatt}
+				{\small\begin{itemize}
+					\item[$\triangleright$] Perceptron's proposal
+				\end{itemize}}
+			
+			\item[(1969)] Minsky and Papert \cite{10.5555/3175865}
+				{\small\begin{itemize}
+					\item[$\triangleright$] Perceptron failing to handle non-linearities (XOR)
+					\item[$\triangleright$] (1970s - 1980s) Artificial Intelligence first winter
+				\end{itemize}}
+			
+			\item[(1986)] Rumelhart, Hinton and Williams \cite{10.5555/65669.104451}
+			{\small\begin{itemize}
+				\item[$\triangleright$] Backpropagation proposal
+			\end{itemize}}
+			
+			\item[(1990s)] Disbelief in Deep Nets \cite{lecun2015deep}		
+			{\small\begin{itemize}
+				\item[$\triangleright$] Deep nets were infeasible to train
+			\end{itemize}}
+			
+			\item[(2002)] Hinton \cite{6789337}
+			{\small\begin{itemize}
+					\item[$\triangleright$] RBM trained with CD
+			\end{itemize}}
+			
+			\item[(2006)] Hinton, Osindero and Teh \cite{10.1162/neco.2006.18.7.1527}
+			{\small\begin{itemize}
+					\item[$\triangleright$] DBN trained in a greedy layer-wise unsupervised manner
+			\end{itemize}}
+			
+		\end{itemize}
+		
+	\end{columns}
+	
+\end{frame}
+
+%------------------------------------------------
+
+\makesection{Mathematical Background}
+
+%------------------------------------------------
+
+\begin{frame}{Mathematical Background}
+	\justifying
+	But before diving in the models, lets take a quick recap on some important probabilistic concepts \cite{Goodfellow-et-al-2016}:
+	
+%	\vspace{0.2cm}
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+		\vspace{0.2cm}
+		$$
+		\mathbb{P}(\mathbf{h} \mid \mathbf{v}) = \frac{\mathbb{P}(\mathbf{v} \mid \mathbf{h}) \ \mathbb{P}(\mathbf{h})}{\mathbb{P}(\mathbf{v})}
+		$$
+		\vspace{0.2cm}
+		
+		Where:		
+		{\small\justifying
+		\begin{itemize}
+			\label{eq:energy}
+			\item $\mathbb{P}(\mathbf{h} \mid \mathbf{v})$ is a conditional probability, also known as the posterior of $\mathbf{h}$ given $\mathbf{v}$
+			
+			\item $\mathbb{P}(\mathbf{v} \mid \mathbf{h})$ is the likelihood
+			
+			\item $\mathbb{P}(\mathbf{h})$ is the prior probability
+		\end{itemize}}
+		
+		\column{0.5\textwidth}
+		\vspace{-0.3cm}
+		$$
+		\mathbb{P}(\mathbf{v}, \mathbf{h}) = \mathbb{P}(\mathbf{h} \mid \mathbf{v}) \ \mathbb{P}(\mathbf{v}) = \mathbb{P}(\mathbf{v} \mid \mathbf{h}) \ \mathbb{P}(\mathbf{h})
+		$$
+		\vspace{0.4cm}
+				
+		Where:
+		{\small\justifying
+		\begin{itemize}
+			\label{eq:joint_prob}
+			\item $\mathbb{P}(\mathbf{v}, \mathbf{h})$ is the joint probability of $\mathbf{v}$ and $\mathbf{h}$
+		\end{itemize}}
+		
+	\end{columns}
+	
+\end{frame}
+
+%------------------------------------------------
+
+\makesection{Restricted Boltzmann Machine (RBM)}
+
+%------------------------------------------------
+
+\begin{frame}{The RBM}
+	\justifying
+	The Restricted Boltzmann Machine (RBM) is a \textbf{probabilistic energy model} based on Boltzmann's distribution \cite{ghojogh2022restrictedboltzmannmachinedeep}, given by:
+	
+	\begin{columns}[c]
+		
+%		\vspace{1.3cm}
+		
+		\column{0.5\textwidth}
+		
+		$$
+		\mathbb{P}(\mathbf{x}) \propto e^{-\beta \ E(\mathbf{x})}
+		$$
+		
+		\column{0.5\textwidth}
+		\centering
+%		\vspace{-1cm}
+	    \begin{figure}
+			\includegraphics[height=0.5\paperheight]{figures/boltzmann_dist.png}
+%			\caption{Example of an RBM}
+		\end{figure}
+	\end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{The RBM}
+	\justifying
+	In graphical and mathematical terms, we have \cite{ghojogh2022restrictedboltzmannmachinedeep, Hinton2012}: 
+	
+	\vspace{0.5cm}
+	
+	\begin{columns}[c]
+		\column{0.5\textwidth}
+		\centering
+	    \begin{figure}
+			\includegraphics[height=0.5\paperheight]{figures/rbm_structure.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+
+		\begin{equation}
+			\label{energy_func}
+			E(\mathbf{v}, \mathbf{h}) = -\mathbf{b}^\intercal \ \mathbf{v} - \mathbf{c}^\intercal \ \mathbf{h} - \mathbf{v}^\intercal \ \mathbf{W} \ \mathbf{h}
+		\end{equation}
+		
+		\vspace{0.25cm}
+		
+		\begin{equation}
+			\label{joint_prob}
+			\mathbb{P}(\mathbf{v}, \mathbf{h}) = \frac{e^{-E(\mathbf{v}, \mathbf{h})}}{Z}
+		\end{equation}
+		
+		\vspace{0.5cm}
+		
+		The constant Z is the \textbf{partition function}:
+		\vspace{0.2cm}
+		\begin{equation}
+			\label{eq:partition}
+			Z = \sum_{\mathbf{v}}\sum_{\mathbf{h}}e^{-E(\mathbf{v}, \mathbf{h})}
+		\end{equation}
+	\end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{RBM in Motion}
+	\justifying
+	To evaluate the mathematics behind RBMs, lets checkout a simple example using a binary two-layer RBM:
+	\vfill
+	
+	\begin{columns}[c]
+		\column{0.4\textwidth}
+		
+		\centering
+		\begin{figure}
+			\includegraphics[height=0.4\paperheight]{figures/numeric_example_rbm.png}
+		\end{figure}
+		
+		\column{0.6\textwidth}
+		\centering
+		
+		
+		$
+		\mathbf{W} = \begin{bmatrix}
+			-0.1 \\
+			0.3
+		\end{bmatrix}
+		$
+		\hspace{0.1cm}
+		$
+		\mathbf{b} = \begin{bmatrix}
+			0.1 \\
+			0.2
+		\end{bmatrix}
+		$
+		\hspace{0.1cm}
+		$
+		\mathbf{c} = \begin{bmatrix}
+			0.1
+		\end{bmatrix}
+		$
+		
+		\vspace{1cm}
+		
+		\justifying
+		In order to determine the joint probability of $(\mathbf{v}, \mathbf{h})$, it's necessary to compute the energy $E(\mathbf{v}, \mathbf{h})$ of every possible state.
+		
+	\end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{RBM in Motion}
+	\begin{columns}
+		\column{0.7\textwidth}
+		\justifying
+		For instance, the energy of a given state $\mathbf{v}_i = \begin{bmatrix} 1 & 0 \end{bmatrix}^\intercal$ and $\mathbf{h}_j = \begin{bmatrix} 1 \end{bmatrix}^\intercal$ can be computed based on \eqref{energy_func}:
+		
+		\vspace{1.5cm}
+		
+		\centering
+		\begin{math}
+			E(\mathbf{v}_i, \mathbf{h}_j) = - \begin{bmatrix} 1 & 0 \end{bmatrix}\begin{bmatrix}
+				-0.1\\ 0.3 \end{bmatrix}\begin{bmatrix}
+			1 \end{bmatrix} - \begin{bmatrix}
+			0.1 & 0.2
+			\end{bmatrix}\begin{bmatrix} 1 \\ 0 \end{bmatrix} - \begin{bmatrix}
+			0.1 \end{bmatrix}\begin{bmatrix} 1 \end{bmatrix}
+		\end{math}
+		
+		\vspace{1cm}
+		
+		\begin{math}
+			E(\mathbf{v}_i, \mathbf{h}_j) = -0.1
+		\end{math}
+		
+		\column{0.3\textwidth}
+		\begin{table}
+			\begin{tabular}{c c c}
+				\toprule\toprule
+				$\mathbf{v}$ & $\mathbf{h}$ & $E(\mathbf{v}, \mathbf{h})$ \\
+				\midrule
+				(0, 0) & 0 & -0.0  \\
+				(0, 0) & 1 & -0.1  \\
+				(0, 1) & 0 & -0.2  \\
+				(0, 1) & 1 & -0.6  \\
+				(1, 0) & 0 & -0.1  \\
+				\textcolor{red}{(1, 0)} & \textcolor{red}{1} & \textcolor{red}{-0.1}  \\
+				(1, 1) & 0 & -0.3  \\
+				(1, 1) & 1 & -0.6  \\
+				\bottomrule\bottomrule
+			\end{tabular}
+%			\caption{Table caption}
+		\end{table}
+		
+	\end{columns}
+\end{frame}
+
+
+%------------------------------------------------
+% Bullets
+\begin{frame}{RBM in Motion}
+	\begin{columns}
+		\column{0.5\textwidth}
+		\justifying
+		But in order to determine the joint probability $\mathbb{P}(v_i, h_j)$ of a state, it's necessary to normalize through the partition function $Z$:
+		
+		\vspace{0.75cm}
+		
+		$$ Z = \sum_{v}\sum_{h}e^{-E(\mathbf{v}, \mathbf{h})} $$
+		
+		\vspace{0.5cm}
+		
+		$$ Z = 10.54 $$
+		
+		\vspace{0.3cm}
+		In practice, it's infeasible to compute Z.
+		
+		\column{0.5\textwidth}
+		
+		\begin{table}
+			\begin{tabular}{c c c c c}
+				\toprule\toprule
+				$\mathbf{v}$ & $\mathbf{h}$ & $E(\mathbf{v}, \mathbf{h})$ & $e^{-E(\mathbf{v}, \mathbf{h})}$ & $\mathbb{P}(\mathbf{v}, \mathbf{h})$\\
+				\midrule
+				(0, 0) & 0 & -0.0 & 1.00 & 0.09 \\
+				(0, 0) & 1 & -0.1 & 1.11 & 0.10 \\
+				(0, 1) & 0 & -0.2 & 1.22 & 0.12 \\
+				(0, 1) & 1 & -0.6 & 1.82 & 0.17 \\
+				(1, 0) & 0 & -0.1 & 1.11 & 0.10 \\
+				(1, 0) & 1 & -0.1 & 1.11 & 0.10 \\
+				(1, 1) & 0 & -0.3 & 1.35 & 0.13 \\
+				(1, 1) & 1 & -0.6 & 1.82 & 0.17 \\
+				\bottomrule\bottomrule
+			\end{tabular}
+%			\caption{Table caption}
+		\end{table}
+	\end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{RBM's Training Procedure}
+	\justifying
+	To train an RBM, we want to compute the log-likelihood of $\mathbb{P}(\mathbf{v})$ \cite{ghojogh2022restrictedboltzmannmachinedeep, Hinton2012}, given by:
+	
+	\vspace{0.5cm}
+	
+	$$
+%		\mathbb{P}(\mathbf{v}) = \frac{\mathbb{P}(\mathbf{h}, \mathbf{v})}{\mathbb{P}(\mathbf{h} \mid \mathbf{v})}
+		\mathbb{P}(\mathbf{v}) = \sum_{\mathbf{h}} \mathbb{P}(\mathbf{v}, \mathbf{h})
+	$$
+	
+	\vspace{0.5cm}
+	
+	The log-likelihood function $\ell(\theta)$ for each trainable parameters $\mathbf{W}$, $\mathbf{b}$ and $\mathbf{c}$ can be computed as:
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+		\label{eq:init_loss}
+		\ell(\mathbf{W}, \mathbf{b}, \mathbf{c}) = \ell(\theta)= \sum_{i=1}^{n} \log(\mathbb{P}(\mathbf{v}_i))
+	\end{equation}
+	
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+\begin{frame}{RBM's Training Procedure}
+	
+	Substituting $\mathbb{P}(\mathbf{v}) = \sum_{\mathbf{h}} \mathbb{P}(\mathbf{v}, \mathbf{h})$ in Equation~\eqref{eq:init_loss}, we have:
+	
+	\vspace{0.3cm}
+	
+	$$
+	\ell(\mathbf{W}, \mathbf{b}, \mathbf{c}) = \sum_{i=1}^{n} \log \left(\sum_{\mathbf{h}} \frac{1}{Z} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right) = \sum_{i=1}^{n} \log \left(\frac{1}{Z} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right)
+	$$
+	\vspace{0.5cm}
+	$$
+	= \sum_{i=1}^{n} \left[\log\left(\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right) - \log{Z}\right]
+	$$
+	\vspace{0.5cm}
+	$$
+	= \sum_{i=1}^{n} \log\left(\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right) - n\cdot \log{Z}
+	$$
+	
+	
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{RBM's Training Procedure}
+	With Equation \eqref{eq:partition}:
+	
+	\vspace{0.4cm}
+	
+	\begin{equation}
+		\label{eq:final_loss}
+		\ell(\mathbf{W}, \mathbf{b}, \mathbf{c}) = \sum_{i=1}^{n} \log\left(\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right) - n\cdot \log \sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h}))
+	\end{equation}
+	
+	\vspace{0.5cm}
+	
+	\justifying
+	Generalizing as $\theta = \{\mathbf{W}, \mathbf{b}, \mathbf{c}\}$ and applying its gradient $\nabla_{\theta}$, we arrive in:
+	
+	\vspace{0.5cm}
+	
+	\begin{equation}
+		\label{eq:grad_loss}
+		\nabla_{\theta}\ell(\theta) = \nabla_{\theta}\sum_{i=1}^{n} \log\left(\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right) - n\cdot \nabla_{\theta} \log \sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h}))
+	\end{equation}
+	
+\end{frame}
+
+%------------------------------------------------
+
+
+\begin{frame}{Deriving the Equation}
+	Considering the first term of the right-hand side of Equation~\eqref{eq:grad_loss}:
+	
+	\vspace{0.5cm}
+	
+	$$
+	\nabla_{\theta}\sum_{i=1}^{n} \log\left(\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right) = \sum_{i=1}^{n} \nabla_{\theta} \log\left(\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right)
+	$$
+	
+	\vspace{0.5cm}
+	
+	As $\nabla \log(f(x)) = \frac{\nabla f(x)}{f(x)}$ and $\nabla e^{f(x)} = e^{f(x)} \ \nabla f(x)$, we have:
+	
+	\vspace{0.5cm}
+	
+	$$
+	\sum_{i=1}^{n} \frac{\nabla_{\theta}\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))}{\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))}
+	=
+	\sum_{i=1}^{n} \frac{\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\cdot \nabla_{\theta}(-E(\mathbf{v}_i, \mathbf{h}))}{\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))}
+	$$
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Deriving the Gradient}
+	As the normalized expectation of a probability distribution is given by Equation~\eqref{eq:expectation}:
+	
+	\vspace{0.5cm}
+	
+	\begin{equation}
+		\label{eq:expectation}
+		\mathbb{E}_{\mathbb{P}}[\mathbf{x}] = \frac{\sum_{i=1}\mathbb{P}(\mathbf{x}_i)\cdot \mathbf{x}_i}{\sum_{i=1}\mathbb{P}(\mathbf{x}_i)}
+	\end{equation}
+	
+	\vspace{0.5cm}
+	
+	Then, we can derive the following:
+	
+	\vspace{0.5cm}
+	
+	$$
+	\nabla_{\theta}\sum_{i=1}^{n} \log\left(\sum_{\mathbf{h}} \exp(-E(\mathbf{v}_i, \mathbf{h}))\right)
+	=
+	\sum_{i=1}^{n} \mathbb{E}_{\mathbb{P}(\mathbf{h}|\mathbf{v}_i)} [\nabla_{\theta}(-E(\mathbf{v}_i, \mathbf{h}))]
+	$$
+	
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Deriving the Gradient}
+	Now considering the second term of the right-hand side of Equation~\eqref{eq:grad_loss}:
+	
+	\vspace{0.3cm}
+	
+	$$
+	-n\cdot \nabla_{\theta} \log \sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h})) = -n \frac{\nabla_{\theta} \sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h}))}{\sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h}))}
+	$$
+	
+	\vspace{0.3cm}
+	
+	$$
+	= -n \frac{\sum_{\mathbf{v}} \sum_{\mathbf{h}} \nabla_{\theta} \exp(-E(\mathbf{v}, \mathbf{h}))}{\sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h}))}
+	= -n \frac{\sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h}))\cdot \nabla_{\theta} (-E(\mathbf{v}, \mathbf{h}))}{\sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h}))}
+	$$
+	
+	\vspace{0.3cm}
+	
+	Then:
+	
+	\vspace{0.3cm}
+	
+	$$
+	-n\cdot \nabla_{\theta} \log \sum_{\mathbf{v}} \sum_{\mathbf{h}} \exp(-E(\mathbf{v}, \mathbf{h})) = - n \cdot \mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})} [\nabla_{\theta}(-E(\mathbf{v}, \mathbf{h}))]
+	$$
+	
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Deriving the Gradient}
+	\justifying
+	To simplify both terms of Equation~\eqref{eq:grad_loss}, we compute the gradient of the energy function to each parameter:
+	
+	\vspace{0.3cm}
+	
+	$$
+	\nabla_{\mathbf{W}}(-E(\mathbf{v}, \mathbf{h})) = \frac{\partial}{\partial \mathbf{W}}(\mathbf{b}^\intercal\mathbf{v} + \mathbf{c}^\intercal\mathbf{h} + \mathbf{v}^\intercal\mathbf{W}\mathbf{h}) = \mathbf{v}\mathbf{h^\intercal}
+	$$
+	
+	\vspace{0.3cm}
+	
+	$$
+	\nabla_{\mathbf{b}}(-E(\mathbf{v}, \mathbf{h})) = \frac{\partial}{\partial \mathbf{b}}(\mathbf{b}^\intercal\mathbf{v} + \mathbf{c}^\intercal\mathbf{h} + \mathbf{v}^\intercal\mathbf{W}\mathbf{h}) = \mathbf{v}
+	$$
+	
+	\vspace{0.3cm}
+	
+	$$
+	\nabla_{\mathbf{c}}(-E(\mathbf{v}, \mathbf{h})) = \frac{\partial}{\partial \mathbf{c}}(\mathbf{b}^\intercal\mathbf{v} + \mathbf{c}^\intercal\mathbf{h} + \mathbf{v}^\intercal\mathbf{W}\mathbf{h}) = \mathbf{h}
+	$$
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Deriving the Gradient}
+	Then we finally have:
+	
+	\begin{equation}
+		\label{eq:full_grad_w}
+	\nabla_{\mathbf{W}}\ell(\theta) = \sum_{i=1}^{n} \mathbb{E}_{\mathbb{P}(\mathbf{h} | \mathbf{v}_i)}[\mathbf{v}_i\mathbf{h}^\intercal] - n\cdot \mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}[\mathbf{v}\mathbf{h}^\intercal] = \sum_{i=1}^{n}\mathbf{v}_i\cdot \mathbb{E}_{\mathbb{P}(\mathbf{h} | \mathbf{v}_i)}[\mathbf{h}^\intercal] - n\cdot \mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}[\mathbf{v}\mathbf{h}^\intercal]
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+		\label{eq:full_grad_b}
+	\nabla_{\mathbf{b}}\ell(\theta) = \sum_{i=1}^{n} \mathbb{E}_{\mathbb{P}(\mathbf{h} | \mathbf{v}_i)}[\mathbf{v}_i] - n\cdot \mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}[\mathbf{v}] = \sum_{i=1}^{n} \mathbf{v}_i - n\cdot \mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}[\mathbf{v}]
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+		\label{eq:full_grad_c}
+	\nabla_{\mathbf{c}}\ell(\theta) = \sum_{i=1}^{n} \mathbb{E}_{\mathbb{P}(\mathbf{h} | \mathbf{v}_i)}[\mathbf{h}] - n\cdot \mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}[\mathbf{v}] = \sum_{i=1}^{n} \mathbb{E}_{\mathbb{P}(\mathbf{h} | \mathbf{v}_i)}[\mathbf{h}] - n\cdot \mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}[\mathbf{h}]
+	\end{equation}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Conditional Distributions}
+	\justifying
+	To simplify the inference of the hidden state and its corresponding reconstruction of the visible state, we will factorize RBM's conditional distributions:
+	
+	
+	\vspace{0.3cm}
+	
+	$$
+	\mathbb{P}(\mathbf{h} \mid \mathbf{v}) = \frac{\mathbb{P}(\mathbf{h}, \mathbf{v})}{\mathbb{P}(\mathbf{v})} = \frac{\mathbb{P}(\mathbf{v}, \mathbf{h})}{\sum_{\mathbf{h}} \mathbb{P}(\mathbf{v}, \mathbf{h})}
+	$$
+	\vspace{0.5cm}
+	$$
+	= \frac{\frac{1}{Z} \exp({\mathbf{b}^\intercal \mathbf{v} + \mathbf{c}^\intercal \mathbf{h} + \mathbf{v}^\intercal \mathbf{W} \mathbf{h})}}{\sum_{\mathbf{h}} \frac{1}{Z} \exp({\mathbf{b}^\intercal \mathbf{v} + \mathbf{c}^\intercal \mathbf{h} + \mathbf{v}^\intercal \mathbf{W} \mathbf{h})}}
+	=
+	\frac{\frac{1}{Z} \exp({\mathbf{b}^\intercal \mathbf{v}}) \cdot \exp({\mathbf{c}^\intercal \mathbf{h}})\cdot \exp({\mathbf{v}^\intercal \mathbf{W} \mathbf{h}})}{\frac{1}{Z} \sum_{\mathbf{h}} \exp({\mathbf{b}^\intercal \mathbf{v}}) \cdot \exp({\mathbf{c}^\intercal \mathbf{h}})\cdot \exp({\mathbf{v}^\intercal \mathbf{W} \mathbf{h}})}
+	$$
+	\vspace{0.5cm}
+	$$
+	= \frac{\exp({\mathbf{b}^\intercal \mathbf{v}}) \cdot \exp({\mathbf{c}^\intercal \mathbf{h}})\cdot \exp({\mathbf{v}^\intercal \mathbf{W} \mathbf{h}})}{\exp({\mathbf{b}^\intercal \mathbf{v}}) \cdot \sum_{\mathbf{h}} \exp({\mathbf{c}^\intercal \mathbf{h}})\cdot \exp({\mathbf{v}^\intercal \mathbf{W} \mathbf{h}})}
+	=
+	\frac{\exp({\mathbf{c}^\intercal \mathbf{h}})\cdot \exp({\mathbf{v}^\intercal \mathbf{W} \mathbf{h}})}{\sum_{\mathbf{h}} \exp({\mathbf{c}^\intercal \mathbf{h}})\cdot \exp({\mathbf{v}^\intercal \mathbf{W} \mathbf{h}})}
+	$$
+	
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Conditional Distributions}
+	\justifying
+	With $Z' = \sum_{\mathbf{h}} \exp({\mathbf{c}^\intercal \mathbf{h}})\cdot \exp({\mathbf{v}^\intercal \mathbf{W} \mathbf{h}})$, we have:
+	
+	\vspace{0.3cm}
+	
+	$$
+	\mathbb{P}(\mathbf{h} \mid \mathbf{v}) = \frac{1}{Z'} \exp({\mathbf{c}^\intercal \mathbf{h}} + \mathbf{v}^\intercal \mathbf{W} \mathbf{h}) = \frac{1}{Z'} \exp\left({\sum_{j=1}^{p} c_j \ h_j + \sum_{j=1}^{p} \mathbf{v}^\intercal \mathbf{W}_{:j} \ h_j}\right)
+	$$
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+		\label{eq:cond_prob_h_v}
+		\mathbb{P}(\mathbf{h} \mid \mathbf{v}) = \frac{1}{Z'} \prod_{j=1}^{p} \exp({c_j \ h_j + \mathbf{v}^\intercal \mathbf{W}_{:j} \ h_j})
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	Where $p$ corresponds to the quantity of hidden variables.
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Conditional Distributions}
+	\justifying
+	An analogous expression may be derived for the conditional distribution of $\mathbf{v}$ given $\mathbf{h}$. In this case, we have $Z'' = \sum_{\mathbf{v}} \exp({\mathbf{b}^\intercal \mathbf{v}})\cdot \exp({\mathbf{v}^\intercal \mathbf{W} \mathbf{h}})$, thus:
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+		\label{eq:cond_prob_v_h}
+		\mathbb{P}(\mathbf{v} \mid \mathbf{h}) = \frac{1}{Z''} \prod_{i=1}^{d} \exp({b_i \ v_i + v_i \ \mathbf{W}_{i:} \mathbf{h}})
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	Where $d$ corresponds to the quantity of visible variables.
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Simplifying Conditionals with Binary RBM}
+	\justifying
+	To simplify the conditionals, we will consider a binary RBM:
+	
+	\vspace{0.3cm}
+	
+	$$
+	\mathbb{P}(h_j = 1 \mid \mathbf{v}) = \frac{\mathbb{P}(h_j = 1 \mid \mathbf{v})}{\mathbb{P}(h_j = 0 \mid \mathbf{v}) + \mathbb{P}(h_j = 1 \mid \mathbf{v})}
+	$$
+	
+	\vspace{0.3cm}
+	
+	Where:
+	
+	$$
+	\mathbb{P}(h_j = 0 \mid \mathbf{v}) = \exp(c_j \cdot 0 + \mathbf{v}^\intercal \mathbf{W}_{:j}\cdot 0) = \exp(0) = 1
+	$$
+	
+	$$
+	\mathbb{P}(h_j = 1 \mid \mathbf{v}) = \exp(c_j \cdot 1 + \mathbf{v}^\intercal \mathbf{W}_{:j}\cdot 1) = \exp(c_j + \mathbf{v}^\intercal \mathbf{W}_{:j})
+	$$
+	
+\end{frame}
+
+
+\begin{frame}{Simplifying Conditionals with Binary RBM}
+	\justifying
+	Thus, we can reach:
+	
+	\vspace{0.3cm}
+	
+	$$
+	\mathbb{P}(h_j = 1 \mid \mathbf{v}) = \frac{\exp(c_j + \mathbf{v}^\intercal \mathbf{W}_{:j})}{1 + \exp(c_j + \mathbf{v}^\intercal \mathbf{W}_{:j})}
+	$$
+	
+	\vspace{0.3cm}
+	
+	Considering the sigmoid function as $\sigma(x) = \frac{\exp(x)}{1 \ + \ \exp(x)} = \frac{1}{1 \ + \ \exp(-x)}$, we arrive in Equation~\eqref{eq:sig_h_v}:
+	{\small\begin{itemize}
+		\item[$\triangleright$] An analogous procedure can be followed to derive Equation~\eqref{eq:sig_v_h}
+	\end{itemize}}
+	
+	\vspace{0.15cm}
+	
+	\begin{equation}
+		\label{eq:sig_h_v}
+		\mathbb{P}(h_j \mid \mathbf{v}) = \sigma(c_j + \mathbf{v}^\intercal \mathbf{W}_{:j})
+	\end{equation}
+	
+	\begin{equation}
+		\label{eq:sig_v_h}
+		\mathbb{P}(v_i \mid \mathbf{h}) = \sigma(b_i + \mathbf{W}_{i:}\mathbf{h})
+	\end{equation}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Constrastive Divergence}
+	
+	From Equations~\eqref{eq:full_grad_w},~\eqref{eq:full_grad_b} and~\eqref{eq:full_grad_c} we have that:
+	
+	{\small\begin{itemize}
+	\justifying
+%	\vspace{0.2cm}
+	
+	\item[$\triangleright$] The conditional expectation $\mathbb{E}_{\mathbb{P}(\mathbf{h}|\mathbf{v}_i)}$ is based on the observation of $\mathbf{v}_i$ and can be approximated to $\hat{h}_i = \mathbb{E}_{\mathbb{P}(\mathbf{h}|\mathbf{v}_i)}[h]$
+	
+%	\vspace{0.2cm}
+	
+	\item[$\triangleright$] The joint expectation $\mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}$ is based on the model and its input
+	
+%	\vspace{0.2cm}
+	
+	\item[$\triangleright$] In a multivariate distribution, the computation of the joint expectation $\mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}$ is intractable (\textbf{MNIST}: $2^{768} \approx 10^{236}$)
+	
+	\end{itemize}}
+	
+	\vspace{0.5cm}
+	
+	\justifying
+	To solve the joint expectation, \cite{6789337} presented the \textbf{Contrastive Divergence} (CD) method.
+	{\small\begin{itemize}
+			\justifying
+			\vspace{0.2cm}
+			
+			\item[$\triangleright$] Instead of computing the joint expectation of all possible values for visible and hidden units, CD approximates this computation using a single point $\mathbf{v}'$
+			
+	\end{itemize}}
+	
+\end{frame}
+
+
+%%------------------------------------------------
+%
+%
+%\begin{frame}{Contrastive Divergence}
+%	Instead of computing the joint expectation of all possible values for visible and hidden units, Constrastive Divergence suggests to approximate this computation using a single point $\mathbf{v}'$.
+%	
+%	In this computation, its necessary to use Gibbs Sampling.
+%\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{What is Gibbs Sampling?}
+	\justifying
+	Gibbs Sampling is a Markov Chain Monte Carlo (MCMC) method used to sample from multivariate probability distributions \cite{10.1561/2200000006, 10.1007/978-3-642-33275-3_2}:
+	{\small\begin{itemize}
+		\justifying
+		\item[$\triangleright$] Instead of sampling from \textbf{joint distribution}, it samples from \textbf{conditional distributions}
+	\end{itemize}}
+	
+	\vspace{-0.5cm}
+	
+	\begin{columns}[c]
+		
+		\column{0.5\textwidth}		
+		
+		$$
+		\mathbb{E}[g(x)] \approx \frac{1}{n}\sum_{j=1}^{n} g(x_j)
+		$$
+		
+		\column{0.5\textwidth}
+		\centering
+%		\vskip-25pt
+		\begin{figure}
+			\includegraphics[width=1\textwidth]{figures/sampled_density.png}
+%			\caption{xxx}
+		\end{figure}
+		
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{What is Gibbs Sampling?}
+	
+	
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+		{\small$$
+		\mathbb{P}(v_i \mid \mathbf{h}) = \sigma(b_i + \mathbf{W}_{i:}\mathbf{h})
+		$$}
+		
+		\column{0.5\textwidth}
+		
+	\end{columns}
+	
+	\vspace{0.4cm}
+
+	\centering
+	\begin{figure}
+		\includegraphics[width=0.9\textwidth]{figures/gibbs_iteration.png}
+	
+	\end{figure}
+	
+	\begin{columns}
+		\column{0.5\textwidth}
+		{\small$$
+		\mathbb{P}(h_j \mid \mathbf{v}) = \sigma(c_j + \mathbf{v}^\intercal \mathbf{W}_{:j})
+		$$}
+		
+		\column{0.5\textwidth}
+
+		
+	\end{columns}
+	
+	
+\end{frame}
+
+%------------------------------------------------
+
+
+\begin{frame}{What is Gibbs Sampling?}
+	
+	
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+		\centering
+		\vskip-25pt
+		\begin{figure}
+			\includegraphics[width=1\textwidth]{figures/gibbs_few_iter.png}
+%			\caption{Few Sampling}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\centering
+		\vskip-25pt
+		\begin{figure}
+			\includegraphics[width=1\textwidth]{figures/gibbs_alot_iter.png}
+%			\caption{A lot of Sampling}
+		\end{figure}
+		
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Contrastive Divergence}
+	
+	\justifying
+	With Gibbs Sampling, we can approximate the expectation of the joint probability $\mathbb{P}(\mathbf{h}, \mathbf{v})$ as \cite{pmlr-vR5-carreira-perpinan05a, ghojogh2022restrictedboltzmannmachinedeep}:
+	
+	\vspace{1cm}
+	
+	$$
+	\mathbb{E}_{\mathbb{P}(\mathbf{h}, \mathbf{v})}[\nabla_{\theta}(-E(\mathbf{v}, \mathbf{h}))] \approx
+	\left. \frac{1}{n}\sum_{i=1}^{n} \nabla_{\theta}(-E(\mathbf{v}_i, \mathbf{h}_i)) \ \right|_{\mathbf{v}_i = \tilde{\mathbf{v}}_i, \ \mathbf{h}_i = \tilde{\mathbf{h}}_i}
+	$$
+	
+	\vspace{1cm}
+	
+	Where $\tilde{\mathbf{v}} = [\tilde{v}_1, ..., \tilde{v}_m]^\intercal$ and $\tilde{\mathbf{h}} = [\tilde{h}_1, ..., \tilde{h}_m]^\intercal$ are the points sampled from the conditional distributions.
+	
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Contrastive Divergence}
+		
+	Finally, the gradients of loss function with respect to each parameter becomes:
+	
+	\vspace{0.3cm}
+		
+	\begin{equation}
+		\label{eq:loss_w}
+	\nabla_{\mathbf{W}}\ell(\theta) = \sum_{i=1}^{n}\mathbf{v}_i\cdot \hat{\mathbf{h}}^{\intercal} - \sum_{i=1}^{n} \tilde{\mathbf{v}}_i \tilde{\mathbf{h}}_i^\intercal
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+		\label{eq:loss_b}
+	\nabla_{\mathbf{b}}\ell(\theta) = \sum_{i=1}^{n}\mathbf{v}_i - \sum_{i=1}^{n} \tilde{\mathbf{v}}_i
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+		\label{eq:loss_c}
+	\nabla_{\mathbf{c}}\ell(\theta) = \sum_{i=1}^{n}\hat{\mathbf{h}}^{\intercal} - \sum_{i=1}^{n} \tilde{\mathbf{h}}_i^\intercal
+	\end{equation}
+
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Contrastive Divergence}
+	To understand the CD effect, lets remind the Kullback-Leibler (KL) divergence \cite{pmlr-vR5-carreira-perpinan05a}:
+	
+	\vspace{0.2cm}
+	
+	\begin{columns}[c]
+		
+		\column{0.5\textwidth}
+		\begin{equation}
+			\label{eq:kl}
+			\mathrm{KL}(\mathbb{P}_{d} \ || \ \mathbb{P}_{m}) = \sum_{x} \mathbb{P}_{d}(x)\cdot \log \frac{\mathbb{P}_{d}(x)}{\mathbb{P}_{m}(x)}
+		\end{equation}
+		
+		\column{0.5\textwidth}
+		\centering
+		\vskip-10pt
+		\begin{figure}
+			\includegraphics[width=1\textwidth]{figures/kb.png}
+%			\caption{xx}
+		\end{figure}
+		
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Contrastive Divergence}
+	To minimize Equation~\eqref{eq:kl}, we maximize the model's log-likelihood to the data:
+	
+	\vspace{0.2cm}
+	
+	$$
+	\mathbb{P}_{m} \approx \mathbb{P}_{d}
+	$$
+	
+	\vspace{0.2cm}
+	
+	Formally, we could represent CD as:
+	
+	\vspace{0.3cm}
+	
+	\begin{equation}
+		\label{eq:cd}
+		\mathrm{CD}_k = \mathrm{KL}(\mathbb{P}_{d} || \mathbb{P}_{m}) - \mathrm{KL}(\mathbb{P}_{\infty} || \mathbb{P}_{m})
+	\end{equation}
+	
+	\vspace{0.5cm}
+	
+	Where $\mathbb{P}_{\infty}$ is given by a long iteration of Gibbs Sampling (after burn-in):
+	
+	{\small\begin{itemize}
+		\item[$\triangleright$] To avoid the computational burden, CD proposed approximating for $\mathbb{P}_{1}$
+	\end{itemize}}
+%	But this is computationally expensive. To avoid it, CD proposes the usage of an approximate distribution $\mathbb{P}_{1}$, which corresponds to only a few iterations of Gibbs Sampling. BETTER
+%	
+%	Entropy difference between distributions.
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Contrastive Divergence}
+	And how does it work?
+	
+	\vspace{0.3cm}
+	
+	$$
+	\nabla_{\theta}\mathrm{KL}(\mathbb{P}_{d} || \mathbb{P}_{m}) = \mathbb{E}_{\mathbb{P}_{d}}[\nabla_{\theta}\mathrm{E}(x)] - \mathbb{E}_{\mathbb{P}_{m}}[\nabla_{\theta}\mathrm{E}(x)]
+	$$
+	
+	\vspace{0.3cm}
+	
+	$$
+	\nabla_{\theta}\mathrm{KL}(\mathbb{P}_{1} || \mathbb{P}_{m}) = \mathbb{E}_{\mathbb{P}_{1}}[\nabla_{\theta}\mathrm{E}(x)] - \mathbb{E}_{\mathbb{P}_{m}}[\nabla_{\theta}\mathrm{E}(x)]
+	$$
+	
+	\vspace{0.3cm}
+	
+	Thus, we approximatly have:
+	
+	\vspace{0.3cm}
+	
+	$$
+	\nabla_{\theta}\mathrm{CD}_k \approx \mathbb{E}_{\mathbb{P}_{d}}[\nabla_{\theta}\mathrm{E}(x)] - \mathbb{E}_{\mathbb{P}_{1}}[\nabla_{\theta}\mathrm{E}(x)]
+	$$
+	
+	\vspace{0.3cm}
+	
+	\justifying
+	Where it's easier to compute as $\mathbb{E}_{\mathbb{P}_{1}}$ is sampled after just one Gibbs Sampling iteration.
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{RBM's Pseudocode}
+%	Put the pseudocode for training and for Gibbs Sampling
+	
+\begin{columns}
+	\column{0.5\textwidth}
+	{\scriptsize
+		\begin{algorithm}[H]
+			\begin{algorithmic}[1]
+				\STATE \textbf{input} is the visible dataset $\mathbf{v}$
+				\STATE $k=0$
+				\WHILE{until burn-in}
+				\FOR{$j=1$ to $p$}
+				\STATE $h_j^{(k)} = \mathbb{P}(h_j \mid \mathbf{v}^{(k)})$
+				\ENDFOR
+				\FOR{$i=1$ to $d$}
+				\STATE $v_i^{(k+1)} = \mathbb{P}(v_i \mid \mathbf{h}^{(k)})$
+				\ENDFOR
+				\STATE $k = k + 1$
+				\ENDWHILE
+				\RETURN{$h_j^{(k)}$ and $v_i^{(k+1)}$}
+			\end{algorithmic}
+			\label{alg:gibbs}
+		\end{algorithm}}
+		
+	\column{0.5\textwidth}
+	{\scriptsize
+		\begin{algorithm}[H]
+			\begin{algorithmic}[1]
+				\STATE \textbf{input} is the training data $\{\mathbf{x}_i\}_{i=1}^{n}$
+				\STATE Initialize $\mathbf{W}$, $\mathbf{b}$ and $\mathbf{c}$
+				\WHILE{not converged}
+				\STATE Sample $\{\mathbf{v}_1, .... \mathbf{v}_m\}$ from $\{\mathbf{x}_i\}_{i=1}^{n}$
+				\STATE $\hat{\mathbf{v}_i}^{(0)} = \mathbf{v}_i$
+				\FOR{$i=1$ to $m$}
+				\STATE $\{\mathbf{h}_i\}_{i=1}^{p}$, $\{\mathbf{v}_i\}_{i=1}^{d}$ = \textbf{GibbsSampling}($\hat{\mathbf{v}_i}^{(0)}$)
+				\STATE $\tilde{\mathbf{h}}_i = [h_1, ..., h_p]^\intercal$
+				\STATE $\tilde{\mathbf{v}}_i = [v_1, ..., v_p]^\intercal$
+				\STATE $\hat{\mathbf{h}}_i = \mathbb{E}_{\mathbb{P}(\mathbf{h}\mid\mathbf{v}_i)}[\mathbf{h}]$
+				\ENDFOR
+
+				\STATE $\nabla_{\mathbf{W}}\ell(\theta) = \sum_{i=1}^{m} \mathbf{v}_i\hat{\mathbf{h}}_i^\intercal - \sum_{i=1}^{m} \tilde{\mathbf{h}}_i\tilde{\mathbf{v}}_i^\intercal$
+				\STATE $\nabla_{\mathbf{b}}\ell(\theta) = \sum_{i=1}^{m} \mathbf{v}_i - \sum_{i=1}^{m} \tilde{\mathbf{v}}_i$
+				\STATE $\nabla_{\mathbf{c}}\ell(\theta) = \sum_{i=1}^{m} \hat{\mathbf{h}}_i - \sum_{i=1}^{m} \tilde{\mathbf{h}}_i$
+				
+				\STATE $\mathbf{W} = \mathbf{W} - \eta\nabla_{\mathbf{W}}\ell(\theta)$
+				\STATE $\mathbf{b} = \mathbf{b} - \eta\nabla_{\mathbf{b}}\ell(\theta)$
+				\STATE $\mathbf{c} = \mathbf{c} - \eta\nabla_{\mathbf{c}}\ell(\theta)$
+				\ENDWHILE
+				\RETURN{$\mathbf{W}$, $\mathbf{b}$ and $\mathbf{c}$}
+			\end{algorithmic}
+			\label{alg:rbm}
+		\end{algorithm}}
+	
+\end{columns}
+	
+\end{frame}
+
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Applications of RBMs}
+	\justifying
+	The RBM can be used in a variety of applications, such as:
+	{\small\begin{itemize}
+		\item[$\triangleright$] Data generation \cite{6789337}
+		\item[$\triangleright$] Image recognition \cite{10.1162/neco.2006.18.7.1527}
+		\item[$\triangleright$] Unsupervised learning of representations \cite{doi:10.1126/science.1127647}
+%		\item[$\triangleright$] Classification using Discriminative RBM \cite{10.1145/1390156.1390224}
+		\item[$\triangleright$] Collaborative filtering \cite{10.1145/1273496.1273596}
+	\end{itemize}}
+
+	\vspace{0.3cm}
+
+	But its main application is to provide a \textbf{good initialization} for deep neural networks:
+	{\small\begin{itemize}
+		\item[$\triangleright$] The RBM learns a probabilistic representation of data in an unsupervised manner
+	\end{itemize}}
+
+	\vspace{0.3cm}
+	
+	This specific characteristic will be further discussed in the sequence.
+	
+	
+\end{frame}
+
+
+
+\makesection{Deep Belief Network (DBN)}
+
+%------------------------------------------------
+
+
+\begin{frame}{The DBN}
+	
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+		\justifying
+		What if we could use RBM's capacity of representing data to get more complex abstractions?
+		
+		{\small\begin{itemize}
+				\item[$\triangleright$] \cite{10.1162/neco.2006.18.7.1527} proposed using RBMs to pre-train a Deep Belief Network (DBN)
+		\end{itemize}}
+		
+		\column{0.5\textwidth}
+		\centering
+		\vskip-20pt
+		\begin{figure}
+			\includegraphics[width=0.7\textwidth]{figures/dbn_3layers.png}
+%			\caption{xx}
+		\end{figure}
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{The DBN}
+	\justifying
+	The DBN uses the hidden layer activations of an RBM as the visible observations for an upper RBM \cite{10.1162/neco.2006.18.7.1527, 10.5555/2976456.2976476, 10.1561/2200000006, 10.5555/1756006.1756025}:
+	{\small\begin{itemize}
+			\item[$\triangleright$] Each layer learns to explain the previous one, building more abstract representations of the input data
+	\end{itemize}}
+	
+	\vspace{0.2cm}
+	
+	Mathematically, it's given by the following joint distribution:
+	
+	\vspace{0.2cm}
+	
+	\begin{equation}
+		\label{eq:dbn}
+		\mathbb{P}(\mathbf{v}, \mathbf{h}^{(1)}, ..., \mathbf{h}^{(\ell)})
+		=
+		\left(\prod_{k=0}^{\ell-2}\mathbb{P}(\mathbf{h}^{(k)}|\mathbf{h}^{(k+1)})\right) \cdot \mathbb{P}(\mathbf{h}^{(\ell-1)}, \mathbf{h}^{(\ell)})
+	\end{equation}
+	
+	\vspace{0.3cm}
+	
+	With $ \mathbf{v} = \mathbf{h}^{(0)}$, the equation for a 3 hidden-layer DBN is given by:
+	
+	$$
+	\mathbb{P}(\mathbf{v}, \mathbf{h}^{(1)}, \mathbf{h}^{(2)}, \mathbf{h}^{(3)})
+	=
+	\mathbb{P}(\mathbf{v}|\mathbf{h}^{(1)})\cdot \mathbb{P}(\mathbf{h}^{(1)}|\mathbf{h}^{(2)}) \cdot \mathbb{P}(\mathbf{h}^{(2)}, \mathbf{h}^{(3)})
+	$$
+	
+%	(Remember that h1 is independent of h3 in this model)
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{The DBN}
+	\justifying
+	To train the DBN, \cite{10.1162/neco.2006.18.7.1527} proposed a \textbf{greedy layer-wise training} procedure:
+	{\small\begin{itemize}
+			\item[$\triangleright$] Each consecutive pair of layers is pre-trained as an RBM
+			\item[$\triangleright$] After pre-training, the DBN is fine-tuned with a supervised method
+	\end{itemize}}
+
+	\centering
+	\begin{figure}
+		\includegraphics[width=0.4\textwidth]{figures/dbn_training_as_rbm.png}
+	\end{figure}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{DBN's Training Procedure}
+	\justifying
+	Lets consider a 2 hidden-layer DBN, where the first two layers are trained as an RBM.
+	
+	\vfill
+	
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+		\vspace{-0.3cm}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.7\textwidth]{figures/dbn_1layer.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		Then:
+		
+		$$
+		\mathbb{P}(\mathbf{v}) = \sum_{\mathbf{h}^{(1)}} \mathbb{P}(\mathbf{v}, \mathbf{h}^{(1)}; \mathbf{W}^{(1)})
+		$$
+		$$
+		= \sum_{\mathbf{h}^{(1)}} \mathbb{P}(\mathbf{v} | \mathbf{h}^{(1)}; \mathbf{W}^{(1)}) \ \mathbb{P}(\mathbf{h}^{(1)}; \mathbf{W}^{(1)})
+		$$
+		
+		\vspace{0.2cm}
+		
+		Where:
+		
+		{\small \begin{itemize}
+			\item[$\triangleright$] RBM is able to generate and infer
+			\item[$\triangleright$] The prior $\mathbb{P}(\mathbf{h}^{(1)})$ is implicit because the layers are undirected
+		\end{itemize}}
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{DBN's Training Procedure}
+	\justifying
+	For the second pair of layers, we have:
+	
+	\vfill
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+%		\vspace{1cm}
+		\centering
+		\begin{figure}
+			\includegraphics[width=0.7\textwidth]{figures/dbn_2layers.png}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		
+		{\small \begin{itemize}
+				\item[$\triangleright$] The first RBM becomes a directed graph, thus the prior $\mathbb{P}(\mathbf{h}^{(1)})$ is no longer implicit
+				\item[$\triangleright$] The weight matrix $\mathbf{W}^{(1)}$ is kept constant
+		\end{itemize}}
+	
+		\vspace{0.2cm}
+		
+		Then:
+	
+		$$
+		\mathbb{P}(\mathbf{v}) = \sum_{\mathbf{h}^{(1)}, \mathbf{h}^{(2)}} \mathbb{P}(\mathbf{v}, \mathbf{h}^{(1)}, \mathbf{h}^{(2)}; \mathbf{W}^{(1)}, \mathbf{W}^{(2)})
+		$$
+		$$
+		= \sum_{\mathbf{h}^{(1)}, \mathbf{h}^{(2)}} \mathbb{P}(\mathbf{v} | \mathbf{h}^{(1)}; \mathbf{W}^{(1)}) \ \mathbb{P}(\mathbf{h}^{(1)}, \mathbf{h}^{(2)}; \mathbf{W}^{(2)})
+		$$
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{DBN's Training Procedure}
+	\justifying
+	Comparing the evolution during pre-training:
+	
+	\vspace{0.5cm}
+	\begin{columns}
+		
+		\column{0.6\textwidth}
+		\textbf{2 Layer DBN}
+		$$
+		\mathbb{P}(\mathbf{v}) = \sum_{\mathbf{h}^{(1)}} \mathbb{P}(\mathbf{v} | \mathbf{h}^{(1)}; \mathbf{W}^{(1)}) \ \mathbb{P}(\mathbf{h}^{(1)}; \mathbf{W}^{(1)})
+		$$
+		
+		\vspace{0.5cm}
+		
+		\textbf{3 Layer DBN}
+		$$
+		\mathbb{P}(\mathbf{v}) = \sum_{\mathbf{h}^{(1)}, \mathbf{h}^{(2)}} \mathbb{P}(\mathbf{v} | \mathbf{h}^{(1)}; \mathbf{W}^{(1)}) \ \mathbb{P}(\mathbf{h}^{(1)}, \mathbf{h}^{(2)}; \mathbf{W}^{(2)})
+		$$
+		
+		\column{0.4\textwidth}
+		\justifying
+		Where:
+		{\small \begin{itemize}
+				\item[$\triangleright$] The weight matrix $\mathbf{W}^{(2)}$ is initialized as ${\mathbf{W}^{(1)}}^\intercal$
+				\item[$\triangleright$] The top RBM substitutes the prior $\mathbb{P}(\mathbf{h}^{(1)})$ for $\mathbb{P}(\mathbf{h}^{(1)}, \mathbf{h}^{(2)})$, which improves data likelihood \cite{10.1162/neco.2006.18.7.1527, 10.5555/2976456.2976476}
+		\end{itemize}}
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{DBN's Training Procedure}
+	\justifying
+	After training each RBM, the DBN is fine-tuned through a supervised method:
+	
+	\begin{itemize}
+		{\small \item[$\triangleright$] In \cite{10.1162/neco.2006.18.7.1527}, Hinton et al. applied the Up-Down algorithm}
+	\end{itemize}
+	
+	\vspace{0.2cm}
+
+	\begin{columns}		
+		\column{0.6\textwidth}
+		\begin{figure}
+			\renewcommand{\figurename}{Figure}
+			\includegraphics[width=0.8\textwidth]{figures/pretraining_gain.png}
+			{\small\caption{Comparison of training error between approaches \cite{10.5555/2976456.2976476}}}
+		\end{figure}
+		
+		\column{0.4\textwidth}
+		\begin{itemize}
+			\justifying
+			{\small \item[$\triangleright$] The unsupervised pre-training acts as a \textbf{regularization}}
+			{\small \item[$\triangleright$] The DBN learns good representations (\textit{generate images}) before learning how to classify (\textit{recognize shapes}) \cite{HINTON2007535}}
+		\end{itemize}
+		
+	\end{columns}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{DBN's Pseudocode}
+	\vspace{0.5cm}
+	{\scriptsize
+		\begin{algorithm}[H]
+			\begin{algorithmic}[1]
+				\STATE \textbf{input} training data $\{\mathbf{x}_i\}_{i=1}^{n}$
+				\STATE $k=0$
+				\FOR{$l=1$ to $\ell-1$}
+				\IF{$l=1$}
+				\STATE $\{\mathbf{v}_i\}_{i=1}^{n}$ = $\{\mathbf{x}_i\}_{i=1}^{n}$
+				\ELSE
+				\STATE $\{\mathbf{h}_i\}_{i=1}^{n}$ = \textbf{GibbsSampling}($\{\mathbf{v}_i\}_{i=1}^{n}$)
+				\STATE $\{\mathbf{v}_i\}_{i=1}^{n}$ = $\{\mathbf{h}_i\}_{i=1}^{n}$
+				\ENDIF
+				\STATE $\mathbf{W}_l, \mathbf{b}_l, \mathbf{b}_{l+1}$ = \textbf{RBM}($\{\mathbf{v}_i\}_{i=1}^{n}$)
+				\ENDFOR
+				\STATE Initialize network with $\{\mathbf{W}_l\}_{l=1}^{\ell-1}$ and $\{\mathbf{b}_l\}_{l=2}^{\ell}$
+				\STATE $\{\mathbf{W}_l\}_{l=1}^{\ell-1}, \{\mathbf{b}_l\}_{l=2}^{\ell}$ = \textbf{SupervisedMethod}()
+			\end{algorithmic}
+			\label{alg:dbn}
+		\end{algorithm}}
+	
+\end{frame}
+
+
+%------------------------------------------------
+
+
+\begin{frame}{Applications of DBNs}
+	In \cite{10.1162/neco.2006.18.7.1527}, Hinton et al. implemented a DBN in the MNIST dataset:
+
+	{\small \begin{itemize}
+		\item[$\triangleright$] The model obtained $1.25\%$ error in test results
+	\end{itemize}}
+
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+		\begin{figure}
+			\renewcommand{\figurename}{Figure}
+			\includegraphics[width=0.6\textwidth]{figures/hinton_model_mnist.png}
+			{\small\caption{DBN proposed \cite{10.1162/neco.2006.18.7.1527}}}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\vspace{-0.5cm}
+		\begin{figure}
+			\renewcommand{\figurename}{Figure}
+			\includegraphics[width=0.9\textwidth]{figures/hinton_result_mnist.png}
+			{\small\caption{Comparison of test error between models \cite{10.1162/neco.2006.18.7.1527}}}
+		\end{figure}
+		
+	\end{columns}
+
+\end{frame}
+
+%------------------------------------------------
+
+
+\begin{frame}{Applications of DBNs}
+	In \cite{doi:10.1126/science.1127647}, the authors applied the pre-training procedure to deep autoencoders:
+	
+%	{\small \begin{itemize}
+%		\item[$\triangleright$] The model outperfomed LSA (document retrieval method based on PCA)
+%	\end{itemize}}
+	
+	\vspace{0.5cm}
+	
+	\begin{columns}
+		
+		\column{0.5\textwidth}
+		\vspace{-0.5cm}
+		\begin{figure}
+			\renewcommand{\figurename}{Figure}
+			\includegraphics[width=0.75\textwidth]{figures/hinton_model_pca.png}
+			{\small\caption{Autoencoder proposed \cite{doi:10.1126/science.1127647}}}
+		\end{figure}
+		
+		\column{0.5\textwidth}
+		\vspace{-0.5cm}
+		\begin{figure}
+			\renewcommand{\figurename}{Figure}
+			\includegraphics[width=0.75\textwidth]{figures/hinton_result_pca.png}
+			{\small\caption{Codes produced by the autoencoder \cite{doi:10.1126/science.1127647}}}
+		\end{figure}
+		
+	\end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+
+\begin{frame}{Applications of DBNs}
+	\justifying
+	One of the major applications of DBNs was in speech recognition, enabled due to advancements in training processing though GPUs \cite{10.1145/1553374.1553486}:
+	
+	\begin{columns}
+		\column{0.5\textwidth}
+		\justifying
+		{\small \begin{itemize}
+			\item[$\triangleright$] Great results on small \cite{5704567} and larger \cite{5740583} vocabulary datasets
+			\item[$\triangleright$] By 2012, versions of the model in \cite{5704567} were being developed by major speech groups and deployed in Android phones
+		\end{itemize}}
+	
+		\column{0.55\textwidth}
+		\begin{figure}
+			\renewcommand{\figurename}{Figure}
+			\includegraphics[width=0.8\textwidth]{figures/result_dahl_hinton.png}
+			{\small\caption{Comparison between models \cite{5704567}}}
+		\end{figure}
+	
+	\end{columns}
+\end{frame}
+
+
+\makesection{Summarizing}
+
+%------------------------------------------------
+
+
+\begin{frame}{Summarizing}	
+	\begin{columns}
+		\column{0.3\textwidth}
+		\centering
+		\vspace{-20px}
+		\begin{figure}
+			\includegraphics[height=0.75\paperheight]{figures/final_timeline.png}
+			%			\caption{Example of an RBM}
+		\end{figure}
+		
+		\column{0.7\textwidth}
+		Wrapping up:
+
+		\justifying
+		{\small \begin{itemize}
+			\item[$\triangleright$] The RBM is a generative, energy-based that learns latent representations of data in an unsupervised manner
+			\item[$\triangleright$] It serves as the building block of DBNs, whose greedy layer-wise pre-training represented a major breakthrough in the field of AI
+			
+			\vspace{0.3cm}
+			
+			\item[(2011)] \cite{pmlr-v15-glorot11a} showed that ReLU allows faster and more effective supervised training, removing the need for unsupervised pre-training \cite{lecun2015deep}
+			\begin{itemize}
+				\item[$\triangleright$] Nevertheless, RBMs and DBNs are still regarded as key contributors to the resurgence of deep learning
+			\end{itemize}
+		\end{itemize}}
+	
+	\end{columns}
+	
+%	[Deep Sparse Rectifier Neural Networks]
+	
+\end{frame}
+
+
+%------------------------------------------------
+% Section divider frame
+\makesection{References}
+
+%------------------------------------------------
+% Citations
+%\begin{frame}[fragile] % Need to use the fragile option when verbatim is used in the slide
+%    \frametitle{Citation}
+%    An example of the \verb|\cite| command to cite within the presentation:\\~
+%
+%    This statement requires citation \cite{example-article}.
+%\end{frame}
+
+%------------------------------------------------
+
+%------------------------------------------------
+% References
+\begin{frame}[allowframebreaks]{References}
+        \bibliographystyle{ieeetr}
+        \bibliography{references.bib}
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+% Final PAGE
+% Set the text that is showed on the final slide
+\finalpagetext{Thank you for your attention}
+%----------------------------------------------------------------------------------------
+\makefinalpage
+%-------------------------------------------------------------------
+
+\end{document}
