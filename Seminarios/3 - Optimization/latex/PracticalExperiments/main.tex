@@ -1,0 +1,943 @@
+\documentclass{beamer}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usetheme{sintef}
+\usepackage{tabularx,booktabs}
+\usepackage{tikz}
+\usepackage{adjustbox}
+\usepackage[most]{tcolorbox}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usetikzlibrary{shapes,arrows,positioning,fit,backgrounds}
+
+\hypersetup{
+    colorlinks=true,
+    urlcolor=blue,
+    linkcolor=gray,
+    citecolor=blue
+}
+
+
+\newcommand{\testcolor}[1]{\colorbox{#1}{\textcolor{#1}{test}}~\texttt{#1}}
+
+\usefonttheme[onlymath]{serif}
+
+\titlebackground*{assets/background}
+
+% adicionar o numero na lista final da apresentação
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+
+\title{Optimizers in deep learning - Practical study}
+\course{CPE 727 - Deep Learning}
+\author{Ana Clara Loureiro Cruz \and Bruno Coelho Martins \and Emre Aslan \and Felipe Barreto Andrade}
+\IDnumber{%
+  \href{mailto:anaclaralcruz@poli.ufrj.br}{anaclaralcruz@poli.ufrj.br}\\
+  \href{mailto:bruno.martins@smt.ufrj.br}{bruno.martins@smt.ufrj.br}\\
+  \href{mailto:emre@gta.ufrj.br}{emre@gta.ufrj.br}\\
+  \href{mailto:felipebarretoandrade@poli.ufrj.br}{felipebarretoandrade@poli.ufrj.br}
+}
+
+\begin{document}
+\maketitle
+
+\section{Gradient Descent}
+
+\begin{frame}{Gradient Descent (GD) Optimization}
+\href{https://github.com/natmourajr/CPE727-2025-03/blob/optibasic/src/experiments/gdvssgd/satu.py}{GitHub Link}
+\includegraphics[width=0.65\textwidth]{imagens/emre/gd_vs_sgd_loss1.png}
+\end{frame}
+
+\begin{frame}{Gradient Descent}
+\begin{table}[h]
+\centering
+\small % Reduce font size
+\caption{Comparison of Hyperparameters and Key Differences between Gradient Descent (GD) and Stochastic Gradient Descent (SGD)}
+\begin{tabular}{p{3.5cm} p{4.5cm} p{4.5cm}}
+\toprule
+\textbf{Aspect} & \textbf{Gradient Descent (GD)} & \textbf{Stochastic Gradient Descent (SGD)} \\
+\midrule
+\textbf{Learning Rate} & 0.1 (fixed) & 0.1 (fixed) \\
+\textbf{Number of Epochs} & 20 & 20 \\
+\textbf{Batch Size} & 500 (full dataset) & 1 (single sample) \\
+\textbf{Gradient Computation} & Full dataset (500 samples) & Single sample per iteration \\
+\textbf{Updates per Epoch} & 1 update & 500 updates \\
+\textbf{Computational Cost per Update} & High (processes all samples) & Low (processes one sample) \\
+\textbf{Convergence Behavior} & Smoother, more stable & Noisier, faster per iteration \\
+\textbf{Implementation Detail} & Uses entire dataset for gradient & Randomly samples one data point \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+
+\begin{frame}{Standard Sgd vs Mini-batch Sgd}
+\includegraphics[width=0.65\textwidth]{imagens/emre/sgd_vs_mini_sgd_loss.png}
+\end{frame}
+
+\begin{frame}{Standard Sgd vs Mini-batch Sgd}
+\href{https://github.com/natmourajr/CPE727-2025-03/blob/optibasic/src/experiments/gdvssgd/minibatchsgd.py}{GitHub Link}
+    \begin{table}[h]
+\centering
+\small
+\resizebox{\textwidth}{!}{
+\begin{tabular}{p{3.5cm} p{4.5cm} p{4.5cm}}
+\toprule
+\textbf{Aspect} & \textbf{Standard SGD} & \textbf{Mini-batch SGD} \\
+\midrule
+\textbf{Learning Rate} & 0.1 (fixed) & 0.1 (fixed) \\
+\textbf{Number of Epochs} & 20 & 20 \\
+\textbf{Batch Size} & 1 (single sample) & 32 (multiple samples) \\
+\textbf{Gradient Computation} & Single sample & 32 samples per iteration \\
+\textbf{Updates per Epoch} & 500 updates & 16 updates (500/32) \\
+\textbf{Computational Cost} & \parbox{4.5cm}{Low (one sample per update)} & \parbox{4.5cm}{Moderate (32 samples per update)} \\
+\textbf{Convergence Behavior} & \parbox{4.5cm}{Noisier, high variance} & \parbox{4.5cm}{Smoother, reduced variance} \\
+\textbf{Implementation Detail} & \parbox{4.5cm}{Randomly samples one data point} & \parbox{4.5cm}{Randomly samples 32 data points} \\
+\bottomrule
+\end{tabular}
+}
+\caption{Comparison of Hyperparameters and Key Differences between Standard SGD and Mini-batch SGD}
+\end{table}
+\end{frame}
+\begin{frame}{SGD with Momentum}
+\href{https://github.com/natmourajr/CPE727-2025-03/blob/optibasic/src/experiments/gdvssgd/moment_sgd.py}{GitHub Link}
+\includegraphics[width=0.65\textwidth]{imagens/emre/sgd_vs_momentum_loss.png }
+\end{frame}
+\begin{frame}{SGD with Momentum}
+\begin{table}[h]
+\centering
+\small
+\resizebox{\textwidth}{!}{
+\begin{tabular}{p{3.5cm} p{4.5cm} p{4.5cm}}
+\toprule
+\textbf{Aspect} & \textbf{Standard SGD} & \textbf{SGD with Momentum} \\
+\midrule
+\textbf{Learning Rate} & 0.1 (fixed) & 0.1 (fixed) \\
+\textbf{Number of Epochs} & 20 & 20 \\
+\textbf{Batch Size} & 1 (single sample) & 1 (single sample) \\
+\textbf{Momentum Coefficient} & None & 0.9 \\
+\textbf{Gradient Update} & \parbox{4.5cm}{Direct gradient: $\theta \gets \theta - \eta \nabla J$} & \parbox{4.5cm}{Velocity-based: $v \gets \mu v - \eta \nabla J$, $\theta \gets \theta + v$} \\
+\textbf{Updates per Epoch} & 500 updates & 500 updates \\
+\textbf{Convergence Behavior} & \parbox{4.5cm}{Noisier, high variance} & \parbox{4.5cm}{Smoother, faster due to momentum} \\
+\textbf{Implementation Detail} & \parbox{4.5cm}{Updates with raw gradient} & \parbox{4.5cm}{Uses velocity to accelerate gradients} \\
+\bottomrule
+\end{tabular}
+}
+\caption{Comparison of Hyperparameters and Key Differences between Standard SGD and SGD with Momentum}
+\end{table}
+    
+\end{frame}
+% \section{Momentum Variants}
+
+% \begin{frame}{Momentum: Adding Memory to SGD}
+% \end{frame}
+
+
+
+\section{Adam and Its Variants}
+
+% =====================================================
+% INTRO: Rosenbrock Function
+% =====================================================
+
+\begin{frame}{Experiment Setup: Rosenbrock Function}
+\begin{itemize}
+  \item All experiments are conducted on the \textbf{Rosenbrock function}, a classic benchmark for testing optimizers.
+  \[
+  f(x, y) = (1 - x)^2 + 100(y - x^2)^2
+  \]
+  \item This function forms a narrow, curved valley that makes optimization difficult:
+    \begin{itemize}
+      \item Gradients are small along the valley but steep across it.
+      \item Optimizers must balance stability and adaptivity to reach the minimum efficiently.
+    \end{itemize}
+  \item It is ideal to visualize how each algorithm handles curvature, adaptivity, and noise.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Effect of Hyperparameters in Adam}
+    \includegraphics[width=0.65\textwidth]{logs/rosenbrock.png}
+\end{frame}
+
+% =====================================================
+% SLIDES 1–2: Adam Hyperparameters
+% =====================================================
+
+\begin{frame}[fragile]{Adam hyperparameters: effect of \texttt{beta2}}
+\scriptsize
+\begin{verbatim}
+sweep_specs = [
+    ("Adam beta2=0.99", {"betas": (0.9, 0.99)}),
+    ("Adam beta2=0.95", {"betas": (0.9, 0.95)}),
+]
+for label, kw in sweep_specs:
+    _, losses, _ = run_optimizer(torch.optim.Adam, steps=800, lr=3e-3, **kw)
+    plt.semilogy(losses, label=label)
+plt.title("Adam hyperparameters: effect of beta2")
+\end{verbatim}
+\end{frame}
+
+\begin{frame}{Effect of Hyperparameters in Adam}
+\begin{itemize}
+  \item The parameter $\beta_2$ controls the smoothing of the variance (second moment):
+    \begin{itemize}
+      \item Higher values ($0.99$) produce smoother but slower updates.
+      \item Lower values ($0.95$) react faster to gradient changes.
+    \end{itemize}
+  \item Small changes in $\beta_2$ can strongly influence training speed and stability.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Effect of Hyperparameters in Adam}
+    \includegraphics[width=0.7\textwidth]{logs/adam_sweep_beta2.png}
+\end{frame}
+
+% =====================================================
+% SLIDES 3–4: Adam vs AdamW
+% =====================================================
+
+\begin{frame}[fragile]{Adam vs AdamW (decoupled weight decay)}
+\scriptsize
+\begin{verbatim}
+_, loss_adam, _ = run_optimizer(torch.optim.Adam,  lr=3e-3, weight_decay=1e-2)
+_, loss_adamw, _ = run_optimizer(torch.optim.AdamW, lr=3e-3, weight_decay=1e-2)
+
+plt.semilogy(loss_adam, label="Adam (wd=0.01)")
+plt.semilogy(loss_adamw, label="AdamW (wd=0.01)")
+plt.title("Coupled L2 (Adam) vs Decoupled (AdamW)")
+\end{verbatim}
+\end{frame}
+
+\begin{frame}{Conceptual Difference: Adam vs AdamW}
+\begin{itemize}
+  \item Original \textbf{Adam} couples L2 regularization with adaptive updates:
+  \[
+  \theta_{t+1} = \theta_t - \eta \Big(\frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\varepsilon} + \lambda\theta_t\Big)
+  \]
+  \item \textbf{AdamW} decouples weight decay:
+  \[
+  \theta_{t+1} = (1 - \eta\lambda)\theta_t - \eta \frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\varepsilon}
+  \]
+  \item This avoids the interference between regularization and learning rates.
+  \item Effect: cleaner weight decay, better generalization (especially in Transformers).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Adam vs AdamW: Convergence Comparison}
+    \includegraphics[width=0.7\textwidth]{logs/adam_vs_adamw_weight_decay_v2.png}
+\end{frame}
+
+% =====================================================
+% SLIDES 5–6: Adam-family Comparison
+% =====================================================
+
+\begin{frame}[fragile]{Loss vs iterations for Adam-family optimizers}
+\scriptsize
+\begin{verbatim}
+variants = [
+    ("Adam",    torch.optim.Adam,  {"amsgrad": False}),
+    ("AMSGrad", torch.optim.Adam,  {"amsgrad": True}),
+    ("RAdam",   torch.optim.RAdam, {}),
+    ("AdamW",   torch.optim.AdamW, {}),
+]
+for name, ctor, kw in variants:
+    _, losses, _ = run_optimizer(ctor, lr=3e-3, steps=800, **kw)
+    plt.semilogy(losses, label=name)
+plt.title("Loss vs iterations (log scale)")
+\end{verbatim}
+\end{frame}
+
+\begin{frame}{Comparison Across Adam-family Variants}
+\begin{itemize}
+  \item The plot shows training loss per iteration (log scale).
+  \item \textbf{Adam}: fast early convergence, but can oscillate.
+  \item \textbf{AMSGrad}: uses $\max(v_t)$ to ensure monotonic variance estimates.
+  \item \textbf{RAdam}: introduces variance rectification to fix the warmup problem.
+  \item \textbf{AdamW}: stable convergence and cleaner weight decay.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Comparison Across Adam-family Variants}
+    \includegraphics[width=0.7\textwidth]{logs/loss_curves_v2.png}
+\end{frame}
+
+% =====================================================
+% SLIDES 7–8: Step Size Evolution
+% =====================================================
+
+\begin{frame}[fragile]{Step size evolution}
+\scriptsize
+\begin{verbatim}
+for name in results:
+    y = results[name]["dtheta"]
+    plt.plot(y, label=name)
+plt.yscale("symlog", linthresh=1e-5)
+plt.title("Step size over time (symlog)")
+plt.legend()
+\end{verbatim}
+\end{frame}
+
+\begin{frame}{Evolution of Step Size}
+\begin{itemize}
+  \item $\|\Delta \theta_t\|$ measures how much parameters change at each iteration.
+  \item Large spikes at the beginning reflect \textbf{adaptive warmup}.
+  \item \textbf{RAdam} shows the highest variance initially.
+  \item \textbf{AdamW} and \textbf{AMSGrad} stabilize faster and keep smaller steps.
+  \item The \textbf{symlog} scale allows both small and large step magnitudes to be visible.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Evolution of Step Size}
+    \includegraphics[width=0.7\textwidth]{logs/step_norms_v2.png}
+\end{frame}
+
+% =====================================================
+% SLIDES 9–10: Parameter Trajectories
+% =====================================================
+
+\begin{frame}[fragile]{Parameter-space trajectories}
+\scriptsize
+\begin{verbatim}
+X, Y, Z = rosenbrock_grid()
+for name in results:
+    T = results[name]["traj"]
+    plt.plot(T[:,0], T[:,1], label=name)
+plt.contour(X, Y, Z, levels=np.logspace(-1,3,24))
+plt.title("Rosenbrock: parameter-space trajectories")
+\end{verbatim}
+\end{frame}
+
+\begin{frame}{Parameter-space Trajectories}
+\begin{itemize}
+  \item The Rosenbrock function forms a curved valley leading to the global minimum.
+  \item \textbf{Adam} (blue): follows a relatively smooth trajectory, with minor lateral oscillations.
+    \item \textbf{AMSGrad} (purple): exhibits shorter, more consistent steps by using the maximum historical variance to stabilize updates.
+    \item \textbf{RAdam} (yellow): shows wider initial swings since the rectification warmup is still adapting.
+    \item \textbf{AdamW} (green): maintains a direct and stable path, benefiting from its decoupled weight decay.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Parameter-space Trajectories}
+    \includegraphics[width=0.5\textwidth]{logs/traj_contours_v2.png}
+\end{frame}
+
+
+
+
+
+
+\section{Learning-rate (LR) Schedulers}
+\begin{frame}{Scheduler class}
+\centering
+\begin{figure}
+  \includegraphics[width=0.8\linewidth]{imagens/bruno/scheduler.png}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Experiment Overview}
+This experiment trains a simple MLP model on the Breast Cancer dataset with preprocessing and supports flexible learning rate schedulers (similar to Breast Cancer MLP Experiment).
+\end{frame}
+
+\begin{frame}{Experiment - Default Parameters}
+\begin{itemize}
+    \item \texttt{epochs}: 100
+    \item \texttt{batch\_size}: 32
+    \item \texttt{learning\_rate}: 0.05
+    \item \texttt{hidden\_size}: 64
+    \item \texttt{feature\_strategy}: \texttt{onehot}
+    \item \texttt{target\_strategy}: \texttt{binary}
+    \item \texttt{handle\_missing}: \texttt{drop}
+    \item \texttt{device}: \texttt{cpu}
+    \item \texttt{scheduler\_name}: \texttt{CosineAnnealingLR}
+    \item \texttt{scheduler\_params}: \texttt{\{\}} (JSON string)
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Experiment - Output}
+\begin{itemize}
+    \item Train loss per epoch plot: \texttt{train\_loss\_per\_epoch\_<SCHEDULER\_NAME>.png}
+    \item Learning rate per epoch plot: \texttt{lr\_per\_epoch\_<SCHEDULER\_NAME>.png}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Running the Experiment}
+Run the experiment using Python module syntax and the CLI script:
+\scriptsize
+\begin{lstlisting}[language=bash]
+python -m src.experiments.LRSchedulerExperiment.lr_scheduler_experiment.cli \
+    --scheduler <SCHEDULER_NAME> \
+    --scheduler-params '<JSON_PARAMS>'
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{LambdaLR — Flexible functional schedules}
+\begin{itemize}
+  \item \textbf{lr\_lambda (callable)} — function(epoch) that returns a multiplicative factor.
+    \begin{itemize}
+      \item Default: \texttt{lambda epoch: 1/(1+0.1*epoch)}
+      \item Effect: completely custom per-epoch scaling (useful for bespoke decays).
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{LambdaLR - Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_LambdaLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_LambdaLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: lr\_lambda = $1/(1+0.1*epoch)$ (default)
+    \item Final Train Loss: 0.0329
+    \item Final Test Loss: 1.4957
+    \item Final Test Accuracy: 71.43\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{MultiplicativeLR — Repeated multiplicative updates}
+\begin{itemize}
+  \item \textbf{factor (float)} — multiplicative factor applied each epoch.
+    \begin{itemize}
+      \item Default: \texttt{0.95}
+      \item Effect: $\mathrm{lr}_{t+1} = \mathrm{lr}_t \times \text{factor}$ (exponential-like decay).
+    \end{itemize}
+  \item \textbf{lr\_lambda (callable)} — alternative callable (defaults to constant factor).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{MultiplicativeLR - Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_MultiplicativeLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_MultiplicativeLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: factor = 0.95 (default)
+    \item Final Train Loss: 0.0337
+    \item Final Test Loss: 1.2416
+    \item Final Test Accuracy: 71.43\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{StepLR — Discrete drops}
+\begin{itemize}
+  \item \textbf{step\_size (int)} — epochs between drops.
+    \begin{itemize}
+      \item Default: \texttt{30}
+    \end{itemize}
+  \item \textbf{gamma (float)} — multiplicative drop factor.
+    \begin{itemize}
+      \item Default: \texttt{0.1}
+      %\item Effect: at epoch multiples of step\_size, LR $\leftarrow$ LR $\times$ gamma.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{StepLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_StepLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_StepLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: step\_size = 33, gamma = 0.3
+    \item Final Train Loss: 0.0344
+    \item Final Test Loss: 1.7086
+    \item Final Test Accuracy: 67.86\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{MultiStepLR — Custom step milestones}
+\begin{itemize}
+  \item \textbf{milestones (list[int])} — epochs where LR is reduced.
+    \begin{itemize}
+      \item Default: \texttt{[30, 60, 90]}
+    \end{itemize}
+  \item \textbf{gamma (float)} — multiplicative factor at each milestone.
+    \begin{itemize}
+      \item Default: \texttt{0.1}
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{MultiStepLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_MultiStepLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_MultiStepLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: milestones = [30, 80], gamma = 0.3
+    \item Final Train Loss: 0.0279
+    \item Final Test Loss: 1.1761
+    \item Final Test Accuracy: 73.21\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ConstantLR — Constant schedule (warmup-like)}
+\begin{itemize}
+  \item \textbf{factor (float)} — multiplier applied during the constant period.
+    \begin{itemize}
+      \item Default: \texttt{0.1}
+    \end{itemize}
+  \item \textbf{total\_iters (int)} — number of iterations the factor is kept.
+    \begin{itemize}
+      \item Default: \texttt{max(1, int(0.05 * total\_steps))} (≈ 5\% of total steps if known)
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ConstantLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_ConstantLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_ConstantLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: factor = 0.1, total\_iters = 10
+    \item Final Train Loss: 0.0281
+    \item Final Test Loss: 1.7522
+    \item Final Test Accuracy: 69.64\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{LinearLR — Linear warmup}
+\begin{itemize}
+  \item \textbf{start\_factor (float)} — starting multiplier of base LR.
+    \begin{itemize}
+      \item Default: \texttt{0.1}
+    \end{itemize}
+  \item \textbf{total\_iters (int)} — warmup duration in iterations.
+    \begin{itemize}
+      \item Default: \texttt{max(1, int(0.05 * total\_steps))}
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{LinearLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_LinearLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_LinearLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: start\_factor = 0.1, total\_iters = 10
+    \item Final Train Loss: 0.0264
+    \item Final Test Loss: 1.6642
+    \item Final Test Accuracy: 82.14\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ExponentialLR — Exponential decay}
+\begin{itemize}
+  \item \textbf{gamma (float)} — multiplicative decay factor per epoch/step.
+    \begin{itemize}
+      \item Default: \texttt{0.95}
+      %\item Effect: $\mathrm{lr}_{t+1}=\mathrm{lr}_t\times\gamma$
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ExponentialLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_ExponentialLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_ExponentialLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: gamma = 0.8
+    \item Final Train Loss: 0.2508
+    \item Final Test Loss: 0.6361
+    \item Final Test Accuracy: 73.21\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{PolynomialLR — Polynomial decay}
+\begin{itemize}
+  \item \textbf{power (float)} — exponent of the polynomial.
+    \begin{itemize}
+      \item Default: \texttt{2.0}
+    \end{itemize}
+  \item \textbf{total\_iters (int)} — total number of iterations the decay spans.
+    \begin{itemize}
+      \item Default: \texttt{total\_steps} (if known), else number of epochs
+    \end{itemize}
+  \item Effect: $\mathrm{lr}_t = \mathrm{lr}_0 \times (1 - t/\text{max\_iter})^{\text{power}}$
+\end{itemize}
+\end{frame}
+
+\begin{frame}{PolynomialLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_PolynomialLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_PolynomialLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: power = 2.0, max\_iter = 200
+    \item Final Train Loss: 0.0312
+    \item Final Test Loss: 1.3706
+    \item Final Test Accuracy: 76.79\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{CosineAnnealingLR — Smooth cosine annealing}
+\begin{itemize}
+  \item \textbf{T\_max (int)} — number of epochs or steps in one cycle.
+    \begin{itemize}
+      \item Default: \texttt{num\_epochs}
+    \end{itemize}
+  \item \textbf{eta\_min (float)} — minimum learning rate (floor).
+    \begin{itemize}
+      \item Default: \texttt{0.0}
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{CosineAnnealingLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_CosineAnnealingLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_CosineAnnealingLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: T\_max = 100, eta\_min = 1e-6
+    \item Final Train Loss: 0.0317
+    \item Final Test Loss: 1.9866
+    \item Final Test Accuracy: 62.50\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ChainedScheduler — Combining schedules}
+\begin{itemize}
+  \item Chains multiple schedulers sequentially (each scheduler runs for its configured duration).
+  \item default factory: \textbf{LinearLR warmup} then \textbf{CosineAnnealingLR main}.
+  \item No user params required for the default chain (factory builds sensible warmup length).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ChainedScheduler — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_ChainedScheduler.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_ChainedScheduler.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: default (Linear warmup + Cosine main)
+    \item Final Train Loss: 0.0267
+    \item Final Test Loss: 1.7336
+    \item Final Test Accuracy: 71.43\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{SequentialLR — Sequential composition}
+\begin{itemize}
+  \item \textbf{schedulers}: list of schedulers to run in sequence.
+  \item \textbf{milestones}: list of integers indicating when to switch to the next scheduler.
+    \begin{itemize}
+      \item Default: \texttt{[warmup\_iters]} where warmup\_iters ≈ 5\% of total steps
+    \end{itemize}
+  \item Use-case: warmup (LinearLR) → main (CosineAnnealingLR).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{SequentialLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_SequentialLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_SequentialLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: default (LinearLR warmup + CosineAnnealingLR)
+    \item Final Train Loss: 0.0276
+    \item Final Test Loss: 1.7895
+    \item Final Test Accuracy: 71.43\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ReduceLROnPlateau — Metric-driven reductions}
+\begin{itemize}
+  \item \textbf{mode} — `'min'` or `'max'`; which direction is “better”.
+    \begin{itemize}\item Default: \texttt{'min'} (monitor metrics like validation loss)\end{itemize}
+  \item \textbf{factor (float)} — LR multiplication factor when reducing.
+    \begin{itemize}\item Default: \texttt{0.1}\end{itemize}
+  \item \textbf{patience (int)} — epochs without improvement before reducing.
+    \begin{itemize}\item Default: \texttt{5}\end{itemize}
+  \item \textbf{threshold (float)} — minimal change to count as improvement.
+    \begin{itemize}\item Default: \texttt{1e-4}\end{itemize}
+  \item \textbf{cooldown (int)} — epochs to wait after reduction.
+    \begin{itemize}\item Default: \texttt{0}\end{itemize}
+  \item \textbf{min\_lr (float)} — lower bound for LR.
+    \begin{itemize}\item Default: \texttt{0.0}\end{itemize}
+  \item \textbf{eps (float)} — minimal decay to avoid tiny updates.
+    \begin{itemize}\item Default: \texttt{1e-8}\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ReduceLROnPlateau — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_ReduceLROnPlateau.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_ReduceLROnPlateau.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: mode = min, factor = 0.5, patience = 3
+    \item Final Train Loss: 0.1935
+    \item Final Test Loss: 0.7553
+    \item Final Test Accuracy: 66.07\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{CyclicLR — Cyclical policies}
+\begin{itemize}
+  \item \textbf{base\_lr} — lower bound of cycle.
+    \begin{itemize}\item Default: \texttt{0.1 × initial lr}\end{itemize}
+  \item \textbf{max\_lr} — upper bound of cycle.
+    \begin{itemize}\item Default: \texttt{10 × initial lr}\end{itemize}
+  \item \textbf{step\_size\_up (int)} — iterations to increase from base to max.
+    \begin{itemize}\item Default: \texttt{max(1, floor(steps\_per\_epoch/2))}\end{itemize}
+  \item \textbf{mode} — `triangular`, `triangular2`, `exp\_range`.
+    \begin{itemize}\item Default: \texttt{`triangular`}\end{itemize}
+  \item \textbf{cycle\_momentum} — whether to cycle momentum as well.
+    \begin{itemize}\item Default: \texttt{False}\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{CyclicLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_CyclicLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_CyclicLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: base\_lr = 0.0001, max\_lr = 0.001, step\_size\_up = 100
+    \item Final Train Loss: 0.3535
+    \item Final Test Loss: 0.6226
+    \item Final Test Accuracy: 69.64\%
+\end{itemize}
+\end{frame}
+
+\begin{frame}{OneCycleLR — Single-cycle super-convergence}
+\begin{itemize}
+  \item \textbf{max\_lr (float)} — peak learning rate.
+    \begin{itemize}\item Default: \texttt{10 × initial lr}\end{itemize}
+  \item \textbf{total\_steps (int)} — total number of optimizer steps (batches).
+    \begin{itemize}\item Default: \texttt{num\_epochs × steps\_per\_epoch} (must be correct for batch stepping)\end{itemize}
+  \item \textbf{pct\_start (float)} — fraction of total steps spent increasing to max\_lr.
+    \begin{itemize}\item Default: \texttt{0.3}\end{itemize}
+  \item \textbf{anneal\_strategy} — `cos` or `linear`.
+    \begin{itemize}\item Default: \texttt{`cos`}\end{itemize}
+  \item \textbf{div\_factor} — initial LR = max\_lr / div\_factor.
+    \begin{itemize}\item Default: \texttt{25.0}\end{itemize}
+  \item \textbf{final\_div\_factor} — min LR = initial LR / final\_div\_factor.
+    \begin{itemize}\item Default: \texttt{1e4}\end{itemize}
+  \item Note: \textbf{step this scheduler every batch}, not per epoch.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{OneCycleLR — Curves}
+\centering
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/learning_rate_per_epoch_OneCycleLR.png}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}
+    \includegraphics[width=\linewidth]{imagens/bruno/train_loss_per_epoch_OneCycleLR.png}
+\end{minipage}
+
+\vspace{0.3cm}
+\begin{itemize}
+    \item Parameters used: max\_lr = 0.01, total\_steps = 3200, batch\_size = 32
+    \item Final Train Loss: 0.0544
+    \item Final Test Loss: 0.7502
+    \item Final Test Accuracy: 69.64\%
+\end{itemize}
+\end{frame}
+
+
+\section{Limited BFGS \cite{lbfgs}}
+
+\begin{frame}{Experiment: \textit{VariateHistorySizeInLBFGSExperiment}}
+\href{https://github.com/natmourajr/CPE727-2025-03/tree/otimizacao/lbfgs/src/experiments/OptmizerBFGSExperiment}{Link to GitHub}
+\begin{itemize}
+  \item Goal: isolates the effect of m (memory size) in L-BFGS.
+  \item Dataset: MNIST \cite{mnist}
+  \item Base model: simple MLP (Multi-Layer Perceptron).
+  \item Evaluation:
+  \begin{itemize}
+    \item Áverage loss.
+    \item Accuracy.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Experiment: \textit{VariateHistorySizeInLBFGSExperiment}}
+\href{https://github.com/natmourajr/CPE727-2025-03/tree/otimizacao/lbfgs/src/experiments/OptmizerBFGSExperiment}{Link to GitHub}
+
+The comparison is done as following:
+
+\centering
+\begin{figure}
+  \includegraphics[width=0.8\linewidth]{imagens/history_size_experiment_2.png}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Results}
+\centering
+\begin{figure}
+  \includegraphics[width=0.8\linewidth]{imagens/history_size_experiment_3.png}
+\end{figure}
+\end{frame}
+
+\section{Comparing different types of optimizers}
+
+\begin{frame}{Dataloader: CIFAR-10 \cite{cifar10}}
+\href{https://github.com/natmourajr/CPE727-2025-03/tree/main/src/dataloaders/Cifar10Loader}{Link to GitHub}
+\centering
+\begin{figure}
+  \includegraphics[width=0.8\linewidth]{imagens/comparacao_otimizadores_5.png}
+\end{figure}
+
+\centering
+\begin{figure}
+  \includegraphics[width=0.8\linewidth]{imagens/comparacao_otimizadores_6.png}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Experimet: \textit{OptimizersRobustnessToNoiseExperiment}}
+\href{https://github.com/natmourajr/CPE727-2025-03/tree/otimizacao/robustez_a_ruidp/src/experiments}{Link to GitHub}
+\begin{itemize}
+  \item Goal: compare robustness to noise and memory use among different optimizers in CIFAR-10.
+  \item Base model: \texttt{ResNet-18} (10 classes).
+  \item Types of noise:
+  \begin{itemize}
+    \item \textbf{Label noise} in training (with \(p = 0.2\)).
+    \item \textbf{Input noise} in testing (\(\sigma \in \{0, 0.05, 0.1, 0.2\}\)).
+  \end{itemize}
+  \item Evaluation:
+  \begin{itemize}
+    \item Área unther the curve (AUC): model's ability to rank positive examples higher than negative ones.
+    \item Pick of memory usage CUDA.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Configuration}
+\href{https://github.com/natmourajr/CPE727-2025-03/tree/otimizacao/robustez_a_ruidp/src/experiments}{Link to GitHub}
+\centering
+\begin{figure}
+  \includegraphics[width=0.8\linewidth]{imagens/comparacao_otimizadores_7.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Evaluation}
+\href{https://github.com/natmourajr/CPE727-2025-03/tree/otimizacao/robustez_a_ruidp/src/experiments}{Link to GitHub}
+\centering
+\begin{figure}
+  \includegraphics[width=0.8\linewidth]{imagens/comparacao_otimizadores_8.png}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}{Results}
+
+\centering
+\begin{figure}
+  \includegraphics[width=\linewidth]{imagens/comparacao_otimizadores_2.png}
+\end{figure}
+
+\begin{figure}
+  \includegraphics[width=0.55\linewidth]{imagens/comparacao_otimizadores.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Results}
+
+\centering
+\begin{figure}
+  \includegraphics[width=\linewidth]{imagens/comparacao_otimizadores_3.png}
+\end{figure}
+
+\begin{figure}
+  \includegraphics[width=0.55\linewidth]{imagens/comparacao_otimizadores_4.png}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Results}
+
+\centering
+\begin{figure}
+  \includegraphics[width=\linewidth]{imagens/comparacao_otimizadores_9.png}
+\end{figure}
+
+\begin{figure}
+  \includegraphics[width=0.55\linewidth]{imagens/comparacao_otimizadores_10.png}
+\end{figure}
+
+\end{frame}
+
+
+\section{References} 
+\begin{frame}[allowframebreaks]
+        \frametitle{Bibliography} 
+        \bibliographystyle{ieeetr}
+        \bibliography{assets/presentation_bib.bib}
+\end{frame}
+
+
+\backmatter
+\end{document}
