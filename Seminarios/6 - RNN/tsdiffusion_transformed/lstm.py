@@ -38,19 +38,21 @@ class LSTM(nn.Module):
         h = torch.zeros(B, self.hidden_dim, device=x.device)
         c = torch.zeros(B, self.hidden_dim, device=x.device)
         states = []
-
-        for i in range(T):
-            h,c = self.lstm(x[:, i], (h,c))                                 # jump
-            states.append(h)
         if self.bi_lstm:
-            if not self.bi_coupled:
-                h = torch.zeros(B, self.hidden_dim, device=x.device)
-                c = torch.zeros(B, self.hidden_dim, device=x.device)
+
             states_bw = []
             for i in reversed(range(T)):
                 h,c = self.lstm_bw(x[:, i], (h,c))                                 # jump
                 states_bw.append(h)
             states_bw.reverse()
+            if not self.bi_coupled:
+                h = torch.zeros(B, self.hidden_dim, device=x.device)
+                c = torch.zeros(B, self.hidden_dim, device=x.device)
+        for i in range(T):
+
+            h,c = self.lstm(x[:, i], (h,c))                                 # jump
+            states.append(h)
+        if self.bi_lstm:
             states_concat = [torch.cat([f,b],dim=-1) for f,b in zip(states,states_bw)]
             if self.bi_method == 'concat':
                 states = states_concat
@@ -168,7 +170,7 @@ class LSTMEncoder(nn.Module):
         self.in_dim = in_dim
         self.lstm = nn.LSTMCell(in_dim, in_dim)
         self.norm_x = nn.LayerNorm(in_dim)
-        self.norm_H = nn.LayerNorm(in_dim if not bi_lstm else in_dim*2)
+        self.norm_H = nn.LayerNorm(in_dim if not (bi_lstm and bi_method=='concat') else in_dim*2)
         if bi_lstm:
             self.lstm_bw = nn.LSTMCell(in_dim, in_dim)
             if bi_method == 'gate':
@@ -194,20 +196,22 @@ class LSTMEncoder(nn.Module):
         c = torch.zeros(B, self.hidden_dim, device=x.device)
         states = []
         x = self.norm_x(x)
+        if self.bi_lstm:
+
+            states_bw = []
+            for i in reversed(range(T)):
+                h,c = self.lstm_bw(x[:, i], (h,c))                                 # jump
+                states_bw.append(h)
+            states_bw.reverse()
+            if not self.bi_coupled:
+                h = torch.zeros(B, self.hidden_dim, device=x.device)
+                c = torch.zeros(B, self.hidden_dim, device=x.device)
         for i in range(T):
 
             # JUMP no evento i (como no esquema original)
             h,c = self.lstm(x[:, i], (h,c))
             states.append(h)
         if self.bi_lstm:
-            if not self.bi_coupled:
-                h = torch.zeros(B, self.hidden_dim, device=x.device)
-                c = torch.zeros(B, self.hidden_dim, device=x.device)
-            states_bw = []
-            for i in reversed(range(T)):
-                h,c = self.lstm_bw(x[:, i], (h,c))                                 # jump
-                states_bw.append(h)
-            states_bw.reverse()
             states_concat = [torch.cat([f,b],dim=-1) for f,b in zip(states,states_bw)]
             if self.bi_method == 'concat':
                 states = states_concat
@@ -227,6 +231,8 @@ class LSTMEncoder(nn.Module):
 
         if self.bi_method != 'gate':
             H = torch.stack(states, dim=1)  # (B, T, hidden_dim)
+        else:
+            H = states  # (B, T, hidden_dim)
         H = self.norm_H(H)
         return H if self.in_dim == self.hidden_dim else self.encoder(H)
 

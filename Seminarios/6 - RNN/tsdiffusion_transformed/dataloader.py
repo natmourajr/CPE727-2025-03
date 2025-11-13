@@ -8,7 +8,7 @@ import os
 
 # --- CREDENCIAIS ---
 CLIENT_ID = "1b90ede3-271e-401b-81a0-a4d52bea3273"
-CLIENT_SECRET = os.getenv("COGNITE_CLIENT_SECRET")  # Defina a variável de ambiente COGNITE_CLIENT_SECRET com o valor apropriado
+CLIENT_SECRET = "os.environ.get('COGNITE_CLIENT_SECRET')"
 # ----------------------------------
 
 # Configurações do projeto publicdata
