@@ -222,3 +222,10 @@ __marimo__/
 
 #data
 data/
+
+download_data.py
+
+cpe883_latest.sif
+
+#model
+*.pt

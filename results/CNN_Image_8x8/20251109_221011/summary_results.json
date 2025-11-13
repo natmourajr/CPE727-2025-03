@@ -1,0 +1,20 @@
+{
+    "cross_validation_summary": {
+        "mean_tempo_treino_seg": 15.096583366394043,
+        "std_tempo_treino_seg": 7.091429214176267,
+        "mean_pico_memoria_mb": 19.37451171875,
+        "std_pico_memoria_mb": 0.0,
+        "mean_optimal_threshold": 0.7464517176151275,
+        "std_optimal_threshold": 0.16683286352824903,
+        "mean_auc_validation_geral": 0.9999986164622066,
+        "std_auc_validation_geral": 2.7670755870512487e-06,
+        "mean_sensitivity_validation": 0.999957337883959,
+        "std_sensitivity_validation": 8.532423208191807e-05,
+        "mean_specificity_validation": 0.999957337883959,
+        "std_specificity_validation": 8.532423208191808e-05
+    },
+    "final_holdout_results": {
+        "sensitivity_holdout": 1.0,
+        "specificity_holdout": 0.9998293515358362
+    }
+}

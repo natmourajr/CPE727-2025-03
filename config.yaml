@@ -1,0 +1,69 @@
+# config.yaml
+
+# ===================================================================
+# 1. PARÂMETROS DE DADOS E VALIDAÇÃO
+# ===================================================================
+dataset:
+  # Caminho para a pasta que contém as imagens. 
+  path: "data/images"
+  
+  # Semente aleatória para garantir que a divisão do K-Fold seja reprodutível.
+  random_seed: 117
+
+cross_validation:
+  n_splits: 10
+
+# ===================================================================
+# 2. PARÂMETROS DE PRÉ-PROCESSAMENTO
+# ===================================================================
+preprocessing:
+  image_size: 224 # ViT
+  #image_size: 128 # Demais modelos
+
+# ===================================================================
+# 3. PARÂMETROS DE TREINAMENTO
+# ===================================================================
+training:
+  optimizer: 'Adam'
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  batch_size: 4
+  num_workers: 0
+  
+  epochs: 500
+  early_stopping_patience: 25
+
+# ===================================================================
+# 4. ARQUITETURAS DOS MODELOS
+# ===================================================================
+architectures:
+
+  CKAN:
+    channels: [3, 8, 16] # Usando a versão mais leve para economizar memória
+    kernel_size: [3, 3]
+    padding: [1, 1]
+    grid_size: 4         # Usando o valor mais recente/menor
+    spline_order: 3
+
+  CapsNet:
+    # Um frontend convolucional muito mais simples, similar ao da CKAN.
+    # [Entrada, Saída Bloco 1, Saída Bloco 2]
+    frontend_channels: [3, 32, 64]
+
+    # Reduzido drasticamente a "largura" da camada de cápsulas.
+    # Antes 256 -> Agora 64 (resultando em 8 tipos de cápsulas, em vez de 32).
+    primary_caps_out_channels: 64
+    primary_caps_dim: 8
+    primary_caps_kernel_size: 5 # Um kernel menor também simplifica
+
+    # Parâmetros das cápsulas de classe
+    digit_caps_dim: 16
+    routings: 3
+    lambda_reconstruction: 0.0005
+
+  cnn:
+    dropout_rate: 0.25
+
+    # Estas são apenas sugestões de estrutura.
+    cnn_channels: [3, 16, 32,64,128] # (Entrada, Conv1, Conv2, Conv3, Conv4)
+    kernel_size: 3

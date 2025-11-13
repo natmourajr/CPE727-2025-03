@@ -1,0 +1,35 @@
+# ===================================================================
+# 1. PARÂMETROS DE DADOS E VALIDAÇÃO
+# ===================================================================
+dataset:
+  # O nome do arquivo CSV processado, sem o caminho.
+  raw_file_name: "Obfuscated-MalMem2022.csv"
+  
+  # Semente aleatória para garantir que a divisão do K-Fold seja reprodutível.
+  random_seed: 117
+
+cross_validation:
+  n_splits: 5 # Número de folds para a validação cruzada
+  test_size: 0.2 # Proporção dos dados usados para o Holdout (Teste Final)
+  
+# ===================================================================
+# 2. PARÂMETROS DE TREINAMENTO
+# ===================================================================
+training:
+  optimizer: 'Adam'
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  batch_size: 64
+  
+  epochs: 50
+  early_stopping_patience: 10
+
+# ===================================================================
+# 3. PARÂMETROS DE ARQUITETURA (CNN)
+# ===================================================================
+model:
+  dropout_rate: 0.25
+
+  # Estas são apenas sugestões de estrutura.
+  cnn_channels: [1, 16, 32] # (Entrada, Conv1, Conv2)
+  kernel_size: 3
