@@ -35,34 +35,40 @@ class GRU(nn.Module):
         B, T, _ = x.shape
         h = torch.zeros(B, self.hidden_dim, device=x.device)
         states = []
-
-        for i in range(T):
-            h = self.gru(x[:, i], h)                                 # jump
-            states.append(h)
         if self.bi_gru:
-            if not self.bi_coupled:
-                h = torch.zeros(B, self.hidden_dim, device=x.device)
+
             states_bw = []
             for i in reversed(range(T)):
                 h = self.gru_bw(x[:, i], h)                                 # jump
                 states_bw.append(h)
             states_bw.reverse()
+            if not self.bi_coupled:
+                h = torch.zeros(B, self.hidden_dim, device=x.device)
+
+        for i in range(T):
+            h = self.gru(x[:, i], h)                                 # jump
+            states.append(h)
+        if self.bi_gru:
             states_concat = [torch.cat([f,b],dim=-1) for f,b in zip(states,states_bw)]
             if self.bi_method == 'concat':
                 states = states_concat
             elif self.bi_method == 'gate':
+                states_concat = torch.stack(states_concat, dim=1)
                 states = torch.stack(states, dim=1)
                 states_bw = torch.stack(states_bw, dim=1)
                 sigma = self.bi_gate(states_concat)
                 states = sigma * states + (1-sigma) * states_bw
             elif self.bi_method == 'gru':
+                states_concat = torch.stack(states_concat, dim=1)
                 h = torch.zeros(B, self.hidden_dim, device=x.device)
                 states = []
                 for i in range(T):
                     h = self.gru_fuser(states_concat[:,i],h)
                     states.append(h)
-
-        H = torch.stack(states, dim=1)   # (B, T, hidden_dim)
+        if self.bi_method != 'gate':
+            H = torch.stack(states, dim=1)   # (B, T, hidden_dim*2)
+        else:
+            H = states  # (B, T, hidden_dim)
 
         return H
 
@@ -90,7 +96,7 @@ class TS_GRU(ODEJump):
             nn.ReLU(),
         )
         self.decoder = nn.Sequential(
-            nn.Linear(hidden_dim if not bi_gru else hidden_dim * 2, hidden_dim // 2),
+            nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
             nn.GELU(),
             nn.Linear(hidden_dim // 2, in_channels),
         )
@@ -102,7 +108,7 @@ class TS_GRU(ODEJump):
             )
         self.gru = GRU(hidden_dim,bi_gru,bi_method,bi_coupled)
         # (d) m_b  — probabilidade de observação (Bernoulli) para L4
-        self.miss_head = nn.Linear(hidden_dim if not bi_gru else hidden_dim * 2, 1)
+        self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
 
     def forward(
         self,
@@ -159,7 +165,7 @@ class GRUEncoder(nn.Module):
         self.in_dim = in_dim
         self.gru = nn.GRUCell(in_dim, in_dim)
         self.norm_x = nn.LayerNorm(in_dim)
-        self.norm_H = nn.LayerNorm(in_dim if not bi_gru else in_dim*2)
+        self.norm_H = nn.LayerNorm(in_dim if not (bi_gru and bi_method=='concat') else in_dim*2)
         if bi_gru:
             self.gru_bw = nn.GRUCell(in_dim, in_dim)
             if bi_method == 'gate':
@@ -184,35 +190,42 @@ class GRUEncoder(nn.Module):
         h = torch.zeros(B, self.in_dim, device=x.device)
         states = []
         x = self.norm_x(x)
+        if self.bi_gru:
+
+            states_bw = []
+            for i in reversed(range(T)):
+                h = self.gru_bw(x[:, i], h)                                 # jump
+                states_bw.append(h)
+            states_bw.reverse()
+            if not self.bi_coupled:
+                h = torch.zeros(B, self.hidden_dim, device=x.device)
         for i in range(T):
 
             # JUMP no evento i (como no esquema original)
             h = self.gru(x[:, i], h)
             states.append(h)
         if self.bi_gru:
-            if not self.bi_coupled:
-                h = torch.zeros(B, self.hidden_dim, device=x.device)
-            states_bw = []
-            for i in reversed(range(T)):
-                h = self.gru_bw(x[:, i], h)                                 # jump
-                states_bw.append(h)
-            states_bw.reverse()
             states_concat = [torch.cat([f,b],dim=-1) for f,b in zip(states,states_bw)]
             if self.bi_method == 'concat':
                 states = states_concat
             elif self.bi_method == 'gate':
+                states_concat = torch.stack(states_concat, dim=1)
                 states = torch.stack(states, dim=1)
                 states_bw = torch.stack(states_bw, dim=1)
                 sigma = self.bi_gate(states_concat)
                 states = sigma * states + (1-sigma) * states_bw
             elif self.bi_method == 'gru':
+                states_concat = torch.stack(states_concat, dim=1)
                 h = torch.zeros(B, self.hidden_dim, device=x.device)
                 states = []
                 for i in range(T):
                     h = self.gru_fuser(states_concat[:,i],h)
                     states.append(h)
 
-        H = torch.stack(states, dim=1)  # (B, T, hidden_dim)
+        if self.bi_method != 'gate':
+            H = torch.stack(states, dim=1)   # (B, T, hidden_dim*2)
+        else:
+            H = states  # (B, T, hidden_dim)
         H = self.norm_H(H)
         return H if self.in_dim == self.hidden_dim else self.encoder(H)
 
@@ -242,7 +255,7 @@ class TSDF_GRU(TSDiffusion):
             nn.ReLU(),
         )
         self.decoder = nn.Sequential(
-            nn.Linear(hidden_dim if not bi_gru else hidden_dim * 2, hidden_dim // 2),
+            nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
             nn.GELU(),
             nn.Linear(hidden_dim // 2, in_channels),
         )
@@ -253,11 +266,11 @@ class TSDF_GRU(TSDiffusion):
                 nn.ReLU()
             )
         self.lambda_head = nn.Sequential(
-            nn.Linear(hidden_dim*2  if not bi_gru else hidden_dim * 3, hidden_dim // 2),
+            nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
             nn.GELU(),
             nn.Linear(hidden_dim // 2, 1)       # escalar
         )
-        self.miss_head = nn.Linear(hidden_dim if not bi_gru else hidden_dim * 2, 1)
+        self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
         self.encoder_ode_x = GRUEncoder(hidden_dim, hidden_dim, bi_gru, bi_method,bi_coupled)
 
     def forward(
