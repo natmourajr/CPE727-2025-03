@@ -1064,7 +1064,7 @@ GPT-3, GPT-4, LLaMA, PaLM e outros LLMs com bilhões de parâmetros dominam tare
 \end{itemize}
 
 \medskip
-\textbf{3) Arquiteturas Modernas}
+\textbf{3) Arquiteturas bidirecionais}
 \begin{itemize}
   \item BiLSTM/BiGRU incorporam \textbf{contexto futuro} → melhores embeddings.
   \item Ainda são eficazes quando há \textbf{causalidade}, \textbf{baixa latência} ou \textbf{poucos dados}.
@@ -1260,41 +1260,62 @@ valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo 
   \includegraphics[width=0.9\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/harnn.png}
 \end{frame}
 
-
 % ================= SLIDE 4 =================
-\begin{frame}{Cao de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network - HARNN \cite{huang2019_hierarchical_multilabel_text_classification}}
-  \small
+\begin{frame}{Caso de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network (HARNN) \cite{huang2019_hierarchical_multilabel_text_classification}}
+  \scriptsize
 
-  \begin{itemize}
-    \item \textbf{1) Documentation Representing Layer (DRL)}
+  % ===== ITEM 1 =====
+  
+    \textbf{1) Documentation Representing Layer (DRL)}
       \begin{itemize}
+         \scriptsize
         \item Cada palavra vira um vetor de embedding e a BiLSTM lê a frase nos dois sentidos,
               produzindo uma representação contextual do documento.
         \item Cada classe da árvore hierárquica tem seu embedding de rótulo, que funciona como
               uma \emph{consulta de atenção} ligando o documento à hierarquia.
       \end{itemize}
+  
 
-    \vspace{0.25cm}
-    \item \textbf{2) Hierarchical Attention-based Recurrent Layer (HAM)}
+  \vspace{0.35cm}
+
+  % ===== ITEM 2 (AGORA EM DUAS COLUNAS) =====
+   \textbf{2) Hierarchical Attention-based Recurrent Layer (HAM)}
+ 
+
+  \begin{columns}[T,onlytextwidth]
+    % ----- COLUNA 1: TEXTO -----
+    \begin{column}{0.55\textwidth}
+       \scriptsize
       \begin{itemize}
-        \item \textbf{TCA}: destaca as palavras mais relevantes para cada categoria do nível,
+        \item \textbf{TCA - Text--Category Attention}: destaca as palavras mais relevantes para cada categoria do nível,
               comparando as palavras do texto com o vetor (embedding) da própria categoria
               e montando um ``resumo por categoria''.
-        \item \textbf{CPM}: usa esses resumos para prever as categorias do nível.
-        \item \textbf{CDM}: passa sinais do nível de cima para o de baixo, ajudando a manter
+        \item \textbf{CPM - Category Prediction Module}: usa esses resumos para prever as categorias do nível.
+        \item \textbf{CDM - Category Dependency Module}: passa sinais do nível de cima para o de baixo, ajudando a manter
               coerência (L1 guia L2; L2 guia L3).
       \end{itemize}
+    \end{column}
 
-    \vspace{0.25cm}
-    \item \textbf{3) Hybrid Predicting Layer (HPL)}
+    % ----- COLUNA 2: FIGURA -----
+    \begin{column}{0.35\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/HAM.png}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.10cm}
+
+  % ===== ITEM 3 =====
+
+   \textbf{3) Hybrid Predicting Layer (HPL)}
       \begin{itemize}
+         \scriptsize
         \item Junta a visão local (por nível) com a visão global do documento.
         \item Gera a decisão final, equilibrando consistência hierárquica e detalhe específico.
       \end{itemize}
-  \end{itemize}
+
 
 \end{frame}
-
 
 
 % ================= SLIDE 17 =================
