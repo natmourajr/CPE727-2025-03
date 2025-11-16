@@ -6,7 +6,7 @@ app = Typer()
 @app.command()
 def train_and_compare_cnns_mnist(
     models: list[str] = ["alexnet", "efficientnet_b0"],
-    epochs: int = 50,
+    epochs: int = 30,
     batch_size: int = 16,
     learning_rate: float = 0.001,
     dataset_fraction=None,

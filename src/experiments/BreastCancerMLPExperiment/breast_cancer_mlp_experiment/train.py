@@ -21,8 +21,8 @@ from breast_cancer_preprocessing import encode_dataset
 # Import SimpleMLP model
 from simple_mlp import SimpleMLP
 
-ExperimentLogger# Import logger
-from logger import 
+# Import logger
+from logger import ExperimentLogger
 
 
 def train_breast_cancer_mlp(
