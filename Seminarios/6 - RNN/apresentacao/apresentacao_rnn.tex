@@ -701,11 +701,18 @@ Desacoplada = backward como \textbf{professor} → forward \textbf{aprende a pre
       &\odot &: \text{produto elemento a elemento}
     \end{aligned}
   \]
+
   \normalsize
   \begin{itemize}
     \item A rede aprende quando confiar mais no histórico causal ($h_t^{\rightarrow}$)
           ou no contexto futuro ($h_t^{\leftarrow}$).
-    \item Melhora robustez em sinais ruidosos.
+     \begin{itemize}
+\item $g_t \!\approx\! 1$ → usa mais $h_t^{\rightarrow}$ (passado);
+\item $g_t \!\approx\! 0$ → usa mais $h_t^{\leftarrow}$ (futuro);
+\item $0<g_t<1$ → mistura adaptativa.
+\end{itemize}
+          \item Melhora robustez em sinais ruidosos.
+    \item A fusão gated aprende automaticamente quanto de passado ou futuro é relevante em cada passo.
   \end{itemize}
 \end{frame}
 
@@ -719,11 +726,12 @@ Desacoplada = backward como \textbf{professor} → forward \textbf{aprende a pre
     u_t = \text{GRU}_\text{fuser}(z_t, u_{t-1})
   \]
   \begin{itemize}
-    \item Uma GRU (ou LSTM) adicional unidirecional processa a sequência já fundida.
-    \item Atua como um ``refinador temporal'': suaviza, agrega contexto longo e gera
-          uma representação causal $u_t$ pronta para uso em produção on-line.
-    \item Permite treinar com contexto bidirecional, mas implantar só o ramo forward distilado.
-  \end{itemize}
+  \item Após concatenar as direções da BiRNN, uma GRU (ou LSTM) unidirecional processa a sequência fundida $z_t$.
+     \item Gera uma representação \textbf{causal} $u_t$, pois depende apenas de $u_{t-1}$ e $z_t$.
+  \item Atua como um \textbf{refinador temporal}: suaviza ruídos da BiRNN, estabiliza a dinâmica e acumula contexto adicional ao longo do tempo.
+   \item Permite treinar com \textbf{contexto bidirecional} (offline), mas \textbf{implantar apenas um modelo causal} (online), ideal para aplicações em tempo real.
+\end{itemize}
+
 
 \end{frame}
 
@@ -844,66 +852,76 @@ LSTMs e GRUs em contextos de sequências longas e ruído nos dados.
 \end{frame}
 % ======================
 
-
-\begin{frame}{Pascanu, Mikolov \& Bengio (2013) - Gradient Clipping \cite{pascanu2013}}
-\footnotesize
+\begin{frame}{Pascanu, Mikolov \& Bengio (2013) — Gradient Clipping \cite{pascanu2013}}
+\scriptsize
 
 \textbf{Motivação:}  
 Em redes recorrentes (RNNs) e arquiteturas profundas, o problema do \textbf{exploding gradient}
-faz com que os gradientes cresçam descontroladamente, levando a instabilidade numérica e divergência no treinamento.
+faz com que os gradientes cresçam descontroladamente, causando instabilidade numérica e divergência no treinamento.
 
 \medskip
 \textbf{Ideia principal:}  
-Limitar a norma do gradiente — \textit{gradient norm clipping} — mantendo o vetor de gradientes dentro de um raio \( c \).
+Limitar a norma do gradiente (\textit{gradient norm clipping}) mantendo o vetor dentro de um raio máximo \(c\).
 
+\vspace{0.2cm}
+
+\textbf{1) Gradiente completo}
 \[
 g = \nabla_{\theta} L
-\qquad
-\text{se } \|g\|_2 > c, \quad g \leftarrow \frac{c}{\|g\|_2} \, g
 \]
+\begin{itemize}
+  \item \(g\): vetor de derivadas da perda em relação aos parâmetros.
+  \item Norma L2: \(\|g\|_2 = \sqrt{\sum_i (\partial L/\partial \theta_i)^2}\).
+\end{itemize}
 
-\medskip  
-\textbf{Intuição:}  
+\vspace{0.2cm}
+
+\textbf{2) Regra de clipping}
+\[
+\text{se } \|g\|_2 > c,\qquad g \leftarrow \frac{c}{\|g\|_2}\, g
+\]
+\begin{itemize}
+  \item Fator de reescala: \(\alpha = \frac{c}{\|g\|_2} < 1\).
+  \item Preserva a \textbf{direção} do gradiente; reduz apenas sua \textbf{magnitude}.
+\end{itemize}
+
+\vspace{0.2cm}
+
+\textbf{3) Resultado do clipping}
+\[
+\left\|\frac{c}{\|g\|_2} g \right\|_2 = c
+\]
 \begin{itemize}
  \item Previne saltos muito grandes na superfície de perda.  
  \item Garante que a atualização permaneça num “raio seguro” em torno dos parâmetros.  
  \item Contribui para estabilidade numérica, e facilita o treinamento de redes profundas ou recorrentes.
 \end{itemize}
-
-\medskip  
-\textbf{Aplicações comuns:}  
-\begin{itemize}
-\item RNNs / LSTMs para sequências longas.  
-\item Treinamento de redes profundas com muitas camadas.  
-\item Cenários onde gradientes muito grandes causam divergência.
-\end{itemize}
 \end{frame}
+
 
 
 \begin{frame}{Gal \& Ghahramani (2016) - Variational Dropout \cite{gal2016}}
 \footnotesize
 
 \textbf{Problema do dropout tradicional em RNNs:}\\
-Se uma \textbf{máscara diferente} for aplicada em cada passo temporal:
+Se uma \textbf{máscara diferente} for aplicada a cada timestep:
   
 \begin{itemize}
   \item o ruído muda a cada timestep,
-  \item \textbf{desestabiliza a memória} da rede.
+  \item \textbf{desestabiliza a memória} da rede, pois não há aplicação nas conexões recorrentes.
 \end{itemize}
 
 \medskip
 
 \textbf{Solução: Variational Dropout}
 \begin{itemize}
-  \item A \textbf{mesma máscara de dropout} é mantida para toda a sequência.
-  \item Preserva a coerência temporal.
+  \item A \textbf{mesma máscara de dropout} é mantida para todos os timesteps, inclusive nas conexões recorrentes.
+  \item Preserva a coerência temporal, mantendo a mesma estrutura ativa ou inativa durante toda a sequência, estabilizando o aprendizado.
   \item Reduz overfitting sem destruir o estado recorrente.
 \end{itemize}
 
-\medskip
-
 \centering
-\includegraphics[width=0.85\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/variationalRNN.png}
+\includegraphics[width=0.80\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/variationalRNN.png}
 % (se você não tiver a imagem, eu gero uma versão em estilo hand-drawn para slide)
 
 
@@ -911,23 +929,32 @@ Se uma \textbf{máscara diferente} for aplicada em cada passo temporal:
 
 
 \begin{frame}{Gal \& Ghahramani (2016) - Variational Dropout (cont.) \cite{gal2016}}
-   Em frameworks modernos:
-      \[
-        h_t = f\big(W_{hh}\,(d_h \odot h_{t-1}) + W_{xh}\,x_t\big)
-      \]
-      \scriptsize
-      \[
-      \begin{aligned}
-        &h_t &: \text{vetor de estado oculto no tempo } t \\
-        &x_t &: \text{entrada no tempo } t \\
-        &W_{hh}, W_{xh} &: \text{matrizes de pesos recorrentes e de entrada} \\
-        &d_h &: \text{máscara de dropout, } d_h \sim \text{Bernoulli}(p) \\
-        &p &: \text{probabilidade de retenção (ex: } p = 0.8\text{)} \\
-        &\odot &: \text{produto elemento a elemento}
-      \end{aligned}
-      \]
+
+  Em frameworks modernos:
+  \[
+    h_t = f\big(W_{hh}\,(d_h \odot h_{t-1}) + W_{xh}\,x_t\big)
+  \]
+
+  \scriptsize
+  \[
+  \begin{aligned}
+    &h_t &: \text{estado oculto no tempo } t \\
+    &x_t &: \text{entrada no tempo } t \\
+    &W_{hh}, W_{xh} &: \text{matrizes de pesos recorrentes e de entrada} \\
+    &d_h &: \text{máscara de dropout, } d_h \sim \text{Bernoulli}(p) \\
+    &p &: \text{probabilidade de retenção (ex: } p = 0.8\text{)} \\
+    &\odot &: \text{produto elemento a elemento} \\
+    &f(\cdot) &: 
+       \begin{cases}
+         \tanh(\cdot), & \text{em uma RNN simples} \\
+         \text{gates + }\tanh(\cdot), & \text{em uma GRU} \\
+         \text{combinação das portas } (i,f,o,g), & \text{em um LSTM}
+       \end{cases}
+  \end{aligned}
+  \]
 
 \end{frame}
+
 
 \begin{frame}{Ba, Kiros \& Hinton (2016) - Layer Normalization (LN) \cite{ba2016}}
  \small
@@ -967,10 +994,7 @@ Se uma \textbf{máscara diferente} for aplicada em cada passo temporal:
 
 
 \begin{frame}{Evolução para Arquiteturas Modernas}
-\scriptsize
-A evolução das arquiteturas de processamento de sequências representa uma das trajetórias mais importantes no aprendizado profundo. Partindo das RNNs clássicas, o campo testemunhou inovações fundamentais que culminaram nos modelos de linguagem modernos. 
 
-\medskip
 \small
 \begin{itemize}
 \item \textbf{2014 - Sequence-to-Sequence (Seq2seq) \cite{sutskever2014}:} 
@@ -1018,8 +1042,7 @@ GPT-3, GPT-4, LLaMA, PaLM e outros LLMs com bilhões de parâmetros dominam tare
   \textbf{Resumo:}  
   Modelos bidirecionais (BiLSTM/BiGRU) exploram dependências temporais em ambas as direções.  
   GRU e BiGRU são mais leves; LSTM e BiLSTM tendem a capturar relações mais complexas.
-  Arquiteturas híbridas combinando RNNs e atenção também emergem como soluções eficientes
-\end{frame}
+  \end{frame}
 
 
 \begin{frame}{Conclusões Principais}
@@ -1055,31 +1078,31 @@ Entender suas equações é entender \textbf{o alicerce} do processamento modern
 \end{frame}
 
 % ======================
-\section{Cenários de Uso em Séries Temporais}
+\section{Casos de Uso em Séries Temporais e Processamento de Linguagem Natural}
 % ======================
 
-\begin{frame}{Cenários de Uso em Séries Temporais}
+\begin{frame}{Caso de Uso em Séries Temporais}
 \footnotesize
 
 \textbf{Problema:}  
 Modelar séries temporais industriais (compressores) com amostragem irregular, dados faltantes e alta dimensionalidade.
-Dois cenários: \textbf{predição} e \textbf{reconstrução} utilizando arquiteturas recorrentes (RNNs, LSTM, GRU, BiRNNs).
+Dois cenários: \textbf{predição} e \textbf{reconstrução} utilizando arquiteturas recorrentes (RNNs e BiRNNs).
 
 \medskip
 \textbf{Estratégias adotadas:}
 \begin{itemize}
   \item Avaliação de modelos clássicos e bidirecionais.
-  \item Teste de três técnicas de fusão pós-BiRNN (concat/ gated / fuser).
-  \item Uso de regularização temporal: dropout variacional, layer normalization e gradient clipping.
+  \item Teste de três técnicas de fusão pós-BiRNN (concat/ gate / GRU fuser).
+  \item Uso de regularização temporal: layer normalization.
 \end{itemize}
 
 \medskip
 \textbf{Base de dados:}  
 Cognite — Sinais reais de sensores de um compressor industrial offshore.
 
-\vspace{0.35cm}
+\vspace{0.25cm}
 \centering
-\includegraphics[width=0.55\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/12series.png}
+\includegraphics[width=0.45\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/12series.png}
 
 \vspace{0.2cm}
 \scriptsize
@@ -1088,45 +1111,7 @@ Cognite — Sinais reais de sensores de um compressor industrial offshore.
 \end{frame}
 
 
-
-\begin{frame}{Loss: Predição e Reconstrução de Séries Temporais}
-  
-  \begin{itemize}
-    \item  \textbf {Predição}
-    Loss: MSE no último timestamp de cada janela:
-  \[
-    \mathcal{L}
-    =
-    \frac{1}{\sum_{t=1}^{T} m_t}
-    \sum_{t=1}^{T}
-      m_t \cdot (x_t - \hat{x}_t)^2
-  \]
-    \item \textbf {Reconstrução}
-   Loss: Último timestamp da janela + difusão de ausência\\
-   L1 — NLL Gaussiano ponderado por \(\hat\lambda_t\):\\[-2pt]
-    \[
-    \quad \text{sse}_t \;=\; \sum_{c}\big(\hat x_{t,c}-x_{t,c}\big)^2, 
-    \qquad
-    \hat\lambda_t \;=\; \mathrm{softplus}\!\big(W_\lambda h_t + b_\lambda\big)
-  \]
-  \[
-    \quad \log p(x_t\mid h_t)\;=\;-\tfrac12\,\hat\lambda_t\,\text{sse}_t \;+\; \tfrac12\,n\,\log\hat\lambda_t \;-\; \tfrac12\,n\log(2\pi)
-  \]
-  \[
-    \quad \mathcal{L}_1 \;=\; -\sum_{t}\log p(x_t\mid h_t)
-  \]
- \end{itemize}
-\end{frame}
-
-
-
-% ======================
-\section{Configuração Experimental}
-% ======================
-
-
-
-\begin{frame}{Metodologia de Treinamento e Avaliação}
+\begin{frame}{Caso de Uso em Séries Temporais - Metodologia de Treinamento e Avaliação}
   \textbf{Figura de Mérito:}
   \begin{itemize}
     \item Micro MSE (Mean Squared Error)
@@ -1139,45 +1124,248 @@ Cognite — Sinais reais de sensores de um compressor industrial offshore.
     \item Warm up
     \item Schedular
     \item Weight decay (L2 regularization).
-    \item Early stopping com paciência de $\sim$20 épocas para predição e 50 épocas para reconstrução.
+    \item Early stopping com paciência de 20 épocas para Predição e 50 épocas para Reconstrução.
   \end{itemize}
 
 \end{frame}
 
-\begin{frame}{Metodologia de Treinamento e Avaliação}
-PREDIÇÃO:
-lOSS MSE
-RECONSTRUÇÃO:
-  Loss INSERÇÃO DE DIFUSÃO/AUSÊNICA LAYER NORM
+\begin{frame}{Caso de Uso em Séries Temporais - Metodologia de Treinamento e Avaliação}
+
+  \begin{itemize}
+    % ====================== PREDIÇÃO ======================
+    \item \textbf{Predição:}
+      \begin{itemize}
+        \item Loss: MSE no último timestamp de cada janela
+        \[
+          \mathcal{L}
+          =
+          \frac{1}{\sum_{t=1}^{T} m_t}
+          \sum_{t=1}^{T}
+            m_t \cdot (x_t - \hat{x}_t)^2
+        \]
+      \end{itemize}
+
+    % ==================== RECONSTRUÇÃO ====================
+    \item \textbf{Reconstrução:}
+      \begin{itemize}
+        \item Inserção de difusão de ausência (missingness diffusion)
+        \item Loss: último timestamp da janela \\
+              L1 — NLL Gaussiano ponderado por \(\hat\lambda_t\):
+        \[
+          \text{sse}_t \;=\; \sum_{c}\big(\hat x_{t,c}-x_{t,c}\big)^2, 
+          \qquad
+          \hat\lambda_t \;=\; \mathrm{softplus}\!\big(W_\lambda h_t + b_\lambda\big)
+        \]
+        \[
+          \log p(x_t\mid h_t)\;=\;-\tfrac12\,\hat\lambda_t\,\text{sse}_t 
+          \;+\; \tfrac12\,n\,\log\hat\lambda_t 
+          \;-\; \tfrac12\,n\log(2\pi)
+        \]
+        \[
+          \mathcal{L}_1 \;=\; -\sum_{t}\log p(x_t\mid h_t)
+        \]
+
+        \item Layer Normalization
+         
+      \end{itemize}
+  \end{itemize}
+
 \end{frame}
 
-\begin{frame}{Resultados - MSE micro na predição e reconstrução}
+
+
+
+\begin{frame}{Caso de Uso em Séries Temporais - Resultados MSE micro na Predição e Reconstrução}
 \centering
- \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/predrebuildmicro.png}
+ \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/comparcao.png}
      
  A reconstrução alcança resultados melhores que a predição, apesar de ser mais complexa, pois além de informar o que a predição já faz,
  a reconstrução recupera os valores ausentes da série temporal por difusão.
 
-
- REVER OS VALORES DA MELHOR EPOCA
 \end{frame}
 
-\begin{frame}{Resultados - MSE micro na predição e reconstrução/ Técnicas de fusão pós-BiRNN}
+\begin{frame}{Resultados - MSE micro na Predição e Reconstrução}
+\small
+\begin{columns}[T,onlytextwidth]
+
+% -------------------------------- LEFT TABLE: Prediction --------------------------------
+\begin{column}{0.48\textwidth}
 \centering
- \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/fusaopredrebuildmicro.png}
-        \vspace{0.1cm}
-        \scriptsize Predição e Reconstrução (MSE micro)
+\textbf{Predição}\\[-0.3mm]
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcc}
+\toprule
+\textbf{Configuração} & \textbf{Média} & \textbf{Desvio padrão} \\
+\midrule
+\textbf{BiGRU }           & 0.560974 & {$\pm\,0.350897$} \\
+BiGRU coupled                      & 0.568346 & {$\pm\,0.348221$} \\
+GRU                                & 0.592064 & {$\pm\,0.329763$} \\
+BiGRU coupled gate                 & 0.605323 & {$\pm\,0.385184$} \\
+BiLSTM coupled                     & 0.661299 & {$\pm\,0.370403$} \\
+BiLSTM                             & 0.663868 & {$\pm\,0.426597$} \\
+BiLSTM coupled gate                & 0.669857 & {$\pm\,0.359655$} \\
+LSTM                               & 0.679496 & {$\pm\,0.365859$} \\
+BiGRU coupled GRU Fuser            & 0.686827 & {$\pm\,0.320792$} \\
+BiLSTM coupled GRU Fuser           & 0.741522 & {$\pm\,0.380521$} \\
 
+\bottomrule
+\end{tabular}
+}% <-- fecha o \resizebox
+\end{column}
 
+% -------------------------------- RIGHT TABLE: Reconstruction --------------------------------
+\begin{column}{0.48\textwidth}
+\centering
+\textbf{Reconstrução}\\[-0.3mm]
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcc}
+\toprule
+\textbf{Configuração} & \textbf{Média} & \textbf{Desvio padrão} \\
+\midrule
+\textbf{BiGRU GRU Fuser}           & 0.123370 & {$\pm\,0.040885$} \\
+BiLSTM gate                        & 0.133257 & {$\pm\,0.035817$} \\
+BiGRU                              & 0.133886 & {$\pm\,0.035452$} \\
+BiLSTM                             & 0.137234 & {$\pm\,0.040035$} \\
+BiLSTM coupled GRU Fuser           & 0.138969 & {$\pm\,0.043256$} \\
+BiGRU coupled gate                 & 0.140517 & {$\pm\,0.037876$} \\
+BiGRU coupled                    & 0.141365 & {$\pm\,0.038309$} \\
+BiLSTM coupled gate                & 0.143339 & {$\pm\,0.042448$} \\
+BiLSTM coupled                      & 0.144023 & {$\pm\,0.033444$} \\
+BiGRU coupled GRU Fuser            & 0.146325 & {$\pm\,0.038838$} \\
+BiLSTM GRU Fuser                   & 0.153163 & {$\pm\,0.038024$} \\
+BiGRU gate                         & 0.161285 & {$\pm\,0.027645$} \\
+GRU                                & 0.291358 & {$\pm\,0.043240$} \\
+LSTM                               & 0.392539 & {$\pm\,0.044289$} \\
+\bottomrule
+\end{tabular}
+}% <-- fecha o \resizebox
+\end{column}
 
-        TABELA ORDENADA PELOS MELHORES RESULTADOS - REGRA DE 2 DESVIOS PADRÃO   / COUPLED E NÃO COUPLED - OS TRES TIPOS DE FUSÃO
+\end{columns}
+
+\vspace{1.5mm}
+{\scriptsize
+\textcolor{blue!60}{\(\star\) Regra dos Dois Desvios Padrão:  
+valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo de confiança de 95\%.}
+}
 \end{frame}
 
 
-\begin{frame}{Aplicação em LNP - HARNN}
-
-  resumir o 
+% ================= SLIDE 5 =================
+\begin{frame}{Cao de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network - HARNN \cite{huang2019_hierarchical_multilabel_text_classification}}
+  \small
+  \textbf{Problema:} Classificação multirrótulo hierárquica na DBpedia (L1=9, L2=70, L3=219). \\
+    \textbf{Desafio:} prever vários rótulos mantendo coerência pai→filho e lidando com desbalanceamento.
+  \centering
+  \includegraphics[width=0.9\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/harnn.png}
 \end{frame}
+
+
+% ================= SLIDE 4 =================
+\begin{frame}{Cao de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network - HARNN \cite{huang2019_hierarchical_multilabel_text_classification}}
+  \small
+
+  \begin{itemize}
+    \item \textbf{1) Documentation Representing Layer (DRL)}
+      \begin{itemize}
+        \item Cada palavra vira um vetor de embedding e a BiLSTM lê a frase nos dois sentidos,
+              produzindo uma representação contextual do documento.
+        \item Cada classe da árvore hierárquica tem seu embedding de rótulo, que funciona como
+              uma \emph{consulta de atenção} ligando o documento à hierarquia.
+      \end{itemize}
+
+    \vspace{0.25cm}
+    \item \textbf{2) Hierarchical Attention-based Recurrent Layer (HAM)}
+      \begin{itemize}
+        \item \textbf{TCA}: destaca as palavras mais relevantes para cada categoria do nível,
+              comparando as palavras do texto com o vetor (embedding) da própria categoria
+              e montando um ``resumo por categoria''.
+        \item \textbf{CPM}: usa esses resumos para prever as categorias do nível.
+        \item \textbf{CDM}: passa sinais do nível de cima para o de baixo, ajudando a manter
+              coerência (L1 guia L2; L2 guia L3).
+      \end{itemize}
+
+    \vspace{0.25cm}
+    \item \textbf{3) Hybrid Predicting Layer (HPL)}
+      \begin{itemize}
+        \item Junta a visão local (por nível) com a visão global do documento.
+        \item Gera a decisão final, equilibrando consistência hierárquica e detalhe específico.
+      \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+
+
+% ================= SLIDE 17 =================
+\begin{frame}{Resultados -- Dados de teste}
+  \scriptsize
+  \begin{columns}[T,onlytextwidth]
+
+    % ----- Coluna esquerda: tabelas -----
+    \begin{column}{0.55\textwidth}
+      \centering
+      \textbf{Métricas micro}\\[0.2cm]
+      \begin{tabular}{lccc}
+        \toprule
+        \textbf{Método} & F1$_{\text{micro}}$ & Prec$_{\text{micro}}$ & Rec$_{\text{micro}}$ \\
+        \midrule
+        REG LOG          & 0.8123 & 0.8123 & 0.8123 \\
+        XGBoost          & 0.9182 & 0.9312 & 0.9060 \\
+        HARNN adaptado & 0.9701 & \textbf{0.9764} & 0.9639 \\
+        HARNN campeã     & \textbf{0.9739} & 0.9755 & \textbf{0.9722} \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.35cm}
+      \textbf{Métricas macro}\\[0.2cm]
+      \begin{tabular}{lccc}
+        \toprule
+        \textbf{Método} & F1$_{\text{macro}}$ & Prec$_{\text{macro}}$ & Rec$_{\text{macro}}$ \\
+        \midrule
+        REG LOG          & 0.7114 & 0.7335 & 0.7314 \\
+        XGBoost          & 0.8640 & 0.9055 & 0.8322 \\
+        HARNN adaptado & 0.9475 & \textbf{0.9617} & 0.9373 \\
+        HARNN campeã     & \textbf{0.9548} & 0.9586 & \textbf{0.9524} \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.35cm}
+      \textbf{Subset accuracy}\\[0.2cm]
+      \begin{tabular}{lc}
+        \toprule
+        \textbf{Método} & Subset\_Acc \\
+        \midrule
+        REG LOG          & 0.7355 \\
+        XGBoost          & 0.7853 \\
+        HARNN adaptado & 0.9266 \\
+        HARNN campeã     & \textbf{0.9412} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+
+    % ----- Coluna direita: interpretação -----
+    \begin{column}{0.45\textwidth}
+      \begin{itemize}
+        \item \textbf{Ganho claro no nível micro}:\\
+              HARNN campeã supera todas as demais em F1 e Recall.
+        \item \textbf{Macro com melhora robusta}:\\
+              $+0{,}0908$ em F1 vs.\ XGBoost; $+0{,}2434$ vs.\ REG LOG e
+              vs.\ adaptado $+0{,}0073$ --- melhor equilíbrio entre classes.
+        \item \textbf{Subset accuracy bem superior}:\\
+              0{,}9412 ($+15{,}6$ pp sobre XGBoost; $+20{,}6$ pp sobre REG LOG;
+              $+1{,}46$ pp sobre HARNN adaptado).
+        \item \textbf{Trade-off precisão/recall}:\\
+              HARNN campeã tem precisão levemente menor
+              ($-0{,}09$ pp micro; $-0{,}31$ pp macro) em relação ao adaptado,
+              mas o recall maior ($+0{,}83$ pp micro; $+1{,}51$ pp macro)
+              melhora cobertura de classes de cauda e aumenta F1.
+      \end{itemize}
+    \end{column}
+
+  \end{columns}
+\end{frame}
+
 
 \begin{frame}[allowframebreaks]{Referências}
   \tiny

@@ -67,4 +67,7 @@ T.~B. Brown {\em et~al.}, ``Language models are few-shot learners,'' {\em Advanc
 \bibitem{bommasani2021_foundation}
 R.~Bommasani {\em et~al.}, ``On the opportunities and risks of foundation models,'' {\em arXiv preprint arXiv:2108.07258}, 2021.
 
+\bibitem{huang2019_hierarchical_multilabel_text_classification}
+W.~Huang, E.~Chen, Q.~Liu, Y.~Chen, Z.~Huang, Y.~Liu, Z.~Zhao, D.~Zhang, and S.~Wang, ``Hierarchical multi-label text classification: An attention-based recurrent network approach,'' in {\em Proceedings of the 28th ACM International Conference on Information and Knowledge Management (CIKM ’19)}, pp.~1051--1060, 2019.
+
 \end{thebibliography}
