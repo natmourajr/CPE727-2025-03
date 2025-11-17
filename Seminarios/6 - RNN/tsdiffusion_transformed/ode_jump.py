@@ -546,7 +546,8 @@ class ODEJump(nn.Module):
             "per_group_sum_nobs": per_group_sum_nobs
         }
     
-    def _make_dataset(self, df, timestamp_col, window_size, feature_cols, static_features_cols, window_step=1,df_denoised=None):
+    def _make_dataset(self, df, timestamp_col, window_size, feature_cols, 
+                      static_features_cols, window_step=1,df_denoised=None, predict_state_cols=None):
         if timestamp_col != 'index':
             df = df.sort_values(timestamp_col).reset_index(drop=True)
 # ---------------- NORMALIZAÇÃO DO TEMPO ----------------
@@ -556,6 +557,16 @@ class ODEJump(nn.Module):
             ts_raw = pd.to_datetime(df.index).astype("int64") / 1e6
         t0 = ts_raw[0]
         ts_rel = ((ts_raw - t0)/TS_SPAN).to_numpy(dtype=np.float32)               # começa em 0
+        if predict_state_cols is not None:
+        # garante numérico; valores inválidos viram NaN
+            state_pred = df[predict_state_cols].values
+
+            # normaliza para [0,1] usando o mesmo t0/TS_SPAN do resto do código
+            state_pred = (state_pred - t0) / TS_SPAN
+
+            # para o tensor:
+            state_pred = np.nan_to_num(state_pred, nan=0.0)
+            data_state_pred = torch.tensor(state_pred, dtype=torch.float32)
 
         times = torch.from_numpy(ts_rel)            # (L,)           # (L,)
         if self.cost_columns is not None:
@@ -593,6 +604,7 @@ class ODEJump(nn.Module):
             stat_seqs = static[0].unsqueeze(0) if static is not None else None
             mask_seqs = mask.unsqueeze(0)   # (1,L,C)
             cost_seqs = cost.unsqueeze(0) if cost is not None else None
+            state_pred_seqs = data_state_pred.unsqueeze(0) if predict_state_cols is not None else None
         else:
             starts = np.arange(0, len(df) - window_size + 1, window_step, dtype=int)
             seqs      = torch.stack([data[s:s+window_size]  for s in starts])
@@ -601,7 +613,16 @@ class ODEJump(nn.Module):
             mask_seqs = torch.stack([mask[s:s+window_size]  for s in starts])
             stat_seqs = static[0].unsqueeze(0).repeat(len(starts), 1) if static is not None else None
             cost_seqs = torch.stack([cost[s:s+window_size]  for s in starts]) if cost is not None else None
-        args = (arg for arg in [seqs, ts_seqs, mask_seqs, stat_seqs, seqs_denoised, cost_seqs] if arg is not None)
+            state_pred_seqs = torch.stack([data_state_pred[s:s+window_size] for s in starts]) if predict_state_cols is not None else None
+        args = (arg for arg in [
+            seqs, 
+            ts_seqs, 
+            mask_seqs, 
+            stat_seqs, 
+            seqs_denoised, 
+            cost_seqs, 
+            state_pred_seqs
+            ] if arg is not None)
         return TensorDataset(*args)  # retorna Dataset com (seqs, ts_seqs, mask_seqs, stat_seqs, seqs_denoised) 
 
     @staticmethod
@@ -622,6 +643,7 @@ class ODEJump(nn.Module):
         static_features_cols: list,
         timestamp_col: str,
         states_col: str | list,
+        predict_state_cols: str | list = None,
         batch_size: int = 32,
         lr: float = 3e-4,
         window_size: int = None,
@@ -641,7 +663,16 @@ class ODEJump(nn.Module):
         df_sorted = df if timestamp_col == "index" else df.sort_values(timestamp_col).reset_index(drop=True)
 
         # Dataset (sem y) e rótulos de grupo por janela (para split/oversampling/relato)
-        ds = self._make_dataset(df_sorted, timestamp_col, window_size, feature_cols, static_features_cols, window_step, df_denoised)
+        ds = self._make_dataset(
+            df_sorted, 
+            timestamp_col, 
+            window_size, 
+            feature_cols, 
+            static_features_cols, 
+            window_step, 
+            df_denoised,
+            predict_state_cols
+            )
         y_win, _starts = self._states_from_df_windows(df_sorted, states_col, window_size, window_step, label_at)
         all_groups = np.unique(y_win)
 

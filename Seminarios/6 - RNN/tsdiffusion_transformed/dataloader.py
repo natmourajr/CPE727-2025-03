@@ -82,21 +82,30 @@ class DataLoader():
 
     def add_time_to_change_state_timestamp(self):
         df = self.df.copy()
-        df['time_to_change_state_timestamp'] = 0.0
-        # indices where a new state starts (diff != 0 -> next segment)
-        change_points = df.index[df['states'].diff().fillna(0) != 0].tolist()
-        if not len(df):
+        if df.empty or 'states' not in df.columns:
             self.df = df
             return
-        # include the first timestamp to cover the initial segment
-        segment_starts = [df.index[0]] + change_points
-        for i in range(len(segment_starts) - 1):
-            start_time = segment_starts[i]
-            next_change_time = segment_starts[i + 1]
-            mask = (df.index >= start_time) & (df.index < next_change_time)
-            df.loc[mask, 'time_to_change_state_timestamp'] = (
-                next_change_time - df.loc[mask].index
-            ).total_seconds()
+
+        unique_states = sorted(df['states'].dropna().unique())
+        for state_id in unique_states:
+            df[f'state-{state_id}'] = pd.NaT
+
+        change_mask = df['states'].diff().fillna(0) != 0
+        change_points = df.index[change_mask]
+
+        if len(df) == 0:
+            self.df = df
+            return
+
+        segment_start = df.index[0]
+        for change_time in change_points:
+            next_state = df.at[change_time, 'states']
+            col_name = f'state-{next_state}'
+            if col_name in df.columns:
+                mask = (df.index >= segment_start) & (df.index < change_time)
+                df.loc[mask, col_name] = change_time
+            segment_start = change_time
+
         self.df = df
 
 

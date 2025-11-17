@@ -1,4 +1,5 @@
 from .ode_jump_encoder import ODEJumpEncoder,JumpODEEncoder
+from .ode_jump import TS_SPAN
 import torch.nn as nn
 import torch
 import math
@@ -70,13 +71,15 @@ class TSDiffusion(ODEJumpEncoder):
         in_channels: int,
         hidden_dim: int = 256,
         static_dim: int = 0,
-        lam: list[float,float] = [0.4, 0.5, 0.1],
+        status_dim: int = 0,
+        lam: list[float,float,float,float] = [0.9, 0.0, 0.0, 0.1],
         n_heads: int = 4,
         n_layers: int = 4,
         num_steps: int = 1000,
         cost_columns: list = None,
         n_heads_g: int = 4,
-        n_layers_g: int = 4            
+        n_layers_g: int = 4,
+        log_likelihood: bool = True            
         ):
         super().__init__(
             in_channels=in_channels,
@@ -87,25 +90,43 @@ class TSDiffusion(ODEJumpEncoder):
             n_layers=n_layers,
             cost_columns=cost_columns
         )
+        self.log_likelihood = log_likelihood
         self.num_steps = num_steps
+        self.status_dim = status_dim
         self.t_embed = DiffTimeEmbedding(hidden_dim)
-        self.noise_head = nn.Sequential(
-            nn.Linear(hidden_dim,hidden_dim*4),
-            nn.GELU(),
-            nn.Linear(hidden_dim*4,hidden_dim),
+        if self.lam[2]>0:
+            self.noise_head = nn.Sequential(
+                nn.Linear(hidden_dim,hidden_dim*4),
+                nn.GELU(),
+                nn.Linear(hidden_dim*4,hidden_dim),
+                )
+            self.denoise_x = nn.Sequential(
+                nn.Linear(hidden_dim,hidden_dim*4),
+                nn.GELU(),
+                nn.Linear(hidden_dim*4,hidden_dim)
             )
-        self.denoise_x = nn.Sequential(
-            nn.Linear(hidden_dim,hidden_dim*4),
-            nn.GELU(),
-            nn.Linear(hidden_dim*4,hidden_dim)
-        )
-        self.encoder_ode_x = JumpODEEncoder(hidden_dim, hidden_dim, n_heads=n_heads_g,
-                                            num_layers=n_layers_g)        # (a) λ(t)  — intensity do ponto de observação
-        self.lambda_head = nn.Sequential(
-            nn.Linear(hidden_dim*2, hidden_dim // 2),
-            nn.GELU(),
-            nn.Linear(hidden_dim // 2, 1)       # escalar
-        )
+        if self.lam[0]>0:
+            self.encoder_ode_x = JumpODEEncoder(hidden_dim, hidden_dim, n_heads=n_heads_g,
+                                                num_layers=n_layers_g)        # (a) λ(t)  — intensity do ponto de observação
+            if self.log_likelihood:
+                self.lambda_head = nn.Sequential(
+                    nn.Linear(hidden_dim*2, hidden_dim // 2),
+                    nn.GELU(),
+                    nn.Linear(hidden_dim // 2, 1)       # escalar
+                )
+        if status_dim > 0:
+            self.tmax_head = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim // 2),
+                nn.ReLU(),
+                nn.Linear(hidden_dim // 2, status_dim)
+            )
+            self.encoder_ode_tmax = JumpODEEncoder(hidden_dim, hidden_dim, n_heads=n_heads_g,num_layers=n_layers_g)
+            if self.log_likelihood:
+                self.lambda_tmax_head = nn.Sequential(
+                    nn.Linear(hidden_dim, hidden_dim // 2),
+                    nn.GELU(),
+                    nn.Linear(hidden_dim // 2, 1)       # escalar
+                )        
         # Schedule de difusão
         betas = cosine_beta_schedule(num_steps)
         alphas = 1 - betas
@@ -144,7 +165,7 @@ class TSDiffusion(ODEJumpEncoder):
                 h = torch.sqrt(ab) * h + torch.sqrt(1 - ab) * noise
             else:
                 t = torch.zeros((x.size(0),), device=x.device, dtype=torch.long)
-                noise = torch.zeros_like(h)
+                noise = None
         else:
             h = x
         # Static features
@@ -155,17 +176,28 @@ class TSDiffusion(ODEJumpEncoder):
             raise ValueError("timestamps são obrigatórios para Jump‑ODE Encoder")
         if not only_gru:
             te = self.t_embed(t).unsqueeze(1)          # (b,1,model_dim)
-            h = h + te * mask_ts
-        hg = self.encoder_ode(h, timestamps, only_gru)
-        noise_hat = self.noise_head(hg)
-        hd = self.denoise_x(noise_hat)
-        h = h + hd
-        h = self.encoder_ode_x(h, timestamps, only_gru)
+            h = h + te * mask_ts    
+        if self.lam[2]>0:
+            hg = self.encoder_ode(h, timestamps, only_gru)
+            noise_hat = self.noise_head(hg)
+            hd = self.denoise_x(noise_hat)
+            h = h + hd
+        else:
+            hg is None
+            noise_hat = None
+        if self.lam[0]>0:
+            h = self.encoder_ode_x(h, timestamps, only_gru)
+        if self.lam[2]>0:
+            ht = self.encoder_ode_tmax(h, timestamps, only_gru)
+            tmax_hat = self.tmax_head(ht)
+        else:
+            ht = None
+            tmax_hat = None
         
         if test:
-            return h,hg,self.decoder(h) if return_x_hat else None
+            return h,hg,ht,self.decoder(h) if return_x_hat and self.lam[0]>0 else None,tmax_hat
         else:
-            return h,hg,self.decoder(h) if return_x_hat else None, noise, noise_hat
+            return h,hg,ht,self.decoder(h) if return_x_hat and self.lam[0]>0 else None,tmax_hat, noise, noise_hat
 
     def impute(
             self, 
@@ -179,7 +211,7 @@ class TSDiffusion(ODEJumpEncoder):
         x0=kwargs['x0']
         return_x_hat=kwargs.get('return_x_hat',True)
         t=torch.full((state.size(0),), 0, device=device, dtype=torch.long)
-        z, _, x_hat_step = self.forward(
+        z, _, _, x_hat_step,_ = self.forward(
                         state, t=t, timestamps=timestamps, static_feats=static_feats,
                         already_latent=True, return_x_hat=True
                     )
@@ -196,7 +228,7 @@ class TSDiffusion(ODEJumpEncoder):
         
         t=torch.full((state.size(0),), 0, device=device, dtype=torch.long)
         mask_ts = mask.any(dim=2, keepdim=True).float() 
-        z, _, x_hat_step = self.forward(
+        z, _, _, x_hat_step, _ = self.forward(
                         state, t=t, timestamps=timestamps, static_feats=static_feats,
                         already_latent=True, return_x_hat=True, mask_ts=mask_ts
                     )
@@ -207,7 +239,7 @@ class TSDiffusion(ODEJumpEncoder):
             a, ab = self.alpha[i], self.alpha_bar[i]
             t = torch.full((z.size(0),), i, device=device, dtype=torch.long)
             # pred noise em latente
-            _, _, _, _, eps_hat = self.forward(
+            _, _, _, _, _, _, eps_hat = self.forward(
                 z, t=t, timestamps=timestamps, static_feats=static_feats,
                 already_latent=True, return_x_hat=False, mask_ts=mask_ts, test=False
             )
@@ -231,42 +263,99 @@ class TSDiffusion(ODEJumpEncoder):
         self,
         x: torch.Tensor,
         x_hat: torch.Tensor,
+        tmax: torch.Tensor,
         state: torch.Tensor,
+        state_tmax: torch.Tensor,
+        ts_batch: torch.Tensor,
         mask: torch.Tensor,
         mask_train: torch.Tensor,
+        state_pred: torch.Tensor,
+        status_pred_window: np.float32,
         noise,
         noise_hat
     ):
-        #L1
-        mask_err = mask * (1 - mask_train) # erro ao longo dos C canais observados 
-        sse = (((x_hat - x)**2) * mask_err).sum(dim=-1) # (B,T) 
-        #nobs =x_hat.numel() # -½ λ ||x-μ||^2 + ½ log λ
-        nobs = mask_err.sum(dim=-1).clamp(min=1e-8) # -½ λ ||x-μ||^2 + ½ log λ
-        lam_t = F.softplus(self.lambda_head(torch.cat([state,noise_hat],dim=-1))).clamp(min=1/(2*math.pi),max=2*math.pi) # (B,T,1) 
-        lam2 = lam_t.squeeze(-1) # (B,T)  
-        log_px = -0.5 * lam2 * sse + 0.5 * nobs * torch.log(lam2) - 0.5 * nobs * math.log(2*math.pi) # (B,T) 
-        # Se quiser normalizar para não depender de C/T, use média por observação: # loss por (B,T) normalizada por nobs: 
-        neg_log_px = -(log_px) # (B,T) 
-        L1 = neg_log_px.sum() # escalar
-        # ----- L4 (máscara) -----
-        # máscara binária: 1 se ao menos um canal está presente no timestep
-                # (B, T, 1)
-        m_t = mask_train.any(dim=2, keepdim=True).float()              # (B,T,1)
-        L4 = torch.nn.functional.binary_cross_entropy_with_logits(self.miss_head(state), m_t, reduction='sum')
-        L1_div = nobs.sum().clamp(min=1.0)
-        L4_div = float(m_t.numel())
-        L2 = F.mse_loss(noise, noise_hat, reduction='sum')
-        L2_div = (torch.ones_like(state) * m_t).sum()
-
-        if L2 / L2_div > 0.1:
-            loss = self.lam[0]*L1/L1_div * 1e-3 + self.lam[1] * L2 / L2_div + self.lam[2]*L4/L4_div * 1e-3
+        if x_hat is not None:
+            #L1
+            mask_err = mask * (1 - mask_train) # erro ao longo dos C canais observados 
+            sse = (((x_hat - x)**2) * mask_err).sum(dim=-1) # (B,T) 
+            #nobs =x_hat.numel() # -½ λ ||x-μ||^2 + ½ log λ
+            nobs = mask_err.sum(dim=-1).clamp(min=1e-8) # -½ λ ||x-μ||^2 + ½ log λ
+            if self.log_likelihood:
+                lam_t = F.softplus(self.lambda_head(torch.cat([state,noise_hat],dim=-1))).clamp(min=1/(2*math.pi),max=2*math.pi) # (B,T,1) 
+                lam2 = lam_t.squeeze(-1) # (B,T)  
+                log_px = -0.5 * lam2 * sse + 0.5 * nobs * torch.log(lam2) - 0.5 * nobs * math.log(2*math.pi) # (B,T) 
+                # Se quiser normalizar para não depender de C/T, use média por observação: # loss por (B,T) normalizada por nobs: 
+                neg_log_px = -(log_px) # (B,T) 
+                L1 = neg_log_px.sum() # escalar
+            else:
+                L1 = sse.sum()  # escalar
         else:
-            loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[2]*L4/L4_div
+            L1 = torch.tensor(0.0, device=state.device)
+        L1_div = nobs.sum().clamp(min=1.0)
+
+        if self.lam[2]>0:
+            #L3
+            offset_state_pred = (state_pred - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
+            offset_tmax = (tmax - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window) 
+            changing_state = (offset_state_pred>0).float()
+            err = (offset_tmax - offset_state_pred) / status_pred_window   # (B,T,S)
+            if self.log_likelihood:
+                lam_t_tmax = F.softplus(self.lambda_tmax_head(state_tmax)).clamp(min=1e-8, max=1e8)  # (B,T,1)
+                lam2_tmax  = lam_t_tmax.squeeze(-1)                                            # (B,T)
+                lam2_tmax_clamped = lam2_tmax.clamp(min=0.1)  # novo tensor, sem in-place
+                err_no_change = err * (1-changing_state)
+                err_change = err * changing_state
+                sse_tmax_no_change = (err_no_change**2).sum(dim=-1)              # (B,T)  soma sobre S
+                sse_tmax_change = (err_change**2).sum(dim=-1)*1000
+                S_bt = torch.full_like(lam2_tmax, float(err.size(-1)))   # (B,T)
+                log_ptmax = (
+                    - 0.5 * lam2_tmax * sse_tmax_no_change
+                    - 0.5 * lam2_tmax_clamped * sse_tmax_change
+                    + 0.5 * S_bt * torch.log(lam2_tmax_clamped)
+                    - 0.5 * S_bt * math.log(2 * math.pi)
+                )                                       # (B,T)
+
+                # Média por timestep (B,T). Se preferir, some e divida por B*T explicitamente.
+                L3 = -(log_ptmax.sum())
+                L3_div = float(err.numel())
+            else:
+                err_change = err * changing_state
+                sse_tmax_change = (err_change**2).sum(dim=-1)
+                L3 = sse_tmax_change.sum()
+                L3_div = float(changing_state.sum().item() or 1.0)
+                 
+        else:
+            L3 = torch.tensor(0.0, device=state.device)
+            L3_div = torch.tensor(1.0, device=state.device)   
+
+        if self.lam[3]>0:
+            # ----- L4 (máscara) -----
+            # máscara binária: 1 se ao menos um canal está presente no timestep
+                    # (B, T, 1)
+            m_t = mask_train.any(dim=2, keepdim=True).float()              # (B,T,1)
+            L4 = torch.nn.functional.binary_cross_entropy_with_logits(self.miss_head(state), m_t, reduction='sum')
+            L4_div = float(m_t.numel())
+        else:
+            L4 = torch.tensor(0.0, device=state.device)
+            L4_div = 1.0
+
+        if noise_hat is None:
+            L2 = torch.tensor(0.0, device=state.device)
+            L2_div = torch.tensor(1.0, device=state.device)
+        else:
+            L2 = F.mse_loss(noise, noise_hat, reduction='sum')
+            L2_div = (torch.ones_like(state) * m_t).sum()
+
+        if noise_hat is not None and L2 / L2_div > 0.1:
+            loss = self.lam[0]*L1/L1_div * 1e-3 + self.lam[1] * L2 / L2_div + self.lam[3]*L4/L4_div * 1e-3
+        else:
+            loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[3]*L4/L4_div
 
         return (
             loss,
             (float(L1.item()), float(L1_div.item())),
             (float(L2.item()),float(L2_div.item())),
+            (float(L3.item()), float(L3_div)),
             (float(L4.item()), float(L4_div))
             )
     
@@ -290,6 +379,8 @@ class TSDiffusion(ODEJumpEncoder):
         static_features_cols: list,
         timestamp_col: str,
         states_col: str | list,
+        predict_state_cols: str | list = None,
+        status_pred_window: int = 600,
         batch_size: int = 32,
         lr: float = 3e-4,
         window_size: int = None,
@@ -306,6 +397,7 @@ class TSDiffusion(ODEJumpEncoder):
         only_gru: bool = False,
         reconstruction_test: bool = True
     ):
+        delta_pred_window = np.float32(status_pred_window / TS_SPAN)
         # exemplo para ODEJumpEncoder: ajuste nomes conforme sua classe
         transformer_params = []
         base_params = []
@@ -328,7 +420,15 @@ class TSDiffusion(ODEJumpEncoder):
         df_sorted = df if timestamp_col == "index" else df.sort_values(timestamp_col).reset_index(drop=True)
 
         # Dataset (sem y) e rótulos de grupo por janela (para split/oversampling/relato)
-        ds = self._make_dataset(df_sorted, timestamp_col, window_size, feature_cols, static_features_cols, window_step)
+        ds = self._make_dataset(
+            df_sorted, 
+            timestamp_col, 
+            window_size, 
+            feature_cols, 
+            static_features_cols, 
+            window_step,
+            predict_state_cols=predict_state_cols
+            )
         y_win, _starts = self._states_from_df_windows(df_sorted, states_col, window_size, window_step, label_at)
         all_groups = np.unique(y_win)
 
@@ -392,10 +492,11 @@ class TSDiffusion(ODEJumpEncoder):
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
         for ep in range(1, epochs + 1):
             self.train()
-            total_train = [[0.0, 0.0] for _ in range(3)]  # L1, L4
+            total_train = [[0.0, 0.0] for _ in range(4)]  # L1, L4
             scaler = torch.amp.GradScaler()
             for batch in train_loader:
                 s = None
+                p = None
                 x, ts_batch, m = batch[0], batch[1], batch[2]  # x, ts_batch, m
                 cc = torch.ones_like(x)
                 if static_features_cols:  
@@ -405,21 +506,37 @@ class TSDiffusion(ODEJumpEncoder):
                 else:
                     if self.cost_columns is not None:
                         cc = batch[3]
+                if predict_state_cols is not None:
+                    p = batch[-1]
                 x, ts_batch, m, cc = x.to(device), ts_batch.to(device), m.to(device), cc.to(device)
                 if s is not None: s = s.to(device)
+                if p is not None: p = p.to(device)
 
                 m_train   = self._make_random_mask(x,ts_batch,m,device)
                 m_train_ts = m_train.any(dim=2, keepdim=True).float()
                 x_masked = x * m_train
 
                 optimizer.zero_grad(set_to_none=True)
-                state, _, x_hat, noise, noise_hat = self.forward(
+                state, _, state_tmax, x_hat, tmax, noise, noise_hat = self.forward(
                     x_masked, timestamps=ts_batch, 
                     static_feats=s, return_x_hat=True, mask=m_train, mask_ts=m_train_ts,test=False,
                     only_gru=only_gru)
                 with torch.amp.autocast(device_type='cuda'):
 
-                    loss, L1, L2, L4 = self._compute_loss(x * cc, x_hat * cc, state, m, m_train * cc, noise, noise_hat)
+                    loss, L1, L2, L3, L4 = self._compute_loss(
+                        x * cc, 
+                        x_hat * cc if x_hat is not None else None,
+                        tmax,
+                        state,
+                        state_tmax,
+                        ts_batch,
+                        m, 
+                        m_train * cc,
+                        p,
+                        delta_pred_window,
+                        noise, 
+                        noise_hat
+                        )
 
                 scaler.scale(loss).backward()
                 scaler.unscale_(optimizer)
@@ -432,36 +549,41 @@ class TSDiffusion(ODEJumpEncoder):
                 if stepped:
                     did_step_once = True
                     scheduler.step()     # agora é seguro (optimizer.step() ocorreu neste batch)
-                for i, item in enumerate([L1, L2, L4]):
+                for i, item in enumerate([L1, L2, L3, L4]):
                     total_train[i][0] += item[0]; total_train[i][1] += item[1]
 
             train_L1 = total_train[0][0] / max(total_train[0][1], 1.0)
             train_L2 = total_train[1][0] / max(total_train[1][1], 1.0)
-            train_L4 = total_train[2][0] / max(total_train[2][1], 1.0)
+            train_L3 = total_train[2][0] / max(total_train[2][1], 1.0)
+            train_L4 = total_train[3][0] / max(total_train[3][1], 1.0)
 
             if validate and val_loader is not None:
                 val_metrics = self.test_model(val_loader, y_seq=y_win[val_idx], 
                                               all_groups=all_groups, only_gru=only_gru,
                                               reconstruction_test=reconstruction_test,
+                                              status_pred_window=delta_pred_window
                                               )
                 print(
                     f"Epoch {ep}/{epochs} | "
-                    f"Train(sampled) L1:{train_L1:.6f} L2:{train_L2:.6f} L4:{train_L4:.6f} | "
+                    f"Train(sampled) L1:{train_L1:.6f} L2:{train_L2:.6f} L3:{train_L3:.6f}  L4:{train_L4:.6f} | "
                     f"Val macro:{val_metrics['macro_mse']:.6f} ± {val_metrics['macro_se']:.6f} | "
                     f"Val micro:{val_metrics['micro_mse']:.6f} ± {val_metrics['micro_se']:.6f}"
                     f"Val macro (noise):{val_metrics['macro_mse_n']:.6f} ± {val_metrics['macro_se_n']:.6f} | "
                     f"Val micro (noise):{val_metrics['micro_mse_n']:.6f} ± {val_metrics['micro_se_n']:.6f}"
+                    f"Val macro (state change):{val_metrics['macro_mse_s']:.6f} ± {val_metrics['macro_se_s']:.6f} | "
+                    f"Val micro (state change):{val_metrics['micro_mse_s']:.6f} ± {val_metrics['micro_se_s']:.6f}"
                 )
             else:
                 print(
                     f"Epoch {ep}/{epochs} | "
-                    f"Train(sampled) L1:{train_L1:.6f} L2:{train_L2:.6f} L4:{train_L4:.6f} | "
+                    f"Train(sampled) L1:{train_L1:.6f} L2:{train_L2:.6f} L3:{train_L3:.6f} L4:{train_L4:.6f} | "
                 )
 
             # teste fixo e ES
             test_metrics = self.test_model(
                 test_loader, y_seq=y_win[test_idx], 
-                all_groups=all_groups, only_gru=only_gru, reconstruction_test=reconstruction_test
+                all_groups=all_groups, only_gru=only_gru, reconstruction_test=reconstruction_test,
+                status_pred_window=delta_pred_window
                 )
             yield test_metrics
             print(
@@ -469,11 +591,15 @@ class TSDiffusion(ODEJumpEncoder):
                 f"micro:{test_metrics['micro_mse']:.6f} ± {test_metrics['micro_se']:.6f}"
                 f"          >> Test (Noise) macro:{test_metrics['macro_mse_n']:.6f} ± {test_metrics['macro_se_n']:.6f} | "
                 f"micro:{test_metrics['micro_mse_n']:.6f} ± {test_metrics['micro_se_n']:.6f}"
+                f"          >> Test (State Change) macro:{test_metrics['macro_mse_s']:.6f} ± {test_metrics['macro_se_s']:.6f} | "
+                f"micro:{test_metrics['micro_mse_s']:.6f} ± {test_metrics['micro_se_s']:.6f}"
             )
 
             if early_stopping:
                 score = (test_metrics["micro_mse"]*self.lam[0] + test_metrics["micro_mse_n"]*self.lam[1] + \
-                2 * (test_metrics["micro_se"]*self.lam[0] + test_metrics["micro_se_n"]*self.lam[1]))
+                         test_metrics["micro_mse_s"]*self.lam[3] + \
+                2 * (test_metrics["micro_se"]*self.lam[0] + test_metrics["micro_se_n"]*self.lam[1] \
+                     + test_metrics["micro_se_s"]*self.lam[1]))
                 improved = score < best_score
                 if improved:
                     self.save("tsdiffusion.pt"); best_score = score
@@ -487,7 +613,7 @@ class TSDiffusion(ODEJumpEncoder):
         # --- Resultado final no teste fixo
         final_metrics = self.test_model(
             test_loader, y_seq=y_win[test_idx], all_groups=all_groups, only_gru=only_gru,
-            reconstruction_test=reconstruction_test
+            reconstruction_test=reconstruction_test,status_pred_window=delta_pred_window
             )
         print(
             "TEST RESULTS | "
@@ -495,6 +621,8 @@ class TSDiffusion(ODEJumpEncoder):
             f"micro: {final_metrics['micro_mse']:.6f} ± {final_metrics['micro_se']:.6f}"
             f"macro (noise): {final_metrics['macro_mse_n']:.6f} ± {final_metrics['macro_se_n']:.6f} | "
             f"micro (noise): {final_metrics['micro_mse_n']:.6f} ± {final_metrics['micro_se_n']:.6f}"
+            f"macro (state change): {final_metrics['macro_mse_s']:.6f} ± {final_metrics['macro_se_s']:.6f} | "
+            f"micro (noise): {final_metrics['micro_mse_s']:.6f} ± {final_metrics['micro_se_s']:.6f}"
         )
         pg = test_metrics["per_group_mse"]
         pg_sew = test_metrics["per_group_se_w"]
@@ -506,6 +634,11 @@ class TSDiffusion(ODEJumpEncoder):
         pg_sew_n = test_metrics["per_group_se_w_n"]
         print("          >> per_group (weighted SE):",
         {g: f"{pg_n[g]:.6f} ± {pg_sew_n[g]:.6f} (n={pg_cnt[g]})" for g in sorted(pg.keys())}
+        )
+        pg_s = test_metrics["per_group_mse_s"]
+        pg_sew_s = test_metrics["per_group_se_w_s"]
+        print("          >> per_group (weighted SE):",
+        {g: f"{pg_s[g]:.6f} ± {pg_sew_s[g]:.6f} (n={pg_cnt[g]})" for g in sorted(pg.keys())}
         )
         yield None
 
@@ -533,7 +666,8 @@ class TSDiffusion(ODEJumpEncoder):
             y_seq, 
             all_groups=None, 
             only_gru=False,
-            reconstruction_test: bool = True
+            reconstruction_test: bool = True,
+            status_pred_window: int = 600
             ):
         if reconstruction_test:
             res = [self._test_model(
@@ -541,7 +675,8 @@ class TSDiffusion(ODEJumpEncoder):
                 y_seq, 
                 all_groups, 
                 only_gru,
-                reconstruction_test          
+                reconstruction_test,
+                status_pred_window          
             ) for i in range(13)]
             res_index = [
                 (res[i]["micro_mse"]*self.lam[0] + res[i]["micro_mse_n"]*self.lam[1] + \
@@ -557,7 +692,8 @@ class TSDiffusion(ODEJumpEncoder):
                 y_seq, 
                 all_groups, 
                 only_gru,
-                reconstruction_test    
+                reconstruction_test,
+                status_pred_window    
             )           
 
 
@@ -568,6 +704,7 @@ class TSDiffusion(ODEJumpEncoder):
             all_groups=None, 
             only_gru=False,
             reconstruction_test: bool = True,
+            status_pred_window: int = 600
             ):
         """
         Avalia reconstrução por janela e retorna:
@@ -599,14 +736,22 @@ class TSDiffusion(ODEJumpEncoder):
         G_SSE_N    = {}   # sum sse = sum w * mse
         G_WM2_N    = {}   # sum w * mse^2
         G_MSE_N    = {}   # lista de mse por janela (p/ SE não-ponderado)
+        G_W_S      = {}   # sum w = sum nobs
+        G_SSE_S    = {}   # sum sse = sum w * mse
+        G_WM2_S    = {}   # sum w * mse^2
+        G_MSE_S    = {}   # lista de mse por janela (p/ SE não-ponderado)
+
 
         # globais (micro)
         T_W, T_SSE, T_WM2 = 0.0, 0.0, 0.0
         T_W_N, T_SSE_N, T_WM2_N = 0.0, 0.0, 0.0
+        T_W_S, T_SSE_S, T_WM2_S = 0.0, 0.0, 0.0
+
 
         with torch.no_grad():
             for batch in loader:
                 s = None
+                p = None
                 x, ts_batch, m = batch[0], batch[1], batch[2]  # x, ts_batch, m
                 cc = torch.ones_like(x)
                 if self.static_dim>0:  
@@ -616,7 +761,11 @@ class TSDiffusion(ODEJumpEncoder):
                 else:
                     if self.cost_columns is not None:
                         cc = batch[3]
+                if self.status_dim>0:
+                    p = batch[-1]
                 x, ts_batch, m, cc = x.to(device), ts_batch.to(device), m.to(device), cc.to(device)
+                if s is not None: s = s.to(device)
+                if p is not None: p = p.to(device)
 
                 B = x.shape[0]
                 yb = y_seq[pos:pos+B]
@@ -629,10 +778,23 @@ class TSDiffusion(ODEJumpEncoder):
                 else:
                     m_train = m.clone(); m_train[:, -1, :] = 0.0; mask_ts = m_train.any(dim=2, keepdim=True).float()
                 x_masked = x * m_train
-                _, _, x_hat, noise, noise_hat = self.forward(
+                _, _, _, x_hat, tmax_hat, noise, noise_hat = self.forward(
                     x_masked, timestamps=ts_batch, static_feats=s, 
                     return_x_hat=True, mask=m_train, mask_ts=mask_ts, test=False,only_gru=only_gru)
+                
+                offset_state_pred = (p - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
+                offset_tmax = (tmax_hat - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window) 
+                changing_state = (offset_state_pred>0).float()
+                err = (offset_tmax - offset_state_pred) / status_pred_window   # (B,T,S)
+                err_change = err * changing_state
+                sse_tmax_change = (err_change**2).sum(dim=-1)
 
+                sse_s_bt  = sse_tmax_change.sum(dim=(1, 2))           # (B,)
+                nobs_s_bt = changing_state.sum(dim=(1, 2))               # (B,)
+                mse_s_bt  = (sse_s_bt / nobs_s_bt).detach().cpu().numpy()
+                sse_s_bt  = sse_s_bt.detach().cpu().numpy()
+                nobs_s_bt = nobs_s_bt.detach().cpu().numpy()
+                
                 sse_n_bt  = ((noise_hat-noise)**2).sum(dim=(1, 2))           # (B,)
                 nobs_n_bt = (torch.ones_like(noise)*mask_ts).sum(dim=(1, 2))               # (B,)
                 mse_n_bt  = (sse_n_bt / nobs_n_bt).detach().cpu().numpy()
@@ -654,6 +816,10 @@ class TSDiffusion(ODEJumpEncoder):
                     w_n   = float(nobs_n_bt[b])
                     mse_n = float(mse_n_bt[b])
                     sse_n = float(sse_n_bt[b])
+                    w_s   = float(nobs_s_bt[b])
+                    mse_s = float(mse_s_bt[b])
+                    sse_s = float(sse_s_bt[b])
+
 
                     G_W[g]   = G_W.get(g, 0.0)   + w
                     G_SSE[g] = G_SSE.get(g, 0.0) + sse
@@ -663,6 +829,10 @@ class TSDiffusion(ODEJumpEncoder):
                     G_SSE_N[g] = G_SSE_N.get(g, 0.0) + sse_n
                     G_WM2_N[g] = G_WM2_N.get(g, 0.0) + (w_n * mse_n * mse_n)
                     G_MSE_N.setdefault(g, []).append(mse_n)
+                    G_W_S[g]   = G_W_S.get(g, 0.0)   + w_s
+                    G_SSE_S[g] = G_SSE_S.get(g, 0.0) + sse_s
+                    G_WM2_S[g] = G_WM2_S.get(g, 0.0) + (w_s * mse_s * mse_s)
+                    G_MSE_N.setdefault(g, []).append(mse_n)
                     G_CNT[g] = G_CNT.get(g, 0) + 1
 
                     T_W   += w
@@ -671,6 +841,10 @@ class TSDiffusion(ODEJumpEncoder):
                     T_W_N   += w_n
                     T_SSE_N += sse_n
                     T_WM2_N += (w_n * mse_n * mse_n)
+                    T_W_S   += w_s
+                    T_SSE_S += sse_s
+                    T_WM2_S += (w_s * mse_s * mse_s)
+
 
         # grupos a reportar
         if all_groups is None:
@@ -696,12 +870,19 @@ class TSDiffusion(ODEJumpEncoder):
         per_group_se_w_n      = {}
         per_group_se_unw_n    = {}
         per_group_sum_nobs_n  = {}
+        per_group_mse_s       = {}
+        per_group_se_w_s      = {}
+        per_group_se_unw_s    = {}
+        per_group_sum_nobs_s  = {}
+
 
         for g in groups:
             Wg = G_W.get(g, 0.0)
             Wg_n = G_W_N.get(g, 0.0)
+            Wg_s = G_W_S.get(g, 0.0)
             per_group_sum_nobs[g] = float(Wg)
             per_group_sum_nobs_n[g] = float(Wg_n)
+            per_group_sum_nobs_s[g] = float(Wg_s)
             cnt = G_CNT.get(g, 0)
             per_group_counts[g] = int(cnt)
 
@@ -766,27 +947,60 @@ class TSDiffusion(ODEJumpEncoder):
                 per_group_se_unw_n[g] = float("nan")
                 per_group_se_w_n[g]   = float("nan")
 
+            if Wg_s > 0.0:
+                mu_g_s = G_SSE_S[g] / Wg_s    
+                per_group_mse_s[g] = float(mu_g_s)
+
+                mses_s = np.asarray(G_MSE_S.get(g, []), dtype=float)
+
+                if mses_s.size >= 2:
+                    std_unw_s = float(np.std(mses_s, ddof=1))
+                    per_group_se_unw_s[g] = std_unw_s / math.sqrt(mses_s.size)
+                elif mses_s.size == 1:
+                    per_group_se_unw_s[g] = float("nan")
+                else:
+                    per_group_se_unw_s[g] = float("nan")
+
+                s2_w_s = max(G_WM2_S[g] / Wg_s - mu_g_s * mu_g_s, 0.0)
+
+                if cnt >= 2:
+                    n_eff = cnt  # aproximação segura; se quiser exato, armazene sum_w2 por grupo
+                    per_group_se_w_s[g] = float(math.sqrt(s2_w_s / n_eff))
+                else:
+                    per_group_se_w_s[g] = float("nan")
+            else:
+                per_group_mse_s[g]    = float("nan")
+                per_group_se_unw_s[g] = float("nan")
+                per_group_se_w_s[g]   = float("nan")
+
+
         # micro (ponderado por nobs) – SE ponderado
         if T_W > 0.0:
             micro_mse = T_SSE / T_W
             micro_mse_n = T_SSE_N / T_W_N
+            micro_mse_s = T_SSE_S / T_W_S
             # var ponderada populacional
             s2_micro = max(T_WM2 / T_W - micro_mse * micro_mse, 0.0)
             s2_micro_n = max(T_WM2_N / T_W_N - micro_mse_n * micro_mse_n, 0.0)
+            s2_micro_s = max(T_WM2_S / T_W_S - micro_mse_s * micro_mse_s, 0.0)
             # n_eff global (aprox): use número de janelas (contagem total) como proxy
             # Para n_eff exato, acumule Σ w_i^2 globalmente. Se puder, acrescente 'sum_w2' no loop.
             total_cnt = int(sum(per_group_counts.values()))
             micro_se = float(math.sqrt(s2_micro / max(total_cnt, 1)))
             micro_se_n = float(math.sqrt(s2_micro_n / max(total_cnt, 1)))
+            micro_se_s = float(math.sqrt(s2_micro_s / max(total_cnt, 1)))
         else:
             micro_mse = float("nan"); micro_se = float("nan")
             micro_mse_n = float("nan"); micro_se_n = float("nan")
+            micro_mse_s = float("nan"); micro_se_s = float("nan")
 
         # macro: média das MÉDIAS por grupo (não-ponderado) e SE entre grupos
         mu_gs = [per_group_mse[g] for g in groups if np.isfinite(per_group_mse[g])]
         mu_gs_n = [per_group_mse_n[g] for g in groups if np.isfinite(per_group_mse_n[g])]
+        mu_gs_s = [per_group_mse_s[g] for g in groups if np.isfinite(per_group_mse_s[g])]
         G_eff = len(mu_gs)
         G_eff_n = len(mu_gs_n)
+        G_eff_s = len(mu_gs_s)
         if G_eff >= 1:
             macro_mse = float(np.mean(mu_gs))
             if G_eff >= 2:
@@ -807,6 +1021,17 @@ class TSDiffusion(ODEJumpEncoder):
         else:
             macro_mse_n = float("nan"); macro_se_n = float("nan")
 
+        if G_eff_s >= 1:
+            macro_mse_s = float(np.mean(mu_gs_s))
+            if G_eff_s >= 2:
+                std_between_s = float(np.std(mu_gs_s, ddof=1))
+                macro_se_s = std_between_s / math.sqrt(G_eff_s)
+            else:
+                macro_se_s = float("nan")
+        else:
+            macro_mse_s = float("nan"); macro_se_s = float("nan")
+
+
         return {
             "macro_mse": macro_mse, "macro_se": macro_se,
             "micro_mse": micro_mse, "micro_se": micro_se,
@@ -820,7 +1045,14 @@ class TSDiffusion(ODEJumpEncoder):
             "per_group_mse_n": per_group_mse_n,
             "per_group_se_w_n": per_group_se_w_n,
             "per_group_se_unw_n": per_group_se_unw_n,
-            "per_group_sum_nobs_n": per_group_sum_nobs
+            "per_group_sum_nobs_n": per_group_sum_nobs_n,
+            "macro_mse_s": macro_mse_s, "macro_se_s": macro_se_s,
+            "micro_mse_s": micro_mse_s, "micro_se_s": micro_se_s,
+            "per_group_mse_s": per_group_mse_s,
+            "per_group_se_w_s": per_group_se_w_s,
+            "per_group_se_unw_s": per_group_se_unw_s,
+            "per_group_sum_nobs_s": per_group_sum_nobs_s
+
         }
     
 
