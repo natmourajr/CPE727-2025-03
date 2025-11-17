@@ -80,4 +80,24 @@ class DataLoader():
         self.df['states'] = res['states']
         self.pred=res
 
+    def add_time_to_change_state_timestamp(self):
+        df = self.df.copy()
+        df['time_to_change_state_timestamp'] = 0.0
+        # indices where a new state starts (diff != 0 -> next segment)
+        change_points = df.index[df['states'].diff().fillna(0) != 0].tolist()
+        if not len(df):
+            self.df = df
+            return
+        # include the first timestamp to cover the initial segment
+        segment_starts = [df.index[0]] + change_points
+        for i in range(len(segment_starts) - 1):
+            start_time = segment_starts[i]
+            next_change_time = segment_starts[i + 1]
+            mask = (df.index >= start_time) & (df.index < next_change_time)
+            df.loc[mask, 'time_to_change_state_timestamp'] = (
+                next_change_time - df.loc[mask].index
+            ).total_seconds()
+        self.df = df
+
+
     
