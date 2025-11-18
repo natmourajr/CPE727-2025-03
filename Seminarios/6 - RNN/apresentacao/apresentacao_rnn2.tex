@@ -620,48 +620,9 @@ h_t = [\,\overrightarrow{h}_t \,;\, \overleftarrow{h}_t\,]
 
 
 % ======================
-\section{Arquiteturas Bidirecionais e Fusão Pós-BiRNN}
+\section{Fusão Pós-BiRNN}
 % ======================
-\begin{frame}{Arquiteturas Bidirecionais: Acoplada vs. Desacoplada \cite{serdyuk2018}}
-\footnotesize
 
-\textbf{Objetivo:} Capturar dependências temporais \textbf{passado $\leftrightarrow$ futuro}.
-
-\vspace{0.3cm}
-\textbf{1) BiRNN Acoplada (Convencional)}
-\begin{itemize}
-  \item \textbf{Forward} e \textbf{Backward} recebem \textbf{a mesma entrada} $x_t$.
-  \item São processadas \textbf{em paralelo} e \textbf{independentes} entre si.
-  \item A fusão ocorre \textbf{após} o cálculo dos dois estados:
-\[
-\overrightarrow{h}_t = f(x_t, \overrightarrow{h}_{t-1}),
-\quad
-\overleftarrow{h}_t = f(x_t, \overleftarrow{h}_{t+1}),
-\quad
-z_t = [\,\overrightarrow{h}_t ; \overleftarrow{h}_t\,].
-\]
-  \item \textbf{Usada apenas offline}, pois depende de informação futura.
-\end{itemize}
-
-\vspace{0.35cm}
-\textbf{2) BiRNN Desacoplada (Teacher--Student)}
-\begin{itemize}
-  \item O ramo \textbf{backward é treinado primeiro} (usa contexto futuro).
-  \item Depois, a rede \textbf{forward é treinada usando} $x_t$ \textbf{e} a representação do backward como \textbf{sinal professor}:
-\[
-\overleftarrow{h}_t = f(x_t, \overleftarrow{h}_{t+1}) \quad \text{(treino offline)}
-\]
-\[
-\overrightarrow{h}_t = g(x_t, \overrightarrow{h}_{t-1},\, \overleftarrow{h}_t) \quad \text{(treino do aluno)}
-\]
-  \item Na \textbf{inferência}, somente $\overrightarrow{h}_t$ é usado → \textbf{modelo causal}.
-\end{itemize}
-
-\vspace{0.35cm}
-\centering
-\textit{\small Acoplada = duas direções independentes em paralelo. \\
-Desacoplada = backward como \textbf{professor} → forward \textbf{aprende a prever sem ver o futuro}.}
-\end{frame}
 
 \begin{frame}{Técnicas de Fusão Bidirecional pós-BiRNN:}
 
@@ -1177,16 +1138,11 @@ Cognite — Sinais reais de sensores de um compressor industrial offshore.
 \toprule
 \textbf{Configuração} & \textbf{Média} & \textbf{Desvio padrão} \\
 \midrule
-\textbf{BiGRU coupled}           & 0.560974 & {$\pm\,0.350897$} \\
-BiGRU                      & 0.568346 & {$\pm\,0.348221$} \\
+\textbf{BiGRU}           & 0.560974 & {$\pm\,0.350897$} \\
 GRU                                & 0.592064 & {$\pm\,0.329763$} \\
-BiGRU  gate                 & 0.605323 & {$\pm\,0.385184$} \\
-BiLSTM                      & 0.661299 & {$\pm\,0.370403$} \\
-BiLSTM coupled                            & 0.663868 & {$\pm\,0.426597$} \\
-BiLSTM  gate                & 0.669857 & {$\pm\,0.359655$} \\
+BiLSTM                           & 0.663868 & {$\pm\,0.426597$} \\
 LSTM                               & 0.679496 & {$\pm\,0.365859$} \\
-BiGRU  GRU Fuser            & 0.686827 & {$\pm\,0.320792$} \\
-BiLSTM  GRU Fuser           & 0.741522 & {$\pm\,0.380521$} \\
+
 
 \bottomrule
 \end{tabular}
@@ -1202,18 +1158,12 @@ BiLSTM  GRU Fuser           & 0.741522 & {$\pm\,0.380521$} \\
 \toprule
 \textbf{Configuração} & \textbf{Média} & \textbf{Desvio padrão} \\
 \midrule
-\textbf{BiGRU coupled GRU Fuser}           & 0.123370 & {$\pm\,0.040885$} \\
-BiLSTM coupled gate                        & 0.133257 & {$\pm\,0.035817$} \\
-BiGRU coupled                             & 0.133886 & {$\pm\,0.035452$} \\
-BiLSTM coupled                            & 0.137234 & {$\pm\,0.040035$} \\
-BiLSTM GRU Fuser           & 0.138969 & {$\pm\,0.043256$} \\
-BiGRU gate                 & 0.140517 & {$\pm\,0.037876$} \\
-BiGRU                     & 0.141365 & {$\pm\,0.038309$} \\
-BiLSTM gate                & 0.143339 & {$\pm\,0.042448$} \\
-BiLSTM                     & 0.144023 & {$\pm\,0.033444$} \\
-BiGRU GRU Fuser            & 0.146325 & {$\pm\,0.038838$} \\
-BiLSTM coupled GRU Fuser                   & 0.153163 & {$\pm\,0.038024$} \\
-BiGRU coupled gate                         & 0.161285 & {$\pm\,0.027645$} \\
+\textbf{BiGRU GRU Fuser}           & 0.123370 & {$\pm\,0.040885$} \\
+BiLSTM gate                        & 0.133257 & {$\pm\,0.035817$} \\
+BiGRU                             & 0.133886 & {$\pm\,0.035452$} \\
+BiLSTM                           & 0.137234 & {$\pm\,0.040035$} \\
+BiLSTM GRU Fuser                   & 0.153163 & {$\pm\,0.038024$} \\
+BiGRU gate                         & 0.161285 & {$\pm\,0.027645$} \\
 GRU                                & 0.291358 & {$\pm\,0.043240$} \\
 LSTM                               & 0.392539 & {$\pm\,0.044289$} \\
 \bottomrule
