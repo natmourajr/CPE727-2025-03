@@ -932,7 +932,7 @@ Se uma \textbf{máscara diferente} for aplicada a cada timestep:
 
   Em frameworks modernos:
   \[
-    h_t = f\big(W_{hh}\,(d_h \odot h_{t-1}) + W_{xh}\,x_t\big)
+    h_t = f\big(W_{hh}\,(d_h \odot h_{t-1}) + W_{xh}\,(d_x \odot x_t)\big)
   \]
 
   \scriptsize
@@ -941,7 +941,7 @@ Se uma \textbf{máscara diferente} for aplicada a cada timestep:
     &h_t &: \text{estado oculto no tempo } t \\
     &x_t &: \text{entrada no tempo } t \\
     &W_{hh}, W_{xh} &: \text{matrizes de pesos recorrentes e de entrada} \\
-    &d_h &: \text{máscara de dropout, } d_h \sim \text{Bernoulli}(p) \\
+    &d_h, d_x &: \text{máscara de dropout, } d_h, d_x \sim \text{Bernoulli}(p) \\
     &p &: \text{probabilidade de retenção (ex: } p = 0.8\text{)} \\
     &\odot &: \text{produto elemento a elemento} \\
     &f(\cdot) &: 
@@ -952,6 +952,7 @@ Se uma \textbf{máscara diferente} for aplicada a cada timestep:
        \end{cases}
   \end{aligned}
   \]
+  
 
 \end{frame}
 
