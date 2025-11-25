@@ -235,12 +235,14 @@ class TSDF_GRU(TSDiffusion):
         in_channels: int,
         hidden_dim: int = 256,
         static_dim: int = 0,
+        status_dim: int = 0,
         lam: list[float,float,float,float] = [0.9, 0.0, 0.0, 0.1],
         num_steps: int = 1000,
         cost_columns: list = None,
         bi_gru: bool = False,
         bi_method: str = 'concat',
-        bi_coupled: bool = False       
+        bi_coupled: bool = False,
+        log_likelihood: bool = False
         ):
         super().__init__(        
             in_channels,
@@ -248,7 +250,9 @@ class TSDF_GRU(TSDiffusion):
             static_dim,
             lam,
             num_steps=num_steps,
-            cost_columns=cost_columns
+            cost_columns=cost_columns,
+            status_dim=status_dim,
+            log_likelihood=log_likelihood
         )
         self.encoder = nn.Sequential(
             nn.Linear(in_channels*2, hidden_dim),
@@ -270,8 +274,23 @@ class TSDF_GRU(TSDiffusion):
             nn.GELU(),
             nn.Linear(hidden_dim // 2, 1)       # escalar
         )
-        self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
-        self.encoder_ode_x = GRUEncoder(hidden_dim, hidden_dim, bi_gru, bi_method,bi_coupled)
+        if status_dim > 0:
+            self.tmax_head = nn.Sequential(
+                nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                nn.ReLU(),
+                nn.Linear(hidden_dim // 2, status_dim)
+            )
+            self.encoder_ode_tmax = GRUEncoder(hidden_dim, hidden_dim, bi_gru, bi_method,bi_coupled)
+            if self.log_likelihood:
+                self.lambda_tmax_head = nn.Sequential(
+                    nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                    nn.GELU(),
+                    nn.Linear(hidden_dim // 2, 1)       # escalar
+                )   
+        if self.lam[3] > 0.0:  
+            self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
+        if self.lam[0] > 0.0:
+            self.encoder_ode_x = GRUEncoder(hidden_dim, hidden_dim, bi_gru, bi_method,bi_coupled)
 
     def forward(
         self,

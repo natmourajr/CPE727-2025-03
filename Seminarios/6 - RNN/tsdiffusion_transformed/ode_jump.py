@@ -184,7 +184,8 @@ class ODEJump(nn.Module):
             )
         self.odejump = JumpODE(hidden_dim, hidden_dim)
         # (d) m_b  — probabilidade de observação (Bernoulli) para L4
-        self.miss_head = nn.Linear(self.model_dim, 1)
+        if self.lam[3] > 0.0:
+            self.miss_head = nn.Linear(self.model_dim, 1)
         self.denoise_gate = DenoiseGate(in_channels=in_channels, hidden=64, p_src_dropout=0.1)
 
     def forward(
