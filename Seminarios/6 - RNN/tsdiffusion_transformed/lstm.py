@@ -242,29 +242,28 @@ class TSDF_LSTM(TSDiffusion):
         in_channels: int,
         hidden_dim: int = 256,
         static_dim: int = 0,
-        lam: list[float,float,float] = [0.9, 0.0, 0.1],
+        status_dim: int = 0,
+        lam: list[float,float,float,float] = [0.9, 0.0, 0.0, 0.1],
         num_steps: int = 1000,
         cost_columns: list = None,
         bi_lstm: bool = False,
         bi_method: str = 'concat',
-        bi_coupled: bool = False       
+        bi_coupled: bool = False,
+        log_likelihood: bool = False
         ):
-        super().__init__(        
-            in_channels,
-            hidden_dim,
-            static_dim,
-            lam,
+        super().__init__(
+            in_channels=in_channels,
+            hidden_dim=hidden_dim,
+            static_dim=static_dim,
+            status_dim=status_dim,
+            lam=lam,
             num_steps=num_steps,
-            cost_columns=cost_columns
+            cost_columns=cost_columns,
+            log_likelihood=log_likelihood
         )
         self.encoder = nn.Sequential(
             nn.Linear(in_channels*2, hidden_dim),
             nn.ReLU(),
-        )
-        self.decoder = nn.Sequential(
-            nn.Linear(hidden_dim if not (bi_lstm and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
-            nn.GELU(),
-            nn.Linear(hidden_dim // 2, in_channels),
         )
         self.static_dim = static_dim
         if static_dim > 0:
@@ -272,13 +271,34 @@ class TSDF_LSTM(TSDiffusion):
                 nn.Linear(static_dim, hidden_dim),
                 nn.ReLU()
             )
-        self.lambda_head = nn.Sequential(
-            nn.Linear(hidden_dim*2  if not (bi_lstm and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
-            nn.GELU(),
-            nn.Linear(hidden_dim // 2, 1)       # escalar
-        )
-        self.miss_head = nn.Linear(hidden_dim if not (bi_lstm and bi_method=='concat') else hidden_dim * 2, 1)
-        self.encoder_ode_x = LSTMEncoder(hidden_dim, hidden_dim, bi_lstm, bi_method,bi_coupled)
+        if status_dim > 0:
+            self.tmax_head = nn.Sequential(
+                nn.Linear(hidden_dim*2  if not (bi_lstm and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                nn.ReLU(),
+                nn.Linear(hidden_dim // 2, status_dim)
+            )
+            self.encoder_ode_tmax = LSTMEncoder(hidden_dim, hidden_dim, bi_lstm, bi_method, bi_coupled)
+            if self.log_likelihood:
+                self.lambda_tmax_head = nn.Sequential(
+                    nn.Linear(hidden_dim*2  if not (bi_lstm and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                    nn.GELU(),
+                    nn.Linear(hidden_dim // 2, 1)
+                )
+        if self.lam[3] > 0.0:
+            self.miss_head = nn.Linear(hidden_dim if not (bi_lstm and bi_method=='concat') else hidden_dim * 2, 1)
+        if self.lam[0] > 0.0:
+            self.encoder_ode_x = LSTMEncoder(hidden_dim, hidden_dim, bi_lstm, bi_method, bi_coupled)
+            self.decoder = nn.Sequential(
+                nn.Linear(hidden_dim if not (bi_lstm and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
+                nn.GELU(),
+                nn.Linear(hidden_dim // 2, in_channels),
+            )
+            if log_likelihood:
+                self.lambda_head = nn.Sequential(
+                    nn.Linear(hidden_dim*2  if not (bi_lstm and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                    nn.GELU(),
+                    nn.Linear(hidden_dim // 2, 1)
+                )
 
     def forward(
         self,
@@ -319,10 +339,17 @@ class TSDF_LSTM(TSDiffusion):
         if static_feats is not None and self.static_dim > 0:
             se = self.static_proj(static_feats).unsqueeze(1)  # (b,1,model_dim)
             h = h + se
-        h = self.encoder_ode_x(h, timestamps, only_gru)
+        if self.lam[0] > 0.0:
+            h = self.encoder_ode_x(h, timestamps, only_gru)
+        if self.lam[2] > 0.0 and hasattr(self, "encoder_ode_tmax"):
+            ht = self.encoder_ode_tmax(h, timestamps, only_gru)
+            tmax_hat = self.tmax_head(ht)
+        else:
+            ht = None
+            tmax_hat = None
         
         if test:
-            return h,h,self.decoder(h) if return_x_hat else None
+            return h, h, ht, self.decoder(h) if (return_x_hat and self.lam[0]>0) else None, tmax_hat
         else:
-            return h,h,self.decoder(h) if return_x_hat else None, noise, noise
+            return h, h, ht, self.decoder(h) if (return_x_hat and self.lam[0]>0) else None, tmax_hat, noise, noise
     
