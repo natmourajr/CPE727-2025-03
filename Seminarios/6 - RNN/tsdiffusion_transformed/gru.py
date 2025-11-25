@@ -235,7 +235,7 @@ class TSDF_GRU(TSDiffusion):
         in_channels: int,
         hidden_dim: int = 256,
         static_dim: int = 0,
-        lam: list[float,float,float] = [0.9, 0.0, 0.1],
+        lam: list[float,float,float,float] = [0.9, 0.0, 0.0, 0.1],
         num_steps: int = 1000,
         cost_columns: list = None,
         bi_gru: bool = False,
