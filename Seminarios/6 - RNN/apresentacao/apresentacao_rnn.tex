@@ -19,10 +19,11 @@
 % ======================
 % Infos da capa
 % ======================
-\title[RNNs em Séries Temporais]{RNNs em Séries Temporais:\\
+\title[Recorrent Neural Networks - RNNs]{Recorrent Neural Networks - RNNs\\
 Arquiteturas, Treinamento e Aplicações}
 \author{Fernanda Villa Verde, Leonardo Britto, Luiza Helena e Rodrigo Petrus}
-\institute{Modelagem de Séries Temporais com RNNs - LSTM / GRU / BiLSTM / BiGRU}
+\institute{Utilização de RNNs em séries temporais e processamento de linguagem natural \\
+ LSTM / GRU / BiLSTM / BiGRU}
 \date{\today}
 
 % ======================
@@ -352,7 +353,25 @@ D_k = \mathrm{diag}(1 - \tanh^2(\cdot)),
 
 \end{frame}
 
-\begin{frame}{Hochreiter \& Schmidhuber (1997) — LSTM \cite{hochreiter1997}}
+
+\begin{frame}{Hochreiter \& Schmidhuber (1997) — LSTM  \cite{hochreiter1997}}
+
+
+  \begin{center}
+    \includegraphics[width=0.55\textwidth]{/home/ferna/cognite/apresentacao/figs/LSTM.png}
+  \end{center}
+\medskip
+\scriptsize
+\textbf{Resumo:}
+\begin{itemize}
+  \item A LSTM adiciona \textbf{portas} para controlar escrita, esquecimento e leitura da memória.
+  \item O estado de célula $\mathbf{c}_t$ funciona como \textbf{rota de gradiente preservada}.
+  \item Resolve o problema identificado por \textbf{Hochreiter (1991)}.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Hochreiter \& Schmidhuber (1997) — LSTM (cont.)\cite{hochreiter1997}}
 \footnotesize
 
 \textbf{Ideia central:} introduzir um \textbf{estado de célula} $c_t$ com \textbf{rota de gradiente quase constante},
@@ -390,21 +409,7 @@ Se $\mathbf{f}_t \approx 1$, então:
 \end{frame}
 
 
-\begin{frame}{Hochreiter \& Schmidhuber (1997) — LSTM (cont.) \cite{hochreiter1997}}
 
-
-  \begin{center}
-    \includegraphics[width=0.55\textwidth]{/home/ferna/cognite/apresentacao/figs/LSTM.png}
-  \end{center}
-\medskip
-\scriptsize
-\textbf{Resumo:}
-\begin{itemize}
-  \item A LSTM adiciona \textbf{portas} para controlar escrita, esquecimento e leitura da memória.
-  \item O estado de célula $\mathbf{c}_t$ funciona como \textbf{rota de gradiente preservada}.
-  \item Resolve o problema identificado por \textbf{Hochreiter (1991)}.
-\end{itemize}
-\end{frame}
 
 \begin{frame}{Schuster \& Paliwal (1997) — RNN Bidirecional (BiRNN) \cite{schuster1997}}
 \footnotesize
@@ -447,8 +452,25 @@ h_t = [\,\overrightarrow{h}_t \,;\, \overleftarrow{h}_t\,]
 
 \end{frame}
 
-
 \begin{frame}{Graves \& Schmidhuber (2005) - BiLSTM — Bidirectional LSTM \cite{graves2005}}
+
+  \scriptsize
+ 
+      \centering
+      \textbf{BiLSTM}   
+      \includegraphics[width=0.55\linewidth]{/home/ferna/cognite/apresentacao/figs/BiLSTM.png}
+   \centering
+   
+   \medskip
+\textbf{Por que utilizar BiLSTM?}
+\begin{itemize}
+  \item Mantém a \textbf{memória de longo prazo} da LSTM.
+  \item Excelente para tarefas onde o \textbf{contexto futuro é relevante}.
+  \item Muito utilizada em \textbf{NLP} (POS tagging, NER, parsing), \textbf{fala}, \textbf{bio-sinais}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Graves \& Schmidhuber (2005) - BiLSTM — Bidirectional LSTM (cont.) \cite{graves2005}}
 \footnotesize
 
 \textbf{Ideia central:} aplicar uma \textbf{LSTM} no sentido \textbf{forward} e outra no sentido \textbf{backward},
@@ -483,26 +505,23 @@ h_t = [\,\overrightarrow{h}_t \,;\, \overleftarrow{h}_t\,]
 
 \end{frame}
 
-\begin{frame}{BiLSTM — Long Short-Term Memory Bidirecional (cont.) \cite{graves2005}}
+\begin{frame}{Cho et al. (2014) — GRU (Gated Recurrent Unit) \cite{cho2014}}
 
 
-  \scriptsize
- 
-      \centering
-      \textbf{BiLSTM}   
-      \includegraphics[width=0.55\linewidth]{/home/ferna/cognite/apresentacao/figs/BiLSTM.png}
-   \centering
-   
-   \medskip
-\textbf{Por que utilizar BiLSTM?}
+  \begin{center}
+    \includegraphics[width=0.65\textwidth]{/home/ferna/cognite/apresentacao/figs/GRU.png}
+  \end{center}
+\medskip
+\textbf{Por que GRU ficou popular?}
 \begin{itemize}
-  \item Mantém a \textbf{memória de longo prazo} da LSTM.
-  \item Excelente para tarefas onde o \textbf{contexto futuro é relevante}.
-  \item Muito utilizada em \textbf{NLP} (POS tagging, NER, parsing), \textbf{fala}, \textbf{bio-sinais}.
+  \item Menos parâmetros que LSTM → \textbf{mais leve}.
+  \item Desempenho comparável em muitas tarefas sequenciais.
+  \item Treino mais estável que RNN simples (não sofre vanishing severo).
 \end{itemize}
+
 \end{frame}
 
-\begin{frame}{Cho et al. (2014) — GRU (Gated Recurrent Unit) \cite{cho2014}}
+\begin{frame}{Cho et al. (2014) — GRU (Gated Recurrent Unit)  (cont.) \cite{cho2014}}
 \footnotesize
 
 \textbf{Ideia central:} simplificar a LSTM mantendo a capacidade de \textbf{memória de longo prazo},
@@ -542,24 +561,31 @@ reduzindo o número de portas e \textbf{sem estado de célula separado} ($h_t$ =
 
 \end{frame}
 
+\begin{frame}{Chung, J. (2014) - BiGRU — Gated Recurrent Unit Bidirecional \cite{chung2014}}
 
-\begin{frame}{Cho et al. (2014) — GRU (Gated Recurrent Unit) (cont.) \cite{cho2014}}
 
+  \scriptsize
+ 
+      \centering
+      \textbf{BiGRU}
+     
 
-  \begin{center}
-    \includegraphics[width=0.65\textwidth]{/home/ferna/cognite/apresentacao/figs/GRU.png}
-  \end{center}
-\medskip
-\textbf{Por que GRU ficou popular?}
+      \includegraphics[width=0.55\linewidth]{/home/ferna/cognite/apresentacao/figs/BiGRU.png}
+
+   \centering
+   \medskip
+\textbf{Por que utilizar BiGRU?}
 \begin{itemize}
-  \item Menos parâmetros que LSTM → \textbf{mais leve}.
-  \item Desempenho comparável em muitas tarefas sequenciais.
-  \item Treino mais estável que RNN simples (não sofre vanishing severo).
+  \item Mantém as vantagens da GRU (menos parâmetros que LSTM).
+  \item Boa estabilidade em sequências longas.
+  \item Muito utilizada em \textbf{NLP, fala, anotação de sequência, NER, segmentação}.
 \end{itemize}
+
 
 \end{frame}
 
-\begin{frame}{Chung, J. (2014) - BiGRU — Gated Recurrent Unit Bidirecional \cite{chung2014}}
+
+\begin{frame}{Chung, J. (2014) - BiGRU — Gated Recurrent Unit Bidirecional  (cont.) \cite{chung2014}}
 \footnotesize
 
 \textbf{Ideia central:} aplicar uma \textbf{GRU} no sentido \textbf{forward} e outra no sentido \textbf{backward}, 
@@ -595,28 +621,7 @@ h_t = [\,\overrightarrow{h}_t \,;\, \overleftarrow{h}_t\,]
 
 \end{frame}
 
-\begin{frame}{Chung, J. (2014) - BiGRU — Gated Recurrent Unit Bidirecional (cont.)\cite{chung2014}}
 
-
-  \scriptsize
- 
-      \centering
-      \textbf{BiGRU}
-     
-
-      \includegraphics[width=0.55\linewidth]{/home/ferna/cognite/apresentacao/figs/BiGRU.png}
-
-   \centering
-   \medskip
-\textbf{Por que utilizar BiGRU?}
-\begin{itemize}
-  \item Mantém as vantagens da GRU (menos parâmetros que LSTM).
-  \item Boa estabilidade em sequências longas.
-  \item Muito utilizada em \textbf{NLP, fala, anotação de sequência, NER, segmentação}.
-\end{itemize}
-
-
-\end{frame}
 
 
 % ======================
@@ -740,79 +745,80 @@ Desacoplada = backward como \textbf{professor} → forward \textbf{aprende a pre
   \renewcommand{\arraystretch}{1.3}
   \setlength{\tabcolsep}{3pt}
 
-  \resizebox{\textwidth}{!}{
-  \begin{tabular}{|p{2.2cm}|p{3.5cm}|p{4cm}|p{3.5cm}|}
-    \hline
-    \textbf{Método} &
-    \textbf{Mecânica de Fusão} &
-    \textbf{Vantagens Principais} &
-    \textbf{Aplicações Típicas} \\ \hline
+  \begin{table}[h]
+    \centering
+    \resizebox{\textwidth}{!}{%
+      \begin{tabular}{@{}p{2.2cm}p{3.5cm}p{4cm}p{3.5cm}@{}}
+        \toprule
+        \textbf{Método} &
+        \textbf{Mecânica de Fusão} &
+        \textbf{Vantagens Principais} &
+        \textbf{Aplicações Típicas} \\
+        \midrule
 
-    \textbf{Concatenação} &
-    Combina diretamente os estados das direções:
-    \[
-      z_t = [\,h_t^{\rightarrow} ; h_t^{\leftarrow}\,]
-    \]
-    &
-    \begin{itemize}
-      \item Simples e eficiente.
-      \item Mantém toda a informação temporal.
-      \item Facilmente integrável a MLPs ou CNNs.
-    \end{itemize}
-    &
-    \begin{itemize}
-      \item Classificação e regressão offline.
-      \item Representação de contexto completo.
-      \item Modelos base ou ablação.
-    \end{itemize}
-    \\ \hline
+        \textbf{Concatenação} &
+        Combina diretamente os estados das direções:
+        $\displaystyle z_t = [\,h_t^{\rightarrow} ; h_t^{\leftarrow}\,]$ &
+        \begin{itemize}
+          \item Simples e eficiente.
+          \item Mantém toda a informação temporal.
+          \item Fácil de integrar com MLPs/CNNs.
+        \end{itemize}
+        &
+        \begin{itemize}
+          \item Classificação e regressão offline.
+          \item Representação de contexto completo.
+          \item Modelos base ou ablação.
+        \end{itemize}
+        \\
 
-    \textbf{Fusão Gated} &
-    Calcula um gate dinâmico:
-    \[
-      z_t = g_t \odot h_t^{\rightarrow} + (1-g_t) \odot h_t^{\leftarrow}
-    \]
-    onde \( g_t = \sigma(W_g [h_t^{\rightarrow};h_t^{\leftarrow}]) \)
-    &
-    \begin{itemize}
-      \item Adapta a contribuição de cada direção por timestep.
-      \item Robusto a ruído e desbalanceamento temporal.
-      \item Oferece interpretabilidade (importância causal/anticausal).
-    \end{itemize}
-    &
-    \begin{itemize}
-      \item Séries ruidosas (sensores, texto clínico).
-      \item Diagnóstico temporal e detecção de eventos.
-    \end{itemize}
-    \\ \hline
+        \textbf{Fusão Gated} &
+        Calcula um gate dinâmico:
+        $\displaystyle z_t = g_t \odot h^{\rightarrow}_t
+          + (1-g_t)\odot h^{\leftarrow}_t$,
+        onde $\displaystyle g_t = \sigma\!\big(W_g [h^{\rightarrow}_t;h^{\leftarrow}_t]\big)$
+        &
+        \begin{itemize}
+          \item Adapta a contribuição de cada direção por timestep.
+          \item Robusto a ruído e desbalanceamento temporal.
+          \item Oferece interpretabilidade (causal/anticausal).
+        \end{itemize}
+        &
+        \begin{itemize}
+          \item Séries ruidosas (sensores, texto clínico).
+          \item Diagnóstico temporal.
+          \item Detecção de eventos.
+        \end{itemize}
+        \\
 
-    \textbf{Fuser RNN} &
-    Empilha uma RNN extra sobre a fusão:
-    \[
-      u_t = \text{GRU}_\text{fuser}([h_t^{\rightarrow};h_t^{\leftarrow}], u_{t-1})
-    \]
-    &
-    \begin{itemize}
-      \item Agrega contexto de longo prazo.
-      \item Suaviza e refina a sequência.
-      \item Permite distilação causal para deploy online.
-    \end{itemize}
-    &
-    \begin{itemize}
-      \item Modelos industriais/tempo real.
-      \item Reconstrução e previsão contínua.
-      \item “Teacher–student” bidirecional $\rightarrow$ causal.
-    \end{itemize}
-    \\ \hline
-  \end{tabular}
-  } % fecha resizebox
+        \textbf{Fuser RNN} &
+        Empilha uma RNN extra sobre a fusão:
+        $\displaystyle
+          u_t = \mathrm{GRU}_\text{fuser}
+          ([h^{\rightarrow}_t;h^{\leftarrow}_t], u_{t-1})$
+        &
+        \begin{itemize}
+          \item Agrega contexto de longo prazo.
+          \item Suaviza e refina a sequência.
+          \item Permite distilação causal para deploy online.
+        \end{itemize}
+        &
+        \begin{itemize}
+          \item Modelos industriais/tempo real.
+          \item Reconstrução e previsão contínua.
+          \item “Teacher–student” bidirecional $\rightarrow$ causal.
+        \end{itemize}
+        \\
 
-  \vspace{0.2cm}
+        \bottomrule
+      \end{tabular}%
+    }
+  \end{table}
+
+  \vspace{0.01cm}
   \centering
   \textit{\small Concat = simples, Gate = adaptativo, Fuser = refinamento temporal e causal.}
 \end{frame}
-
-
 
 % ======================
 \section{Regularização e Estabilização em RNNs}
@@ -897,6 +903,11 @@ g = \nabla_{\theta} L
  \item Contribui para estabilidade numérica, e facilita o treinamento de redes profundas ou recorrentes.
 \end{itemize}
 \end{frame}
+
+
+
+
+
 
 
 
@@ -1049,7 +1060,7 @@ Se uma \textbf{máscara diferente} for aplicada a cada timestep:
 \begin{itemize}
   \item BiLSTM/BiGRU incorporam \textbf{contexto futuro} → melhores embeddings.
   \item Ainda são eficazes quando há \textbf{causalidade}, \textbf{baixa latência} ou \textbf{poucos dados}.
-  \item \textbf{Transformers não substituem RNNs}: estendem a ideia com \textbf{atenção global}.
+  \item \textbf{Transformers não substituem RNNs}: estendem a ideia com \textbf{multihead attention}.
 \end{itemize}
 
 \medskip
@@ -1105,7 +1116,7 @@ Cognite — Sinais reais de sensores de um compressor industrial offshore.
     \item Warm up
     \item Schedular
     \item Weight decay (L2 regularization).
-    \item Early stopping com paciência de 20 épocas para Predição e 50 épocas para Reconstrução.
+    \item Early stopping com paciência de 20 épocas para Predição (com 300 épocas no treinamento) e 50 épocas para Reconstrução (com 500 épocas no treinamento).
   \end{itemize}
 
 \end{frame}
@@ -1153,8 +1164,23 @@ Cognite — Sinais reais de sensores de um compressor industrial offshore.
 
 \end{frame}
 
+\begin{frame}{Caso de Uso em Séries Temporais - Metodologia de Treinamento e Avaliação}
 
+  \[
+\mathrm{Softplus}_\beta(x)
+= \frac{1}{\beta}\,\log\!\bigl(1 + e^{\beta x}\bigr)
+\]
+ \vspace{0.2cm}
+  \small
+  \textbf{Softplus}: função de ativação suave que aproxima a ReLU, 
+  evitando regiões mortas e garantindo derivada contínua. 
+  Controla-se a suavidade via o parâmetro $\beta$: valores maiores tornam
+  a curva mais próxima da ReLU; menores tornam a função mais suave.
+\vspace{0.25cm}
+\centering
+\includegraphics[width=0.45\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/softplus.png}
 
+\end{frame}
 
 \begin{frame}{Caso de Uso em Séries Temporais - Resultados MSE micro na Predição e Reconstrução}
 \centering
@@ -1178,17 +1204,16 @@ Cognite — Sinais reais de sensores de um compressor industrial offshore.
 \toprule
 \textbf{Configuração} & \textbf{Média} & \textbf{Desvio padrão} \\
 \midrule
-\textbf{BiGRU coupled}           & 0.560974 & {$\pm\,0.350897$} \\
-BiGRU                      & 0.568346 & {$\pm\,0.348221$} \\
-GRU                                & 0.592064 & {$\pm\,0.329763$} \\
-BiGRU  gate                 & 0.605323 & {$\pm\,0.385184$} \\
-BiLSTM                      & 0.661299 & {$\pm\,0.370403$} \\
-BiLSTM coupled                            & 0.663868 & {$\pm\,0.426597$} \\
-BiLSTM  gate                & 0.669857 & {$\pm\,0.359655$} \\
-LSTM                               & 0.679496 & {$\pm\,0.365859$} \\
-BiGRU  GRU Fuser            & 0.686827 & {$\pm\,0.320792$} \\
-BiLSTM  GRU Fuser           & 0.741522 & {$\pm\,0.380521$} \\
-
+\textbf{BiGRU coupled}           & 0.5610 & {$\pm\,0.3509$} \\
+BiGRU                      & 0.5684 & {$\pm\,0.3483$} \\
+GRU                                & 0.5921 & {$\pm\,0.3298$} \\
+BiGRU  gate                 & 0.6054 & {$\pm\,0.3852$} \\
+BiLSTM                      & 0.6613 & {$\pm\,0.3705$} \\
+BiLSTM coupled                            & 0.6639 & {$\pm\,0.4266$} \\
+BiLSTM  gate                & 0.6699 & {$\pm\,0.3597$} \\
+LSTM                               & 0.6795 & {$\pm\,0.3659$} \\
+BiGRU  GRU Fuser            & 0.6869 & {$\pm\,0.3208$} \\
+BiLSTM  GRU Fuser           & 0.7416 & {$\pm\,0.3806$} \\
 \bottomrule
 \end{tabular}
 }% <-- fecha o \resizebox
@@ -1203,20 +1228,20 @@ BiLSTM  GRU Fuser           & 0.741522 & {$\pm\,0.380521$} \\
 \toprule
 \textbf{Configuração} & \textbf{Média} & \textbf{Desvio padrão} \\
 \midrule
-\textbf{BiGRU coupled GRU Fuser}           & 0.123370 & {$\pm\,0.040885$} \\
-BiLSTM coupled gate                        & 0.133257 & {$\pm\,0.035817$} \\
-BiGRU coupled                             & 0.133886 & {$\pm\,0.035452$} \\
-BiLSTM coupled                            & 0.137234 & {$\pm\,0.040035$} \\
-BiLSTM GRU Fuser           & 0.138969 & {$\pm\,0.043256$} \\
-BiGRU gate                 & 0.140517 & {$\pm\,0.037876$} \\
-BiGRU                     & 0.141365 & {$\pm\,0.038309$} \\
-BiLSTM gate                & 0.143339 & {$\pm\,0.042448$} \\
-BiLSTM                     & 0.144023 & {$\pm\,0.033444$} \\
-BiGRU GRU Fuser            & 0.146325 & {$\pm\,0.038838$} \\
-BiLSTM coupled GRU Fuser                   & 0.153163 & {$\pm\,0.038024$} \\
-BiGRU coupled gate                         & 0.161285 & {$\pm\,0.027645$} \\
-GRU                                & 0.291358 & {$\pm\,0.043240$} \\
-LSTM                               & 0.392539 & {$\pm\,0.044289$} \\
+\textbf{BiGRU coupled GRU Fuser}           & 0.1234 & {$\pm\,0.0409$} \\
+BiLSTM coupled gate                        & 0.1333 & {$\pm\,0.0359$} \\
+BiGRU coupled                             & 0.1339 & {$\pm\,0.0355$} \\
+BiLSTM coupled                            & 0.1373 & {$\pm\,0.0401$} \\
+BiLSTM GRU Fuser           & 0.1390 & {$\pm\,0.0433$} \\
+BiGRU gate                 & 0.1406 & {$\pm\,0.0379$} \\
+BiGRU                     & 0.1414 & {$\pm\,0.0384$} \\
+BiLSTM gate                & 0.1434 & {$\pm\,0.0425$} \\
+BiLSTM                     & 0.1441 & {$\pm\,0.0335$} \\
+BiGRU GRU Fuser            & 0.1464 & {$\pm\,0.0389$} \\
+BiLSTM coupled GRU Fuser                   & 0.1532 & {$\pm\,0.0381$} \\
+BiGRU coupled gate                         & 0.1613 & {$\pm\,0.0277$} \\
+GRU                                & 0.2914 & {$\pm\,0.0433$} \\
+LSTM                               & 0.3926 & {$\pm\,0.0443$} \\
 \bottomrule
 \end{tabular}
 }% <-- fecha o \resizebox
@@ -1226,14 +1251,17 @@ LSTM                               & 0.392539 & {$\pm\,0.044289$} \\
 
 \vspace{1.5mm}
 {\scriptsize
-\textcolor{blue!60}{\(\star\) Regra dos Dois Desvios Padrão:  
-valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo de confiança de 95\%.}
-}
+\(\star\) \textbf{Regra dos Dois Desvios Padrão:} 
+Valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo de confiança de 95\%.\\
+\(\star\)\textbf{Teste de Wilcoxon:} Não foi possível realizar o teste estatístico de Wilcoxon entre os melhores modelos de predição e reconstrução,
+pois há forte desbalanceamento entre as classes.}
+
 \end{frame}
 
 
+
 % ================= SLIDE 5 =================
-\begin{frame}{Cao de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network - HARNN \cite{huang2019_hierarchical_multilabel_text_classification}}
+\begin{frame}{Cao de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network - HARNN (2019) \cite{huang2019_hierarchical_multilabel_text_classification}}
   \small
   \textbf{Problema:} Classificação multirrótulo hierárquica na DBpedia (L1=9, L2=70, L3=219). \\
     \textbf{Desafio:} prever vários rótulos mantendo coerência pai→filho e lidando com desbalanceamento.
@@ -1242,7 +1270,7 @@ valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo 
 \end{frame}
 
 % ================= SLIDE 4 =================
-\begin{frame}{Caso de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network (HARNN) \cite{huang2019_hierarchical_multilabel_text_classification}}
+\begin{frame}{Caso de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network (HARNN) (2019) \cite{huang2019_hierarchical_multilabel_text_classification}}
   \scriptsize
 
   % ===== ITEM 1 =====
@@ -1300,7 +1328,7 @@ valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo 
 
 
 % ================= SLIDE 17 =================
-\begin{frame}{Resultados -- Dados de teste}
+\begin{frame}{Resultados HARNN -- Dados de teste}
   \scriptsize
   \begin{columns}[T,onlytextwidth]
 
