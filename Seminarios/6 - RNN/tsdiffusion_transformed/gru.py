@@ -258,22 +258,14 @@ class TSDF_GRU(TSDiffusion):
             nn.Linear(in_channels*2, hidden_dim),
             nn.ReLU(),
         )
-        self.decoder = nn.Sequential(
-            nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
-            nn.GELU(),
-            nn.Linear(hidden_dim // 2, in_channels),
-        )
+
         self.static_dim = static_dim
         if static_dim > 0:
             self.static_proj = nn.Sequential(
                 nn.Linear(static_dim, hidden_dim),
                 nn.ReLU()
             )
-        self.lambda_head = nn.Sequential(
-            nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
-            nn.GELU(),
-            nn.Linear(hidden_dim // 2, 1)       # escalar
-        )
+
         if status_dim > 0:
             self.tmax_head = nn.Sequential(
                 nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
@@ -291,6 +283,17 @@ class TSDF_GRU(TSDiffusion):
             self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
         if self.lam[0] > 0.0:
             self.encoder_ode_x = GRUEncoder(hidden_dim, hidden_dim, bi_gru, bi_method,bi_coupled)
+            self.decoder = nn.Sequential(
+                nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
+                nn.GELU(),
+                nn.Linear(hidden_dim // 2, in_channels),
+            )
+            if log_likelihood:
+                self.lambda_head = nn.Sequential(
+                    nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                    nn.GELU(),
+                    nn.Linear(hidden_dim // 2, 1)       # escalar
+                )
 
     def forward(
         self,
@@ -331,9 +334,16 @@ class TSDF_GRU(TSDiffusion):
         if static_feats is not None and self.static_dim > 0:
             se = self.static_proj(static_feats).unsqueeze(1)  # (b,1,model_dim)
             h = h + se
-        h = self.encoder_ode_x(h, timestamps, only_gru)
-        
-        if test:
-            return h,h,self.decoder(h) if return_x_hat else None
+        if self.lam[0]>0:
+            h = self.encoder_ode_x(h, timestamps, only_gru)
+        if self.lam[2]>0:
+            ht = self.encoder_ode_tmax(h, timestamps, only_gru)
+            tmax_hat = self.tmax_head(ht)
         else:
-            return h,h,self.decoder(h) if return_x_hat else None, noise, noise
+            ht = None
+            tmax_hat = None
+
+        if test:
+            return h,h,ht,self.decoder(h) if return_x_hat and self.lam[0]>0 else None,tmax_hat
+        else:
+            return h,h,ht,self.decoder(h) if return_x_hat and self.lam[0]>0 else None,tmax_hat, noise, noise
