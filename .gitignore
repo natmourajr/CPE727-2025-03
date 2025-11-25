@@ -221,3 +221,6 @@ __marimo__/
 
 # for Data folder
 Data/*
+
+# tmp
+tmp/

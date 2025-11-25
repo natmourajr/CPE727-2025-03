@@ -1,0 +1,6 @@
+[project]
+name = "mnist_loader"
+version = "0.1.0"
+description = "DataLoader for MNIST dataset"
+readme = "README.md"
+requires-python = ">=3.13"
