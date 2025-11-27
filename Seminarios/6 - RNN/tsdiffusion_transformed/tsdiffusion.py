@@ -297,12 +297,12 @@ class TSDiffusion(ODEJumpEncoder):
 
         if self.lam[2]>0:
             #L3
-            offset_state_pred = (state_pred - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
+            offset_state_pred = (status_pred_window - (state_pred - ts_batch.unsqueeze(-1))).clamp(min=0,max=status_pred_window)
             offset_tmax = (tmax).clamp(min=0,max=status_pred_window) 
-            changing_state = (offset_state_pred>0).float()
-            err = (offset_tmax - offset_state_pred) / status_pred_window   # (B,T,S)
+            changing_state = (offset_state_pred<status_pred_window).float()
+            err = (offset_tmax - offset_state_pred * changing_state) / status_pred_window   # (B,T,S)
             if self.log_likelihood:
-                lam_t_tmax = F.softplus(self.lambda_tmax_head(state_tmax)).clamp(min=1e-8, max=1e8)  # (B,T,1)
+                lam_t_tmax = F.softplus(self.lambda_tmax_head(state_tmax)).clamp(min=1/(2*math.pi), max=2*math.pi)  # (B,T,1)
                 lam2_tmax  = lam_t_tmax.squeeze(-1)                                            # (B,T)
                 lam2_tmax_clamped = lam2_tmax.clamp(min=0.1)  # novo tensor, sem in-place
                 err_no_change = err * (1-changing_state)
@@ -321,10 +321,9 @@ class TSDiffusion(ODEJumpEncoder):
                 L3 = -(log_ptmax.sum())
                 L3_div = float(err.numel())
             else:
-                err_change = err * changing_state
-                sse_tmax_change = (err_change**2).sum(dim=-1)
+                sse_tmax_change = (err**2).sum(dim=-1)
                 L3 = sse_tmax_change.sum()
-                L3_div = float(changing_state.sum().item() or 1.0)
+                L3_div = float(err.numel())
                  
         else:
             L3 = torch.tensor(0.0, device=state.device)
@@ -600,9 +599,9 @@ class TSDiffusion(ODEJumpEncoder):
 
             if early_stopping:
                 score = (test_metrics["micro_mse"]*self.lam[0] + test_metrics["micro_mse_n"]*self.lam[1] + \
-                         test_metrics["micro_mse_s"]*self.lam[3] + \
+                         test_metrics["micro_mse_s"]*self.lam[2] + \
                 2 * (test_metrics["micro_se"]*self.lam[0] + test_metrics["micro_se_n"]*self.lam[1] \
-                     + test_metrics["micro_se_s"]*self.lam[1]))
+                     + test_metrics["micro_se_s"]*self.lam[2]))
                 improved = score < best_score
                 if improved:
                     self.save("tsdiffusion.pt"); best_score = score
@@ -788,14 +787,14 @@ class TSDiffusion(ODEJumpEncoder):
                     x_masked, timestamps=ts_batch, static_feats=s, 
                     return_x_hat=True, mask=m_train, mask_ts=mask_ts, test=False,only_gru=only_gru)
                 
-                offset_state_pred = (p - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
+                offset_state_pred = (status_pred_window - (p - ts_batch.unsqueeze(-1))).clamp(min=0,max=status_pred_window)
                 offset_tmax = (tmax_hat).clamp(min=0,max=status_pred_window) 
-                changing_state = (offset_state_pred>0).float()
-                err = (offset_tmax - offset_state_pred) / status_pred_window   # (B,T,S)
-                err_change = err * changing_state
+                changing_state = ((offset_state_pred<status_pred_window)*(offset_state_pred>0)).float()
+                err = (offset_tmax - offset_state_pred * changing_state) / status_pred_window   # (B,T,S)
+                #err_change = err
 
-                sse_s_bt  = (err_change**2).sum(dim=(1, 2))           # (B,)
-                nobs_s_bt = changing_state.sum(dim=(1, 2))               # (B,)
+                sse_s_bt  = (err**2).sum(dim=(1, 2))           # (B,)
+                nobs_s_bt = (changing_state).sum(dim=(1, 2))+1e-8               # (B,)
                 mse_s_bt  = (sse_s_bt / nobs_s_bt).detach().cpu().numpy()
                 sse_s_bt  = sse_s_bt.detach().cpu().numpy()
                 nobs_s_bt = nobs_s_bt.detach().cpu().numpy()

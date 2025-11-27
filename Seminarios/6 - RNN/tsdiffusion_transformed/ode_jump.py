@@ -6,7 +6,7 @@ import numpy as np
 import math
 from sklearn.preprocessing import RobustScaler
 max_drop = 0.7
-TS_SPAN = 60 * 60 * 24 * 30
+TS_SPAN = 60 * 60
 
 
 # ---------- Helpers privados ----------
@@ -553,9 +553,9 @@ class ODEJump(nn.Module):
             df = df.sort_values(timestamp_col).reset_index(drop=True)
 # ---------------- NORMALIZAÇÃO DO TEMPO ----------------
         if timestamp_col != "index":
-            ts_raw = pd.to_datetime(df[timestamp_col]).astype("int64") / 1e6
+            ts_raw = pd.to_datetime(df[timestamp_col]).astype("int64") / 1e9
         else:
-            ts_raw = pd.to_datetime(df.index).astype("int64") / 1e6
+            ts_raw = pd.to_datetime(df.index).astype("int64") / 1e9
         t0 = ts_raw[0]
         ts_rel = ((ts_raw - t0)/TS_SPAN).to_numpy(dtype=np.float32)               # começa em 0
         if predict_state_cols is not None:
@@ -569,7 +569,7 @@ class ODEJump(nn.Module):
                 dt_values = pd.to_datetime(col, errors="coerce")
                 ints = dt_values.view("int64").astype(float)
                 ints[dt_values.isna()] = np.nan
-                return ints / 1e6
+                return ints / 1e9
 
             state_pred = df[state_columns].apply(_to_epoch_ms)
 
