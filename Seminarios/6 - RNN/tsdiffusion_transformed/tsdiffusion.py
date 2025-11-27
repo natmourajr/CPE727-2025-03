@@ -298,7 +298,7 @@ class TSDiffusion(ODEJumpEncoder):
         if self.lam[2]>0:
             #L3
             offset_state_pred = (state_pred - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
-            offset_tmax = (tmax - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window) 
+            offset_tmax = (tmax).clamp(min=0,max=status_pred_window) 
             changing_state = (offset_state_pred>0).float()
             err = (offset_tmax - offset_state_pred) / status_pred_window   # (B,T,S)
             if self.log_likelihood:
@@ -341,17 +341,18 @@ class TSDiffusion(ODEJumpEncoder):
             L4 = torch.tensor(0.0, device=state.device)
             L4_div = 1.0
 
-        if noise_hat is None:
+        if self.lam[1] == 0:
             L2 = torch.tensor(0.0, device=state.device)
             L2_div = torch.tensor(1.0, device=state.device)
+            loss = self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div
         else:
             L2 = F.mse_loss(noise, noise_hat, reduction='sum')
             L2_div = (torch.ones_like(state) * m_t).sum()
 
-        if noise_hat is not None and L2 / L2_div > 0.1:
-            loss = self.lam[0]*L1/L1_div * 1e-3 + self.lam[1] * L2 / L2_div + self.lam[3]*L4/L4_div * 1e-3
-        else:
-            loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[3]*L4/L4_div
+            if L2 / L2_div > 0.1:
+                loss = + self.lam[1] * L2 / L2_div + (self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div) * 1e-3
+            else:
+                loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div
 
         return (
             loss,
@@ -785,13 +786,12 @@ class TSDiffusion(ODEJumpEncoder):
                     return_x_hat=True, mask=m_train, mask_ts=mask_ts, test=False,only_gru=only_gru)
                 
                 offset_state_pred = (p - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
-                offset_tmax = (tmax_hat - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window) 
+                offset_tmax = (tmax_hat).clamp(min=0,max=status_pred_window) 
                 changing_state = (offset_state_pred>0).float()
                 err = (offset_tmax - offset_state_pred) / status_pred_window   # (B,T,S)
                 err_change = err * changing_state
-                sse_tmax_change = (err_change**2).sum(dim=-1)
 
-                sse_s_bt  = sse_tmax_change.sum(dim=(1, 2))           # (B,)
+                sse_s_bt  = (err_change**2).sum(dim=(1, 2))           # (B,)
                 nobs_s_bt = changing_state.sum(dim=(1, 2))               # (B,)
                 mse_s_bt  = (sse_s_bt / nobs_s_bt).detach().cpu().numpy()
                 sse_s_bt  = sse_s_bt.detach().cpu().numpy()
@@ -803,6 +803,7 @@ class TSDiffusion(ODEJumpEncoder):
                 sse_n_bt  = sse_n_bt.detach().cpu().numpy()
                 nobs_n_bt = nobs_n_bt.detach().cpu().numpy()
 
+                if x_hat is None: x_hat = x
                 mask_err = m * (1.0 - m_train)
                 sse_bt  = ((x - x_hat)**2 * mask_err * cc).sum(dim=(1, 2))               # (B,)
                 nobs_bt = (mask_err * cc).sum(dim=(1, 2)).clamp(min=1.0)                   # (B,)

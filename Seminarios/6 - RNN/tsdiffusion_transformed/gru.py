@@ -245,10 +245,10 @@ class TSDF_GRU(TSDiffusion):
         log_likelihood: bool = False
         ):
         super().__init__(        
-            in_channels,
-            hidden_dim,
-            static_dim,
-            lam,
+            in_channels=in_channels,
+            hidden_dim=hidden_dim,
+            static_dim=static_dim,
+            lam=lam,
             num_steps=num_steps,
             cost_columns=cost_columns,
             status_dim=status_dim,
@@ -268,14 +268,14 @@ class TSDF_GRU(TSDiffusion):
 
         if status_dim > 0:
             self.tmax_head = nn.Sequential(
-                nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                nn.Linear(hidden_dim  if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
                 nn.ReLU(),
                 nn.Linear(hidden_dim // 2, status_dim)
             )
             self.encoder_ode_tmax = GRUEncoder(hidden_dim, hidden_dim, bi_gru, bi_method,bi_coupled)
             if self.log_likelihood:
                 self.lambda_tmax_head = nn.Sequential(
-                    nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                    nn.Linear(hidden_dim  if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
                     nn.GELU(),
                     nn.Linear(hidden_dim // 2, 1)       # escalar
                 )   
@@ -290,7 +290,7 @@ class TSDF_GRU(TSDiffusion):
             )
             if log_likelihood:
                 self.lambda_head = nn.Sequential(
-                    nn.Linear(hidden_dim*2  if not (bi_gru and bi_method=='concat') else hidden_dim * 3, hidden_dim // 2),
+                    nn.Linear(hidden_dim  if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
                     nn.GELU(),
                     nn.Linear(hidden_dim // 2, 1)       # escalar
                 )

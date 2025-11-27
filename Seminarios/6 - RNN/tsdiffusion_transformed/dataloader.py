@@ -1,10 +1,13 @@
 from datetime import datetime
+import os
+
+import numpy as np
 import pandas as pd
-from cognite.client import CogniteClient, ClientConfig
+from cognite.client import ClientConfig, CogniteClient
 from cognite.client.credentials import OAuthClientCredentials
 from sklearn.preprocessing import RobustScaler
+
 from .segmenter import UnsupervisedStateSegmenter
-import os
 
 # --- CREDENCIAIS ---
 CLIENT_ID = "1b90ede3-271e-401b-81a0-a4d52bea3273"
@@ -85,26 +88,40 @@ class DataLoader():
         if df.empty or 'states' not in df.columns:
             self.df = df
             return
-
-        unique_states = sorted(df['states'].dropna().unique())
-        for state_id in unique_states:
-            df[f'state-{state_id}'] = pd.NaT
-
-        change_mask = df['states'].diff().fillna(0) != 0
-        change_points = df.index[change_mask]
-
-        if len(df) == 0:
+        states_series = df['states']
+        unique_states = sorted(states_series.dropna().unique())
+        if len(unique_states) == 0:
             self.df = df
             return
 
-        segment_start = df.index[0]
-        for change_time in change_points:
-            next_state = df.at[change_time, 'states']
-            col_name = f'state-{next_state}'
-            if col_name in df.columns:
-                mask = (df.index >= segment_start) & (df.index < change_time)
-                df.loc[mask, col_name] = change_time
-            segment_start = change_time
+        # prepara colunas (mantidas vazias até preencher o próximo estado)
+        state_cols = {state_id: f'state-{state_id}' for state_id in unique_states}
+        for col in state_cols.values():
+            df[col] = pd.NaT
+
+        states_values = states_series.to_numpy()
+        # pontos onde o estado muda (ignora primeira linha)
+        change_positions = np.where(states_series.ne(states_series.shift()).to_numpy())[0]
+        change_positions = change_positions[change_positions > 0]
+
+        if len(change_positions) == 0:
+            self.df = df
+            return
+
+        prev_pos = 0
+        for pos in change_positions:
+            next_state = states_values[pos]
+            if pd.isna(next_state):
+                prev_pos = pos
+                continue
+            col_name = state_cols.get(next_state)
+            if col_name is None:
+                prev_pos = pos
+                continue
+            change_time = df.index[pos]
+            if prev_pos < pos:
+                df.iloc[prev_pos:pos, df.columns.get_loc(col_name)] = change_time
+            prev_pos = pos
 
         self.df = df
 
