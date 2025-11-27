@@ -287,11 +287,13 @@ class TSDiffusion(ODEJumpEncoder):
                 # Se quiser normalizar para não depender de C/T, use média por observação: # loss por (B,T) normalizada por nobs: 
                 neg_log_px = -(log_px) # (B,T) 
                 L1 = neg_log_px.sum() # escalar
+                L1_div = nobs.sum().clamp(min=1.0)
             else:
                 L1 = sse.sum()  # escalar
         else:
             L1 = torch.tensor(0.0, device=state.device)
-        L1_div = nobs.sum().clamp(min=1.0)
+            L1_div = torch.tensor(1.0, device=state.device)
+        
 
         if self.lam[2]>0:
             #L3

@@ -559,8 +559,19 @@ class ODEJump(nn.Module):
         t0 = ts_raw[0]
         ts_rel = ((ts_raw - t0)/TS_SPAN).to_numpy(dtype=np.float32)               # começa em 0
         if predict_state_cols is not None:
-        # garante numérico; valores inválidos viram NaN
-            state_pred = df[predict_state_cols].values
+            state_columns = (
+                [predict_state_cols]
+                if isinstance(predict_state_cols, str)
+                else list(predict_state_cols)
+            )
+            # garante numérico, mantendo posições inválidas como NaN
+            def _to_epoch_ms(col: pd.Series) -> pd.Series:
+                dt_values = pd.to_datetime(col, errors="coerce")
+                ints = dt_values.view("int64").astype(float)
+                ints[dt_values.isna()] = np.nan
+                return ints / 1e6
+
+            state_pred = df[state_columns].apply(_to_epoch_ms)
 
             # normaliza para [0,1] usando o mesmo t0/TS_SPAN do resto do código
             state_pred = (state_pred - t0) / TS_SPAN
