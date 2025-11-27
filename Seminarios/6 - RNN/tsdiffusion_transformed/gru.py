@@ -175,7 +175,16 @@ class GRUEncoder(nn.Module):
     - ODEFunc integra h(t) entre eventos.
     - Self‑attention usa máscara para faltantes (opcional).
     """
-    def __init__(self, in_dim, hidden_dim, bi_gru, bi_method, bi_coupled, variational_dropout: float = 0.0):
+    def __init__(
+        self,
+        in_dim,
+        hidden_dim,
+        bi_gru,
+        bi_method,
+        bi_coupled,
+        variational_dropout: float = 0.0,
+        use_layernorm: bool = True
+    ):
         super().__init__()
         self.bi_gru = bi_gru
         self.bi_method = bi_method
@@ -183,9 +192,11 @@ class GRUEncoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.in_dim = in_dim
         self.variational_dropout = float(max(0.0, variational_dropout))
+        self.use_layernorm = use_layernorm
         self.gru = nn.GRUCell(in_dim, in_dim)
-        self.norm_x = nn.LayerNorm(in_dim)
-        self.norm_H = nn.LayerNorm(in_dim if not (bi_gru and bi_method=='concat') else in_dim*2)
+        self.norm_x = nn.LayerNorm(in_dim) if use_layernorm else None
+        out_dim = in_dim if not (bi_gru and bi_method == 'concat') else in_dim * 2
+        self.norm_H = nn.LayerNorm(out_dim) if use_layernorm else None
         if bi_gru:
             self.gru_bw = nn.GRUCell(in_dim, in_dim)
             if bi_method == 'gate':
@@ -214,7 +225,8 @@ class GRUEncoder(nn.Module):
         #eps = 1e-6
         h = torch.zeros(B, self.in_dim, device=x.device)
         states = []
-        x = self.norm_x(x)
+        if self.norm_x is not None:
+            x = self.norm_x(x)
         if self.bi_gru:
 
             states_bw = []
@@ -251,7 +263,8 @@ class GRUEncoder(nn.Module):
             H = torch.stack(states, dim=1)   # (B, T, hidden_dim*2)
         else:
             H = states  # (B, T, hidden_dim)
-        H = self.norm_H(H)
+        if self.norm_H is not None:
+            H = self.norm_H(H)
         return H if self.in_dim == self.hidden_dim else self.encoder(H)
 
 class TSDF_GRU(TSDiffusion):
@@ -268,7 +281,8 @@ class TSDF_GRU(TSDiffusion):
         bi_method: str = 'concat',
         bi_coupled: bool = False,
         log_likelihood: bool = False,
-        variational_dropout: float = 0.0
+        variational_dropout: float = 0.0,
+        use_layernorm: bool = True
         ):
         super().__init__(        
             in_channels=in_channels,
@@ -304,7 +318,8 @@ class TSDF_GRU(TSDiffusion):
                 bi_gru,
                 bi_method,
                 bi_coupled,
-                variational_dropout=variational_dropout
+                variational_dropout=variational_dropout,
+                use_layernorm=use_layernorm
             )
             if self.log_likelihood:
                 self.lambda_tmax_head = nn.Sequential(
@@ -321,7 +336,8 @@ class TSDF_GRU(TSDiffusion):
                 bi_gru,
                 bi_method,
                 bi_coupled,
-                variational_dropout=variational_dropout
+                variational_dropout=variational_dropout,
+                use_layernorm=use_layernorm
             )
             self.decoder = nn.Sequential(
                 nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
