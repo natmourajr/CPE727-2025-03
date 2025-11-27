@@ -66,6 +66,11 @@ class TSDiffusion(ODEJumpEncoder):
     "Score-Based Generative Modeling in Latent Space" (https://arxiv.org/abs/2206.00364).
     Usa Transformer com máscara causal para codificar a série temporal.
     """
+    optimizers: dict[torch.optim.Optimizer] = {
+        'adam': torch.optim.Adam,
+        'adamw': torch.optim.AdamW,
+        'radam': torch.optim.RAdam
+    }
     def __init__(
         self,
         in_channels: int,
@@ -272,7 +277,8 @@ class TSDiffusion(ODEJumpEncoder):
         state_pred: torch.Tensor,
         status_pred_window: np.float32,
         noise,
-        noise_hat
+        noise_hat,
+        lambda1
     ):
         if x_hat is not None:
             #L1
@@ -353,6 +359,13 @@ class TSDiffusion(ODEJumpEncoder):
             else:
                 loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div
 
+        if lambda1 > 0:
+            l1 = sum(
+                p.abs().sum() for n, p in self.named_parameters()
+                if p.requires_grad and "bias" not in n
+                )
+            loss = loss + lambda1 * l1
+
         return (
             loss,
             (float(L1.item()), float(L1_div.item())),
@@ -397,7 +410,13 @@ class TSDiffusion(ODEJumpEncoder):
         seed_split: int = 42,
         lr_t: float = 1.5e-4,
         only_gru: bool = False,
-        reconstruction_test: bool = True
+        reconstruction_test: bool = True,
+        optimizer_name: str = 'adamw',
+        optimizer_params: dict = {'weight_decay': 1e-4},
+        warmup_steps: int = 0,
+        min_lr_factor: float = 0.1,
+        lambda1: float = 0.0,
+        rebuild: bool = True
     ):
         delta_pred_window = np.float32(status_pred_window / TS_SPAN)
         # exemplo para ODEJumpEncoder: ajuste nomes conforme sua classe
@@ -408,13 +427,17 @@ class TSDiffusion(ODEJumpEncoder):
                 transformer_params.append(p)
             else:
                 base_params.append(p)
+        base_params = {'params': base_params}
+        transformer_params = {'params': transformer_params}
+        base_params.update(optimizer_params)
+        transformer_params.update(optimizer_params)
+        base_params['lr'] = lr
+        transformer_params['lr'] = lr_t
 
-        optimizer = torch.optim.AdamW([
-            {"params": base_params, "lr": lr, "weight_decay": 1e-4},
-            {"params": transformer_params, "lr": lr_t, "weight_decay": 1e-4},
+        optimizer = self.optimizers[optimizer_name]([
+            base_params,
+            transformer_params,
         ], betas=(0.9, 0.98))
-
-
 
 
 
@@ -489,8 +512,6 @@ class TSDiffusion(ODEJumpEncoder):
         best_score = float("inf"); best_epoch = 0; wait = patience
         steps_per_epoch = max(len(train_loader), 1)
         total_steps     = max(epochs * steps_per_epoch, 1)
-        warmup_steps    = int(0.1 * total_steps)
-        min_lr_factor   = 0.10  # lr final = 0.1 × lr_base
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
         for ep in range(1, epochs + 1):
             self.train()
@@ -514,7 +535,11 @@ class TSDiffusion(ODEJumpEncoder):
                 if s is not None: s = s.to(device)
                 if p is not None: p = p.to(device)
 
-                m_train   = self._make_random_mask(x,ts_batch,m,device)
+                if rebuild:
+                    m_train   = self._make_random_mask(x,ts_batch,m,device)
+                else:
+                    m_train = m.clone()
+                    m_train[:,-1,:]=0
                 m_train_ts = m_train.any(dim=2, keepdim=True).float()
                 x_masked = x * m_train
 
@@ -537,7 +562,8 @@ class TSDiffusion(ODEJumpEncoder):
                         p,
                         delta_pred_window,
                         noise, 
-                        noise_hat
+                        noise_hat,
+                        lambda1
                         )
 
                 scaler.scale(loss).backward()

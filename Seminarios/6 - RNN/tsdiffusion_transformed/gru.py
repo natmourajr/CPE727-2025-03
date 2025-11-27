@@ -2,6 +2,7 @@ from .ode_jump import ODEJump
 from .tsdiffusion import TSDiffusion
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
 
 
 class GRU(nn.Module):
@@ -10,13 +11,15 @@ class GRU(nn.Module):
         hidden_dim,
         bi_gru,
         bi_method,
-        bi_coupled
+        bi_coupled,
+        variational_dropout: float = 0.0
     ):
         super().__init__()
         self.bi_gru = bi_gru
         self.bi_method = bi_method
         self.bi_coupled = bi_coupled
         self.hidden_dim=hidden_dim
+        self.variational_dropout = float(max(0.0, variational_dropout))
         self.gru = nn.GRUCell(hidden_dim,hidden_dim)
         if bi_gru:
             self.gru_bw = nn.GRUCell(hidden_dim,hidden_dim)
@@ -27,11 +30,20 @@ class GRU(nn.Module):
                 )
             elif bi_method == 'gru':
                 self.gru_fuser = nn.GRUCell(hidden_dim*2,hidden_dim)
+    def _apply_variational_dropout(self, x):
+        if not self.training or self.variational_dropout <= 0:
+            return x
+        B, _, C = x.shape
+        mask = x.new_ones(B, C)
+        mask = F.dropout(mask, p=self.variational_dropout, training=True)
+        return x * mask.unsqueeze(1)
+
     def forward(self, x):
         """
         x  : (B, T, C)
         ts : (B, T)   segundos unix (normalizados ou não)
         """
+        x = self._apply_variational_dropout(x)
         B, T, _ = x.shape
         h = torch.zeros(B, self.hidden_dim, device=x.device)
         states = []
@@ -83,7 +95,8 @@ class TS_GRU(ODEJump):
         cost_columns: list = None,
         bi_gru: bool = False,
         bi_method: str = 'concat',
-        bi_coupled: bool = False
+        bi_coupled: bool = False,
+        variational_dropout: float = 0.0
         
     ):
         self.lam = lam
@@ -106,7 +119,13 @@ class TS_GRU(ODEJump):
                 nn.Linear(static_dim, hidden_dim),
                 nn.ReLU()
             )
-        self.gru = GRU(hidden_dim,bi_gru,bi_method,bi_coupled)
+        self.gru = GRU(
+            hidden_dim,
+            bi_gru,
+            bi_method,
+            bi_coupled,
+            variational_dropout=variational_dropout
+        )
         # (d) m_b  — probabilidade de observação (Bernoulli) para L4
         self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
 
@@ -156,13 +175,14 @@ class GRUEncoder(nn.Module):
     - ODEFunc integra h(t) entre eventos.
     - Self‑attention usa máscara para faltantes (opcional).
     """
-    def __init__(self, in_dim, hidden_dim, bi_gru, bi_method, bi_coupled):
+    def __init__(self, in_dim, hidden_dim, bi_gru, bi_method, bi_coupled, variational_dropout: float = 0.0):
         super().__init__()
         self.bi_gru = bi_gru
         self.bi_method = bi_method
         self.bi_coupled = bi_coupled
         self.hidden_dim = hidden_dim
         self.in_dim = in_dim
+        self.variational_dropout = float(max(0.0, variational_dropout))
         self.gru = nn.GRUCell(in_dim, in_dim)
         self.norm_x = nn.LayerNorm(in_dim)
         self.norm_H = nn.LayerNorm(in_dim if not (bi_gru and bi_method=='concat') else in_dim*2)
@@ -185,6 +205,11 @@ class GRUEncoder(nn.Module):
  
 
     def forward(self, x, ts, only_gru=False):
+        if self.training and self.variational_dropout > 0:
+            B, _, C = x.shape
+            mask = x.new_ones(B, C)
+            mask = F.dropout(mask, p=self.variational_dropout, training=True)
+            x = x * mask.unsqueeze(1)
         B, T, C = x.shape
         #eps = 1e-6
         h = torch.zeros(B, self.in_dim, device=x.device)
@@ -242,7 +267,8 @@ class TSDF_GRU(TSDiffusion):
         bi_gru: bool = False,
         bi_method: str = 'concat',
         bi_coupled: bool = False,
-        log_likelihood: bool = False
+        log_likelihood: bool = False,
+        variational_dropout: float = 0.0
         ):
         super().__init__(        
             in_channels=in_channels,
@@ -272,7 +298,14 @@ class TSDF_GRU(TSDiffusion):
                 nn.ReLU(),
                 nn.Linear(hidden_dim // 2, status_dim)
             )
-            self.encoder_ode_tmax = GRUEncoder(hidden_dim, hidden_dim, bi_gru, bi_method,bi_coupled)
+            self.encoder_ode_tmax = GRUEncoder(
+                hidden_dim,
+                hidden_dim,
+                bi_gru,
+                bi_method,
+                bi_coupled,
+                variational_dropout=variational_dropout
+            )
             if self.log_likelihood:
                 self.lambda_tmax_head = nn.Sequential(
                     nn.Linear(hidden_dim  if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
@@ -282,7 +315,14 @@ class TSDF_GRU(TSDiffusion):
         if self.lam[3] > 0.0:  
             self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
         if self.lam[0] > 0.0:
-            self.encoder_ode_x = GRUEncoder(hidden_dim, hidden_dim, bi_gru, bi_method,bi_coupled)
+            self.encoder_ode_x = GRUEncoder(
+                hidden_dim,
+                hidden_dim,
+                bi_gru,
+                bi_method,
+                bi_coupled,
+                variational_dropout=variational_dropout
+            )
             self.decoder = nn.Sequential(
                 nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
                 nn.GELU(),
