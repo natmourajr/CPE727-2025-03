@@ -683,7 +683,10 @@ class TSDiffusion(ODEJumpEncoder):
             ) for i in range(13)]
             res_index = [
                 (res[i]["micro_mse"]*self.lam[0] + res[i]["micro_mse_n"]*self.lam[1] + \
-                2 * (res[i]["micro_se"]*self.lam[0] + res[i]["micro_se_n"]*self.lam[1])) for
+                 res[i]["micro_mse_s"]*self.lam[2] + \
+                2 * (res[i]["micro_se"]*self.lam[0] + res[i]["micro_se_n"]*self.lam[1] \
+                     + res[i]["micro_se_s"] * self.lam[2]) 
+                ) for
                 i in range(len(res))
             ]
             r = np.median(res_index)
