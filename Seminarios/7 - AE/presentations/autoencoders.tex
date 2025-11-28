@@ -1,0 +1,958 @@
+\documentclass{beamer}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usepackage{tikz}
+\usepackage[portuguese]{babel}
+\usetikzlibrary{arrows.meta,calc, positioning}
+\usetheme{sintef}
+
+\newcommand{\testcolor}[1]{\colorbox{#1}{\textcolor{#1}{test}}~\texttt{#1}}
+
+\usefonttheme[onlymath]{serif}
+
+\titlebackground*{assets/background}
+
+% adicionar o numero na lista final da apresentação
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+
+\title{Autoencoders: da motivação às variantes modernas}
+\subtitle{}
+\course{CPE 727 - Aprendizado de Profundo}
+\author{Felipe Fink Grael, Rafael Tadeu Cardoso dos Santos, Thalles Nonato Leal Santos e Jefferson Osowsky}
+\begin{document}
+\maketitle
+
+% ============================
+% Autoencoder: Motivação
+% ============================
+
+\section{Motivação}
+
+\begin{frame}{Introdução}
+    \begin{columns}
+        \begin{column}{0.65\textwidth}
+            \begin{itemize}
+                \item \textbf{Definição:} Algoritmos cujo propósito principal é copiar sua entrada na saída \cite{Rumelhart1986}. São tipicamente construídos como redes neurais artificiais treinadas de forma não supervisionada.
+                \item \textbf{Arrquitetura Básica:}
+                \begin{itemize}
+                    \item Encoder: transforma entrada em representação latente
+                    \item Representação: espaço latente de menor, maior ou igual dimensão
+                    \item Decoder: reconstrói a entrada original
+                \end{itemize}
+                \item \textbf{Objetivo:} Aprender a função identidade \(f(x) \approx x\) através de um espaço latente
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.25\textwidth}
+            \begin{figure}[h]
+                \centering
+                \includegraphics[width=\textwidth]{assets/autoencoders.png}
+                \caption{Estrutura básica de Autoencoders.}
+                \label{fig:autoencoders}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+\begin{frame}{Componentes Fundamentais}
+    \framesubtitle{}
+
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.55\textwidth]{assets/autoencoder_mnist_example.png}
+        \caption{Estrutura de um autoencoder com representação latente\footnote{Figura de Umberto Michelucci \cite{UmbertoMichelucci2022}}.}
+        \label{fig:autoencoders2}
+    \end{figure}
+    \vspace{-2mm}
+    \begin{itemize}
+        \item \textbf{Encoder:} $f_\theta: \mathcal{X} \rightarrow \mathcal{H}$ onde $h = f_\theta(x)$
+        \item \textbf{Decoder:} $g_\phi: \mathcal{H} \rightarrow \mathcal{X}$ onde $x' = g_\phi(h)$
+        \item \textbf{Reconstrução:} $x' = g_\phi(f_\theta(x))$
+        \item \textbf{Espaço latente $\mathcal{H}$:} Representação comprimida dos dados ($\dim(\mathcal{H}) < \dim(\mathcal{X})$)
+    \end{itemize}
+    \vspace{2mm}
+\end{frame}
+
+\begin{frame}{Por que usar Autoencoders?}
+    \textbf{Aprendizado de Representações:}
+
+    \begin{itemize}
+        \item Extrair características relevantes automaticamente dos dados
+        \item Redução de dimensionalidade não-linear (superior ao PCA para dados complexos)
+        \item Aprendizado não supervisionado - não requer labels
+    \end{itemize}
+
+    \textbf{Vantagens sobre métodos tradicionais:}
+    \begin{itemize}
+        \item PCA: apenas transformações lineares
+        \item Autoencoders: capturam relações não-lineares complexas
+        \item Profundidade permite representações hierárquicas \cite{Tschannen2018}
+    \end{itemize}
+
+\end{frame}
+
+\section{Formulação Matemática}
+\begin{frame}{Definição Formal}
+    Seja $\mu_{ref}$ uma distribuição de probabilidade de referência em $\mathcal{X}$ e $d: \mathcal{X} \times \mathcal{X} \rightarrow \mathbb{R}$ uma função de distância.
+
+    \vspace{2mm}
+    Função de custo do autoencoder:
+    $$
+    L(\theta, \phi) = \mathbb{E}_{x \sim \mu_{ref}} \left[ d\left( x, g_\phi(f_\theta(x)) \right) \right]
+    $$
+
+    Objetivo de treinamento:
+    $$
+    (\theta^*, \phi^*) = \arg\min_{\theta, \phi} L(\theta, \phi)
+    $$
+
+\end{frame}
+
+\begin{frame}{Exemplo: Autoencoder Linear de Uma Camada}
+    \textbf{Encoder:}
+    $$
+    h = f_{W,b}(x) = \sigma(Wx + b)
+    $$
+    \vspace{1mm}
+    \textbf{Decoder:}
+    $$
+    x' = g_{W',b'}(h) = \sigma(W'h + b')
+    $$
+
+
+    \vspace{1mm}
+    \textbf{Função Custo:}
+    $$
+    L(W, b, W', b') = \frac{1}{N} \sum_{i=1}^{N} \| x_i - g_{W',b'}(f_{W,b}(x_i)) \|_2^2
+    $$
+
+    Parâmetros a otimizar: $\theta = {W, b}$, $\phi = {W', b'}$
+
+\end{frame}
+
+\begin{frame}{Exemplo: Undercomplete Autoencoder Linear (Caso Especial)}
+    \textbf{Autoencoder linear:} sem função de ativação $\sigma(z) = z$
+
+    \vspace{2mm}
+
+    \textbf{Teorema}: O autoencoder linear ótimo projeta os dados no subespaço gerado pelos primeiros $k$ autovetores da matriz de covariância $\Sigma_{XX}$ \cite{Oja1982SimplifiedNM}.
+
+    \vspace{2mm}
+    Erro mínimo:
+
+    $$
+    \Sigma(A, B) = Tr(\Sigma) - \sum_{i=1}^{k} \lambda_i = \sum_{i=k+1}^{n} \lambda_i
+    $$
+
+    Onde $\lambda_1 \geq \lambda_2 \geq \ldots \geq \lambda_n$ são os autovalores de $\Sigma_{XX}$.
+
+    \textbf{Conexão com PCA}: Autoencoders lineares aprendem o mesmo subespaço que a Análise de Componentes Principais.
+
+\end{frame}
+
+\section{Undercomplete Autoencoders com redes neurais}
+
+\begin{frame}{Undercomplete Autoenconder}
+
+\begin{itemize}
+    \item Autoencoders são treinados para copiar a entrada para a saída, mas o objetivo real é aprender representações úteis dos dados.
+
+    \item Para isso, impõe-se que a dimensão do \textit{espaço latente} satisfaça
+    $\dim(h) < \dim(x)$, formando um \textit{autoencoder undercomplete}, o que força o modelo a capturar as características mais relevantes da distribuição dos dados.
+
+    \item O treinamento consiste em minimizar a função de perda:
+    \[
+        L(x, g(f(x))),
+    \]
+    onde $L$ mede quão diferente $g(f(x))$ está de $x$ (por exemplo, usando MSE).
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Undercomplete Autoenconders: Correspondência com PCA/SVD}
+    \textbf{PCA e Autoencoders:}
+    Quando o decoder é linear e $L$ é o erro quadrático médio (MSE),
+    um autoencoder undercomplete aprende a abranger o mesmo subespaço que o PCA.
+    \vspace{3mm}
+
+    Isso ocorre porque, sob linearidade e codificação com dimensão reduzida,
+    o autoencoder busca a melhor reconstrução no sentido dos mínimos quadrados,
+    exatamente como o PCA.
+\end{frame}
+
+\begin{frame}{Formulação do Problema}
+
+    O objetivo de um autoencoder linear é resolver:
+
+    \[
+        \min_{D,E}\ \frac{1}{2}\|X - D(E(X))\|_F^2.
+    \]
+
+    \vspace{2mm}
+
+    Se escolhemos $D$ e $E$ como matrizes (mapeamentos lineares), o problema é:
+
+    \[
+        \min_{D,E}\ \frac{1}{2}\|X - DEX\|_F^2.
+    \]
+
+    Introduzimos uma variável auxiliar:
+
+    \begin{itemize}
+        \item \(A = DE\)
+        \item \(\min_{A,D,E}\ \frac{1}{2}\|X - AX\|_F^2
+               \quad \text{sujeito a } A = DE.\)
+        \item   A restrição $A = DE$ é o que torna o problema não convexo.
+    \end{itemize}
+    \vspace{2mm}
+\end{frame}
+
+
+
+\begin{frame}{Relaxação: Ignorando a Restrição}
+    Ignorando por um momento a restrição $A = DE$:
+
+    \begin{itemize}
+        \item O problema vira mínimos quadrados clássico.
+        \item Uma solução analítica está disponível.
+    \end{itemize}
+
+    A solução é:
+
+    \[
+    A^\star = (X X^\top)^{-1}(X X^\top).
+    \]
+
+    Se $(X X^\top)$ é invertível:
+
+    \[
+    A^\star = I,
+    \]
+
+    ou seja, o mapeamento ótimo (sem a restrição) seria a identidade.
+\end{frame}
+
+
+\begin{frame}{Usando a SVD de \(X X^\top\)}
+    Como $X X^\top$ é quadrada, sua decomposição SVD é:
+
+    \[
+    X X^\top = U S U^\top,
+    \]
+
+    onde $U$ é ortogonal e $S$ contém os autovalores.
+
+    Substituindo na solução:
+
+    \[
+    A^\star = (U S U^\top)^{-1}(U S U^\top)
+    \]
+
+    \[
+    = (U^\top)^{-1} S^{-1} U^{-1} \; U S U^\top
+    \]
+
+    \[
+    = U U^\top.
+    \]
+\end{frame}
+
+
+\begin{frame}{Solução Analítica do Autoencoder Linear}
+    Reintroduzindo a restrição $A = DE$ obtemos:
+
+    \[
+    A^\star = D^\star E^\star = U U^\top.
+    \]
+
+    Portanto:
+
+    \[
+    D^\star = U, \qquad E^\star = U^\top.
+    \]
+
+    \begin{itemize}
+        \item Se $X$ tem posto $n$, somente as primeiras $n$ colunas de $U$ são necessárias.
+        \item Assim, o autoencoder linear aprende o mesmo subespaço do PCA.
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Interpretação: Relação Explícita com PCA}
+
+    A matriz $U$ contém os \textbf{autovetores} dos dados —
+    exatamente as \textbf{direções principais} do PCA.
+
+    \vspace{3mm}
+
+    Portanto, a solução ótima do autoencoder linear é:
+
+    \[
+        E^\star = U^\top
+        \quad \text{(projeção para o espaço PCA)}
+    \]
+
+    \[
+        D^\star = U
+        \quad \text{(reconstrução a partir das componentes principais)}
+    \]
+
+    \vspace{3mm}
+
+    \begin{itemize}
+        \item  O \textbf{encoder} recupera as coordenadas PCA.
+        \item  O \textbf{decoder} reconstrói os dados a partir dessas coordenadas.
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Autoencoders Não Lineares}
+    \begin{itemize}
+        \item Autoencoders com \textbf{encoder e decoder não lineares} podem aprender uma generalização mais poderosa do PCA.
+        \item \textbf{Risco:} se a capacidade do encoder/decoder for muito grande, o autoencoder pode apenas \textbf{copiar os dados}, sem extrair informações úteis.
+        \item Embora não ocorra na prática, ilustra que um autoencoder treinado apenas para copiar dados \textbf{pode falhar em aprender informações úteis} se a capacidade for excessiva.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Comparações com outros modelos: t-SNE}
+    \begin{itemize}
+        \item O t-Distributed Stochastic Neighbor Embedding (t-SNE) reduz dimensões mapeando as distâncias do espaço de alta dimensão para um espaço de baixa dimensão por meio de uma distribuição de probabilidade.
+        \item Objetivo: garantir que pontos próximos no espaço original permaneçam próximos após a redução.
+        \item Usado principalmente para \textbf{visualização em 2D ou 3D}.
+        \item Útil para obter uma visão inicial da estrutura e posicionamento dos dados.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{t-SNE x Autoenconders}
+    \begin{itemize}
+        \item Autoencoders são mais versáteis e podem ser usados tanto para extração de características quanto para redução dimensional com número livre de dimensões.
+        \item Ambos (t-SNE e autoencoders) capturam relações \textbf{não lineares} nos dados e produzem representações de baixa dimensão.
+        \item Entretanto, o t-SNE é frequentemente \textbf{mais custoso computacionalmente}.
+        \item t-SNE apresenta \textbf{pouca escalabilidade} para conjuntos de dados grandes.
+        \item Autoencoders tendem a ser \textbf{mais rápidos} em tarefas comparáveis.
+    \end{itemize}
+\end{frame}
+
+\section{Considerações sobre Arquitetura}
+
+\begin{frame}{Autoencoders neurais: Número de camadas}
+
+    \textbf{Teorema do Aproximador Universal:} Redes neurais com uma única camada oculta podem aproximar qualquer função contínua.
+
+    \vspace{4mm}
+
+    \textbf{Autoencoders profundos:} Na prática, encoder e decoders possuem pelo menos uma camada oculta cada
+    \begin{itemize}
+        \item Maior capacidade de modelagem
+        \item Podem aprender representações hierárquicas
+        \item Podem ser treinados camada a camada (greedy layer-wise pretraining)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Dimensão do Espaço Latente}
+
+  \textbf{Subcompletos} (undercomplete): Espaço latente tem dimensão menor que a entrada ($\dim(\mathcal{H}) < \dim(\mathcal{X})$)
+  \begin{itemize}
+    \item Forçam compactação dos dados (com perdas)
+    \item Encoders e decoders não podem ser bons demais
+  \end{itemize}
+  \vspace{4mm}
+
+  \textbf{Sobrecompletos} (overcomplete): Espaço latente pode ter dimensão maior que a entrada ($\dim(\mathcal{H}) > \dim(\mathcal{X})$)
+  \begin{itemize}
+    \item Risco de aprender a função identidade
+    \item Usam \textbf{regularização} para conferir características desejáveis
+  \end{itemize}
+
+
+\end{frame}
+
+\section{Autoencoders com regularização}
+\begin{frame}{Autoencoders com regularização}
+
+  Técnicas que adicionam \textbf{termos de regularização} ou modificam o processo de treinamento para melhorar a qualidade das representações aprendidas. São frequentemente \textbf{sobrecompletos}.
+
+  \vspace{4mm}
+
+  \begin{itemize}
+    \item \textbf{Autoencoders Esparsos:} Força esparsidade na representação latente
+    \item \textbf{Denoising Autoencoders:} Perturba a entrada com ruído e reconstrói a entrada limpa
+    \item \textbf{Contractive Autoencoders:} Penaliza o jacobiano do encoder em relação à entrada
+    \item \textbf{Variational Autoencoders:} Trata o espaço latente como uma variável aleatória com distribuição aprendida
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Sparse Autoencoders}
+
+    \textbf{Objetivo:} Forçar a representação latente a ser esparsa, ou seja, a maioria dos neurônios na camada latente deve estar inativa (valores próximos de zero).
+
+    $$
+    L(x) = L_{\text{reconstrução}}(x) + \Omega(x)
+    $$
+
+  \vspace{3mm}
+
+  \begin{columns}[t]
+
+    \begin{column}{0.5\textwidth}
+      \small{\textbf{Norma $L_1$ do espaço latente:}}
+      $$
+      \Omega(x) = \alpha \sum_x \| f(x) \|_1
+      $$
+      \footnotesize
+      \begin{itemize}
+          \item Penaliza diretamente as ativações
+          \item Mais fácil de implementar
+          \item Promove esparsidade indiretamente
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+      \small{\textbf{Divergência KL}}
+      $$
+      \Omega(x) = \alpha \sum_{j} KL(\rho \| \hat{\rho}_j), \  \hat{\rho}_j = \frac{1}{N} \sum_{x} f_j(x)
+      $$
+      \footnotesize
+      \begin{itemize}
+          \item Divergência entre ativações e Bernoulli
+          \item Maior controle sobre esparsidade
+          \item $\rho$: taxa de ativação desejada (pequeno, ex: 0.05)
+          \item $\hat{\rho}_j$: ativação média do neurônio $j$
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{Sparse Autoencoders: Interpretabilidade}
+
+  \small{Com poucos neurônios ativos, os sparse autoencoders tendem a aprender representações mais interpretáveis e robustas.}
+
+  \begin{columns}[b]
+    \begin{column}{0.60\textwidth}
+      \begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth]{assets/stevens2025rigorous-fig2.png}
+      \end{figure}
+    \end{column}
+
+    \begin{column}{0.4\textwidth}
+      \footnotesize{Características aprendidas por um sparse autoencoder aplicado nas ativações da camada 11 de um modelo ViT-Base/16 (12 camadas). O SAE tem fator de expansão de 32 (dimensão 768 na entrada e saída, 24576 no espaço latente). \cite{stevens2025rigorous}.}
+    \end{column}
+
+  \end{columns}
+\end{frame}
+
+\section{Encoders and Decoders Estocásticos}
+
+\begin{frame}{Denoising Autoencoders (DAE)}
+    \begin{columns}
+        \begin{column}{0.65\textwidth}
+            \begin{itemize}
+                \item \textbf{Definição:} O \textit{Denoising Autoencoder} (DAE) é um autoencoder que recebe uma entrada ruidosa e é treinado para reconstruir a versão limpa dessa entrada na saída \cite{Goodfellow-et-al-2016}.
+
+                \item \textbf{Objetivo:} Minimizar a função custo:
+                $$
+                L(\bold{x}, g(f(\bold{\tilde{x}})))
+                $$
+
+
+                \begin{itemize}
+                    \item $\bold{x}$: entrada original.
+                    \item $\bold{\tilde{x}}$: entrada corrompida com ruído.
+                    \item $C(\tilde{x} \mid x)$: processo de corrupção que adiciona ruído à entrada.
+                    \item $f$: função do encoder.
+                    \item $g$: função do decoder.
+                \end{itemize}
+
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.35\textwidth}
+            \begin{tikzpicture}[
+                node distance=1.5cm and 2cm,
+                auto,
+                >=Stealth,
+                % every node/.style={draw, circle, minimum size=1.2cm, very thick} % Aplicando estilo a todos
+                ]
+                % 1. Definir o nó h como referência
+                \node[draw, circle, minimum size=1.2cm, very thick] (h) {$h$};
+
+                % 2. Definir xtilde (acima e à esquerda de h no diagrama original)
+                % Usamos 'below left of h' para h ficar acima e à direita de xtilde
+                \node[below left=1.5cm and 0.5cm of h, draw, circle, minimum size=1.2cm, very thick] (xtilde) {$\tilde{x}$};
+
+                % 3. Definir L (abaixo e à direita de h)
+                \node[below right=1.5cm and 0.1cm of h, draw, circle, minimum size=1.2cm, very thick] (L) {$L$};
+
+                % 4. Definir x (abaixo e à esquerda/centro)
+                % Agora, vamos posicionar x mais à direita, alinhado verticalmente com o xtilde,
+                % mas com um pequeno deslocamento horizontal à direita.
+                \node[below right=1.5cm and -0.7cm of xtilde, draw, circle, minimum size=1.2cm, very thick] (x) {$x$}; % Mudei a referência e a distância
+
+                % Desenha as setas (arestas) e adiciona os rótulos
+                % x -> xtilde com rótulo C(xtilde | x)
+                \draw[->] (x) -- node[left] {$C(\tilde{x} \mid x)$} (xtilde);
+
+                % xtilde -> h com rótulo f
+                \draw[->] (xtilde) -- node[above left] {$f$} (h);
+
+                % h -> L com rótulo g
+                \draw[->] (h) -- node[right] {$g$} (L);
+
+                % x -> L (direto)
+                \draw[->] (x) -- (L);
+            \end{tikzpicture}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Motivação para DAE}
+
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.55\textwidth]{assets/dae_mnist_example.png}
+        % \caption{Estrutura de um DAE com representação latente.}
+        \label{fig:dae}
+    \end{figure}
+    \vspace{-7mm}
+
+    \begin{itemize}
+        \item \textbf{Robustez a Ruído:} DAEs aprendem a extrair características robustas dos dados, ignorando variações irrelevantes causadas por ruído \cite{Vincent2008ExtractingAC}. Isso é análogo a perspectiva humana de reconhecer objetos/formas/contextos quando os mesmos estão parcialmente ocultos ou corrompidos.
+        \item \textbf{Melhoria na Generalização:} Ao aprender a reconstruir entradas limpas a partir de versões ruidosas, DAEs podem melhorar a capacidade de generalização do modelo.
+        \item \textbf{Aprendizado de Representações Significativas:} DAEs incentivam o modelo a capturar estruturas subjacentes nos dados, levando a representações latentes mais informativas.
+    \end{itemize}
+\end{frame}
+\begin{frame}{Ruído de Entrada em DAE}
+
+    \begin{table}[h]
+        \centering
+        \small
+        \begin{tabular}{ l | p{6cm}}
+            \hline
+            \textbf{Tipo de Ruído} & \textbf{Descrição} \\
+            \hline\hline
+            Ruído Gaussiano & $\tilde{x} = x + \epsilon$, $\epsilon \sim \mathcal{N}(0, \sigma^2I)$\\
+            Masking Noise & $\tilde{x}_i = \begin{cases} 0 & \text{prob. } \nu \\ x_i & \text{prob. } 1-\nu \end{cases}$ \\
+            Salt-and-Pepper Noise & $\tilde{x}_i = \begin{cases} 0 & \text{prob. } \nu/2 \\ 1 & \text{prob. } \nu/2 \\ x_i & \text{prob. } 1-\nu \end{cases}$ \\
+            \hline
+        \end{tabular}
+        \caption{Tipos comuns de ruído utilizados em DAE.}
+        \label{tab:noise_types}
+    \end{table}
+
+\end{frame}
+
+
+
+\begin{frame}{Função Custo}
+
+    A função custo geral para um DAE é dada por:
+    $$
+    L_{DAE}(\theta, \phi) = \mathbb{E}_{x \sim \mu_{ref}, \tilde{x} \sim C(\tilde{x} \mid x)} [L(x, g_{\phi}(f_{\theta}(\tilde{x})))]
+    $$
+
+    Onde:
+    \begin{itemize}
+        \item $x$: entrada original amostrada de uma distribuição de referência $\mu_{ref}$.
+        \item $\tilde{x}$: entrada corrompida com ruído amostrada de uma distribuição condicional $C(\tilde{x} \mid x)$.
+        \item $f_\theta$: função do encoder parametrizada por $\theta$.
+        \item $g_\phi$: função do decoder parametrizada por $\phi$.
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Função Custo}
+    Algumas escolhas comuns para a função de perda incluem:
+    \begin{itemize}
+        \item \textbf{Mean Squared Error (MSE):}\\
+        \vspace{5mm}
+        \centering
+        $L(x, z) = \|x - z\|_2^2$\\
+
+        \raggedright
+        \item \textbf{Cross-Entropy Loss:}\\
+        \vspace{5mm}
+        \centering
+        $L(x, z) = -\sum_{i} [x_i \log(z_i) + (1 - x_i) \log(1 - z_i)]$
+    \end{itemize}
+\end{frame}
+\begin{frame}{Score Matching e DAE}
+
+    \textbf{Score Matching:} Técnica de estimação de densidade que visa aprender o gradiente do logaritmo da densidade de probabilidade dos dados, conhecido como \textit{score function} \cite{Hyvarinen2005EstimationON}. Aprender o gradiente do logaritmo da densidade de probabilidade é uma maneira alternativa de aprender a estrutura da densidade de probabilidade dos dados \cite{Goodfellow-et-al-2016}.
+    \vspace{-2mm}
+    $$
+    \nabla_x \log p_{data}(x)
+    $$
+
+    \vspace{-2mm}
+
+    \textbf{Resultado Teórico \cite{Vincent2011}:} Para ruído Gaussiano pequeno ($\sigma \to 0$), treinar um DAE é equivalente a estimar o score da distribuição de dados:
+    \vspace{-2mm}
+    $$
+    \nabla_x \log p_{data}(x) \approx \frac{g(f(x)) - x}{\sigma^2}
+    $$
+
+    \vspace{-2mm}
+
+    \textbf{Implicações:} Isso sugere que DAEs não apenas aprendem a reconstruir entradas limpas, mas também capturam informações sobre a estrutura subjacente da distribuição dos dados.
+\end{frame}
+
+
+\begin{frame}{Interpretação Geométrica - Manifold}
+    Mas o que exatamente o DAE está aprendendo?
+    \begin{itemize}
+        \item \textbf{Hipótese:} Dados reais residem em um \textbf{variedade} (manifold) $\mathcal{M}$ de dimensão $d' \ll d$ \ $\mathbb{R}^d$
+        \item \textbf{Exemplos:} Imagens naturais, sinais de áudio, etc.
+        \item \textbf{Ruído:} Adiciona pequenas perturbações que movem os pontos para fora da variedade $\mathcal{M}$
+    \end{itemize}
+
+    Podemos dizer então que o DAE está aprendendo a projetar pontos ruidosos de volta para essa variedade $\mathcal{M}$ \cite{Vincent2008ExtractingAC}\cite{alain2014regularizedautoencoderslearndata}.
+
+\end{frame}
+\begin{frame}{Interpretação Geométrica - Manifold}
+     \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.65\textwidth]{assets/manifold_dae.png}
+        \caption{Em verde, o vetor resultante de $g(f(\tilde{x})) - \tilde{x}$ . Em vermelho, os dados originais sem corrupção por ruído. Em cinza, o dado corrompido gerado a partir de uma perturbação equiprovável gerando uma amostra de $C(\tilde{x}|x)$.}
+        \label{fig:manifold_dae}
+    \end{figure}
+
+\end{frame}
+\begin{frame}{Treino vs. Teste em DAE}
+    Na fase de treino:
+    \begin{itemize}
+        \item Entrada corrompida com ruído: $\tilde{x} \sim C(\tilde{x} \mid x)$
+        \item Alvo: $x$
+        \item Objetivo: reconstruir a entrada limpa $x$ a partir de $\tilde{x}$
+    \end{itemize}
+\end{frame}
+\begin{frame}{Treino vs. Teste em DAE}
+    Na fase de teste/produção, tipicamente, temos duas possibilidades:
+    \begin{itemize}
+        \item Usar o DAE como um autoencoder padrão:.
+        \begin{itemize}
+            \item Entrada: $x$
+            \item Saída de interesse: $h = f(x)$ (tipicamente)
+            \item Objetivo: obter uma representação robusta dos dados de entrada, já que o modelo foi treinado para aprender mais características relevantes do que numa aplicação padrão.
+        \end{itemize}
+        \item Usar o DAE para denoising:
+        \begin{itemize}
+            \item Entrada: $\tilde{x}$
+            \item Saída de interesse: $g(f(\tilde{x}))$
+            \item Objetivo: remover o ruído da entrada, aproveitando a capacidade do DAE de aprender a reconstruir entradas limpas a partir de versões ruidosas.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Variational Autoencoder}
+    \begin{itemize}
+        \item Diferentemente dos \textbf{Autoencoders tradicionais}, que replicam principalmente os dados de entrada, os \textbf{VAEs podem gerar novos resultados}.
+        \item Eles funcionam \textbf{identificando e aprendendo características ocultas} dos conjuntos de dados de treinamento.
+        \item Essas características aprendidas são usadas como \textbf{representação latente} para \textbf{gerar novos dados}.
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Variational Autoencoder}
+    \begin{itemize}
+        \item \textit{Criação dos VAEs surgiram da seguinte pergunta} 
+        \begin{itemize}
+            \item ``Como podemos realizar inferência e aprendizado eficientes em modelos probabilísticos direcionados, na presença de variáveis latentes contínuas com distribuições posteriores intratáveis e grandes conjuntos de dados?'' \cite{kingma2022autoencodingvariationalbayes}
+        \end{itemize}
+        \item Criado modelo para derivar um estimador de limite inferior (uma função objetivo estocástica) para uma variedade de modelos gráficos dirigidos com variáveis latentes contínuas.
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Variational Autoencoder: Encoder e Decoder}
+    \begin{columns}[T] % T alinha pelo topo
+        % Coluna da esquerda: bullet points com texto menor
+        \begin{column}{0.65\textwidth}
+            \small % reduz o tamanho do texto
+            \begin{itemize}
+                \item Esta figura apresenta dois DAGs interconectados: o \textbf{encoder} e o \textbf{decoder}.
+                
+                \item O fluxo do \textbf{encoder} (linha pontilhada) mostra a compressão de uma imagem de entrada $x$ em uma representação latente $z$. O símbolo $\phi$ representa os parâmetros do encoder.
+                
+                \item O fluxo do \textbf{decoder} (linha sólida) ilustra o processo de reconstrução, transformando $z$ em uma imagem próxima de $x$. O símbolo $\theta$ representa os parâmetros do decoder.
+                
+                \item Tanto o encoder quanto o decoder são \textbf{probabilísticos}, e suas distribuições de probabilidade apresentam \textbf{dependências condicionais}, conectadas via $z$.
+            \end{itemize}
+        \end{column}
+        
+        % Coluna da direita: imagem
+        \begin{column}{0.35\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{assets/vaeStructure.png} % substitua pelo seu arquivo de imagem
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+\begin{frame}{Variational Autoencoder: Encoder e Decoder}
+    \begin{columns}[T] % Alinha pelo topo
+        \begin{column}{0.65\textwidth}
+            \small
+            \begin{itemize}
+                % Encoder
+                \item O \textbf{encoder} modela $P(z|x)$: recebe $x$ e produz $z$.
+                
+                % Diagrama do encoder
+                \vspace{0.2cm}
+                \begin{center}
+                    \begin{tikzpicture}[node distance=1.2cm, >=Stealth, scale=0.8, transform shape]
+                        \node (x) [draw, rectangle, minimum width=1.2cm] {$x$};
+                        \node (encoder) [draw, rectangle, right=of x, minimum width=1.8cm] {Encoder $\phi$};
+                        \node (z) [draw, rectangle, right=of encoder, minimum width=1.2cm] {$z$};
+                        \draw[->, thick, green, dashed] (x) -- (encoder);
+                        \draw[->, thick, green, dashed] (encoder) -- (z);
+                    \end{tikzpicture}
+                \end{center}
+                
+                % Decoder
+                \item O \textbf{decoder} modela $P(x|z)$: recebe $z$ e reconstrói $x'$ próximo de $x$.
+                
+                % Diagrama do decoder
+                \vspace{0.2cm}
+                \begin{center}
+                    \begin{tikzpicture}[node distance=1.2cm, >=Stealth, scale=0.8, transform shape]
+                        \node (z) [draw, rectangle, minimum width=1.2cm] {$z$};
+                        \node (decoder) [draw, rectangle, right=of z, minimum width=1.8cm] {Decoder $\theta$};
+                        \node (xprime) [draw, rectangle, right=of decoder, minimum width=1.2cm] {$x'$};
+                        \draw[->, thick, green, solid] (z) -- (decoder);
+                        \draw[->, thick, green, solid] (decoder) -- (xprime);
+                    \end{tikzpicture}
+                \end{center}
+
+                % Fluxo completo
+                \vspace{0.3cm}
+                \item Fluxo completo: $x \to z \to x'$
+                \begin{center}
+                    \begin{tikzpicture}[node distance=1.2cm, >=Stealth, scale=0.75, transform shape]
+                        \node (x) [draw, rectangle, minimum width=1.2cm] {$x$};
+                        \node (encoder) [draw, rectangle, right=of x, minimum width=1.8cm] {Encoder $\phi$};
+                        \node (z) [draw, rectangle, right=of encoder, minimum width=1.2cm] {$z$};
+                        \node (decoder) [draw, rectangle, right=of z, minimum width=1.8cm] {Decoder $\theta$};
+                        \node (xprime) [draw, rectangle, right=of decoder, minimum width=1.2cm] {$x'$};
+                        \draw[->, thick, green, dashed] (x) -- (encoder);
+                        \draw[->, thick, green, dashed] (encoder) -- (z);
+                        \draw[->, thick, green, solid] (z) -- (decoder);
+                        \draw[->, thick, green, solid] (decoder) -- (xprime);
+                    \end{tikzpicture}
+                \end{center}
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Variáveis Latentes Contínuas}
+        \begin{itemize}
+        \item Se conseguirmos determinar a \textbf{distribuição das variáveis latentes} e amostrar do espaço latente:
+        \begin{itemize}
+            \item Podemos usar o decoder para gerar novas imagens.
+            \item As imagens geradas seguem a mesma estrutura e características do conjunto de treinamento.
+            \item Não é necessário fornecer a imagem de entrada ou usar o encoder.
+        \end{itemize}
+        \item Objetivo principal: \textbf{usar o decoder como gerador de imagens}.
+        \item Desafio: \textbf{determinar com precisão a distribuição das variáveis latentes \(z\) é intratável}.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Distribuições Posteriores Intratáveis}
+        \begin{itemize}
+        \item O \textbf{encoder} captura a essência da imagem de entrada \(x\) e a representa no \textbf{espaço latente}.
+        \item Ele modela a \textbf{distribuição posterior} \(P(z \mid x)\), ou seja, a probabilidade das variáveis latentes \(z\) dado os dados observados \(x\).
+        \item Determinar essa distribuição com precisão é \textbf{complexo} devido às relações intrincadas entre dados e variáveis latentes.
+        \item Essa complexidade torna a \textbf{posterior intratável}.
+        \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Distribuições Posteriores Intratáveis}
+        \[
+    P(z \mid x) = \frac{P(x \mid z) \, P(z)}{P(x)}
+    \]
+
+    \begin{itemize}
+    \item O decoder modela a verossimilhança \(P(x \mid z)\), ou seja, a probabilidade de observar uma imagem \(x\) dado as variáveis latentes \(z\).
+    \item A distribuição a priori \(P(z)\) captura nossas crenças ou suposições sobre as variáveis latentes \(z\) antes de observar qualquer imagem \(x\).
+    \item No contexto dos VAEs, nossa escolha do prior (geralmente uma distribuição normal padrão) é motivada pela conveniência computacional.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Distribuições Posteriores Intratáveis}
+\begin{itemize}
+    \item O denominador \(P(x)\) representa a verossimilhança marginal ou evidência.  
+    \item Ele quantifica a probabilidade de observar os dados da imagem \(x\) sem condicionar a qualquer valor específico de \(z\).  
+    \item Para determiná-lo, precisamos calcular a densidade de probabilidade da imagem \(x\) para cada valor possível de \(z\), e então integrar todos esses valores:  
+    \[
+    P(x) = \int P(x \mid z) P(z) \, dz
+    \]
+    \item Se pudéssemos calcular \(P(x)\) com precisão, usaríamos a distribuição posterior \(P(z \mid x)\) para amostrar as características latentes.  
+    \item No entanto, as complexidades de dados de alta dimensão, estruturas de modelo e a necessidade de integração sobre o espaço latente tornam o cálculo direto de \(P(x)\) praticamente impossível.  
+    \item Esse desafio inerente torna a \textbf{posterior \(P(z \mid x)\) intratável}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Inferência Variacional}
+\begin{itemize}
+    \item Inferência Variacional (VI): método usado para aproximar distribuições posteriores complexas e intratáveis por distribuições mais simples e tratáveis.
+    \item Ideia principal:
+    \begin{enumerate}
+        \item Escolher uma distribuição aproximadora: selecionar uma família de distribuições, tipicamente mais simples que a posterior verdadeira, com parâmetros ajustáveis.
+        \item Otimizar para minimizar a diferença: ajustar os parâmetros da distribuição aproximadora com base nos dados observados, tornando-a o mais próxima possível da posterior verdadeira.
+    \end{enumerate}
+    \item A medida de proximidade geralmente é a divergência de Kullback-Leibler (KL).
+    \item A inferência variacional transforma o problema intratável em otimização, maximizando o \textbf{Evidence Lower Bound (ELBO)}:
+    \[
+    \log P(x) \geq \mathbb{E}_{q_\phi(z \mid x)}[\log P_\theta(x \mid z)] - D_{KL}(q_\phi(z \mid x) \| P(z))
+    \]
+    \item Em VAEs, isso permite treinar o encoder (\(q_\phi\)) e o decoder (\(P_\theta\)) de forma eficiente, mesmo com variáveis latentes contínuas e dados de alta dimensão.
+\end{itemize}
+\end{frame}
+
+\section{Aplicações}
+
+\begin{frame}{RBMs e Deep Autoencoder\cite{HinSal06}}
+\begin{itemize}
+    \item Objetivo: reduzir a dimensionalidade de dados complexos.
+    \item Abordagem:
+    \begin{itemize}
+        \item Treinar uma pilha de RBMs camada a camada (pretraining).
+        \item Cada RBM aprende features da camada anterior.
+        \item O bottleneck code na camada central representa a versão compacta dos dados.
+    \end{itemize}
+    \item Unrolling: conecta todas as RBMs em uma rede única formando um deep autoencoder.
+    \item Fine-tuning: ajuste de todos os pesos com backpropagation para minimizar erro de reconstrução.
+    \item Resultado: código de baixa dimensão que preserva estrutura não-linear dos dados, superando PCA.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura do Deep Autoencoder}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{assets/rbm_autoencoder.png} % diminuiu a largura
+    \caption{Exemplo de arquitetura: RBMs empilhadas são "unrolled" em um deep autoencoder.}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}{Deep Autoencoder Aplicado a Documentos\cite{HinSal06}}
+  \begin{columns}
+    \begin{column}{0.65\textwidth}
+      \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.9\textwidth]{assets/HinSal06-newswire.png}
+      \end{figure}
+    \end{column}
+
+    \begin{column}{0.35\textwidth}
+      \small
+      \begin{itemize}
+        \item 804k documentos do corpus Newswire
+        \item Frequencia dos 2000 radicais mais frequentes
+        \item Autoencoder 2000-500-250-125-2
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{U-Net\cite{ronneberger2015unet}}
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.55\textwidth]{assets/unet_architecture.jpg}
+        \caption{Arquitetura U-Net típica usada para tarefas de segmentação de imagens médicas.}
+        \label{fig:unet_dae}
+    \end{figure}
+
+    Rede Convolucional baseada em autoencoders, projetada para segmentação de imagens médicas \cite{ronneberger2015unet}.
+\end{frame}
+
+
+\begin{frame}{U-Net}
+    \framesubtitle{Características Principais}
+
+    \begin{itemize}
+        \item \textbf{Arquitetura em U:} Composta por um caminho de contração (encoder) e um caminho de expansão (decoder), formando uma estrutura em U.
+        \item \textbf{Camadas Convolucionais:} Utiliza camadas convolucionais para capturar características espaciais das imagens.
+        \item \textbf{Skip Connections:} Conecta diretamente camadas correspondentes do encoder e decoder, preservando informações espaciais detalhadas.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{U-Net}
+    \framesubtitle{Exemplos}
+
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \begin{figure}[h]
+                \centering
+                \includegraphics[width=\textwidth]{assets/unet_example_1.png}
+                \caption{Imagem de entrada (em cima). Imagem segmentada (em baixo).}
+                \label{fig:unet_input}
+            \end{figure}
+        \end{column}
+
+        \begin{column}{0.5\textwidth}
+            \begin{figure}[h]
+                \centering
+                \includegraphics[width=\textwidth]{assets/unet_example_2.jpg}
+                \caption{Saída de camadas intermediárias da U-Net.}
+                \label{fig:unet_output}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+\begin{frame}{Sparse Autoencoders para Interpretabilidade de LLMs}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{assets/cunningham2023sae-overview.png}
+  \end{figure}
+  \begin{itemize}
+    \item Pesquisadores da EleutherAI, apresentado como poster na ICLR2023
+    \item Usa autoencoder com esparsidade por $L_1$
+    \item Espaço latente esparso a partir de estado intermediário de LLM
+    \item Usa figura de mérito de interpretabilidade de features feita com outra LLM
+  \end{itemize}
+\end{frame}
+
+\section{Referências Bibliográficas}
+\begin{frame}[allowframebreaks]
+    \frametitle{Referências Bibliográficas}
+    \bibliographystyle{ieeetr}
+    \bibliography{presentation_bib.bib}
+\end{frame}
+
+
+\section{Anexos}
+
+\begin{frame}{Divergência Kullback-Leibler}
+
+  \textbf{Entropia de $P$:} Custo ótimo para codificar dados de $P$
+
+  $$H(P) = \mathbb{E}_{x \sim P}[-\log P(x)] = - \sum_x P(x) \log P(x)$$
+
+  \vspace{3mm}
+
+  \textbf{Entropia Cruzada:} Custo de usar código ótimo para $Q$ em dados de $P$
+
+  $$H_{\text{cross}}(P, Q) = \mathbb{E}_{x \sim P}[-\log Q(x)] = - \sum_x P(x) \log Q(x)$$
+
+  \vspace{3mm}
+
+  \textbf{Divergência KL:} o quão pior é $Q$ comparado ao ótimo $P$.
+
+  \begin{equation*}
+    \boxed{D_{KL}(P \| Q) = H_{\text{cross}}(P, Q) - H(P) = \sum_x P(x) \log \frac{P(x)}{Q(x)}}
+  \end{equation*}
+
+
+\end{frame}
+
+
+\backmatter
+\end{document}
