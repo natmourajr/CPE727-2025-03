@@ -18,7 +18,10 @@ class DeepNN_MLP(nn.Module):
              self.input_size = input_shape # Deve ser 55
              
         self.num_classes = num_classes
-        dropout_p = config['model'].get('dropout_rate', 0.5)
+
+        model_config = config['architectures']['cnn']
+
+        dropout_p = model_config.get('dropout_rate', 0.5)
         
         # --- Camadas Densas e Regularização ---
         

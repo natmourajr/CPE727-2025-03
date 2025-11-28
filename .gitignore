@@ -227,5 +227,7 @@ download_data.py
 
 cpe883_latest.sif
 
+results/
+
 #model
 *.pt

@@ -22,7 +22,7 @@ def generate_cnn_image_example(n_examples=4):
     
     try:
         # Carregar os dados processados
-        X_images = np.load(PROCESSED_DATA_DIR / 'X_image.npy')
+        X_images = np.load(PROCESSED_DATA_DIR / 'X_image_full.npy')
         # Carregar os r�tulos originais
         Y_encoded = np.load(PROCESSED_DATA_DIR / 'Y_final.npy')
     except FileNotFoundError:

@@ -45,6 +45,7 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
 
+
 def print_grad_stats(model):
     """
     Imprime a média, desvio padrão, min e max dos gradientes
@@ -62,3 +63,5 @@ def print_grad_stats(model):
             grad_max = grad.max()
             print(f"{name:<55} | Mean: {grad_mean:.4e} | Std: {grad_std:.4e} | Min: {grad_min:.4e} | Max: {grad_max:.4e}")
     print("---------------------------------\n")
+
+ 
