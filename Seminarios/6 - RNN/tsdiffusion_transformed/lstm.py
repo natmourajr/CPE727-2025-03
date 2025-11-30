@@ -268,7 +268,7 @@ class TSDF_LSTM(TSDiffusion):
         hidden_dim: int = 256,
         static_dim: int = 0,
         status_dim: int = 0,
-        lam: list[float,float,float,float] = [0.9, 0.0, 0.0, 0.1],
+        lam: list[float,float,float,float,float] = [0.9, 0.0, 0.0, 0.1, 0.0],
         num_steps: int = 1000,
         cost_columns: list = None,
         bi_lstm: bool = False,
@@ -339,6 +339,12 @@ class TSDF_LSTM(TSDiffusion):
                     nn.GELU(),
                     nn.Linear(hidden_dim // 2, 1)
                 )
+        if self.lam[4] > 0:
+            self.vae_latent = nn.Sequential(
+                nn.Linear(hidden_dim if not (bi_lstm and bi_method=='concat') else hidden_dim * 2, hidden_dim * 2),
+                nn.GELU(),
+                nn.Linear(hidden_dim * 2, hidden_dim * 2)
+            )
 
     def forward(
         self,
@@ -362,7 +368,12 @@ class TSDF_LSTM(TSDiffusion):
             static_feats: (batch, static_dim).
         """
         noise = None
+        noise_hat = None
+        vae_mu = None
+        vae_logvar = None
         t = t if t is not None else torch.randint(0, self.num_steps, (x.size(0),), device=x.device)
+        if mask_ts is None and mask is not None:
+            mask_ts = mask.any(dim=2, keepdim=True).float()
         # Embedding de entrada
         if not already_latent:
             h = self.encoder(torch.cat([x, mask], dim=-1))
@@ -372,7 +383,7 @@ class TSDF_LSTM(TSDiffusion):
                 h = torch.sqrt(ab) * h + torch.sqrt(1 - ab) * noise
             else:
                 t = torch.zeros((x.size(0),), device=x.device, dtype=torch.long)
-                noise = torch.zeros_like(h)
+                noise = None
         else:
             h = x
         # Static features
@@ -387,9 +398,13 @@ class TSDF_LSTM(TSDiffusion):
         else:
             ht = None
             tmax_hat = None
-        
+        if self.lam[4] > 0:
+            mu_logvar = self.vae_latent(h)
+            vae_mu, vae_logvar = torch.chunk(mu_logvar, 2, dim=-1)
+
+        x_hat = self.decoder(h) if (return_x_hat and self.lam[0]>0) else None
         if test:
-            return h, h, ht, self.decoder(h) if (return_x_hat and self.lam[0]>0) else None, tmax_hat
+            return h, h, ht, x_hat, tmax_hat, noise, noise_hat, vae_mu, vae_logvar
         else:
-            return h, h, ht, self.decoder(h) if (return_x_hat and self.lam[0]>0) else None, tmax_hat, noise, noise
+            return h, h, ht, x_hat, tmax_hat, noise, noise_hat, vae_mu, vae_logvar
     

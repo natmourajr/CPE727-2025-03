@@ -338,6 +338,7 @@ class TSDiffusion(ODEJumpEncoder):
                 L1_div = nobs.sum().clamp(min=1.0)
             else:
                 L1 = sse.sum()  # escalar
+                L1_div = nobs.sum().clamp(min=1.0)
         else:
             L1 = torch.tensor(0.0, device=state.device)
             L1_div = torch.tensor(1.0, device=state.device)
@@ -388,31 +389,29 @@ class TSDiffusion(ODEJumpEncoder):
             L4 = torch.tensor(0.0, device=state.device)
             L4_div = 1.0
 
+        if self.lam[4] > 0 and vae_x is not None and vae_mu is not None and vae_logvar is not None:
+            vae_recon = ((x - vae_x) ** 2 * mask).sum()
+            vae_recon_div = mask.sum().clamp(min=1.0)
+            vae_kl = -0.5 * torch.sum(1 + vae_logvar - vae_mu.pow(2) - vae_logvar.exp())
+            vae_kl_div = torch.tensor(float(x.numel()), device=x.device)
+            L5 = vae_recon / vae_recon_div + vae_kl / vae_kl_div
+            L5_div = torch.tensor(1.0, device=x.device)
+        else:
+            L5 = torch.tensor(0.0, device=state.device)
+            L5_div = torch.tensor(1.0, device=state.device)
+
         if self.lam[1] == 0:
             L2 = torch.tensor(0.0, device=state.device)
             L2_div = torch.tensor(1.0, device=state.device)
-            loss = self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div
+            loss = self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5
         else:
             L2 = F.mse_loss(noise, noise_hat, reduction='sum')
             L2_div = (torch.ones_like(state) * m_t).sum()
 
             if L2 / L2_div > 0.1:
-                loss = + self.lam[1] * L2 / L2_div + (self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div) * 1e-3
+                loss = + self.lam[1] * L2 / L2_div + (self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5) * 1e-3
             else:
-                loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div
-
-        if self.lam[4] > 0 and vae_x is not None and vae_mu is not None and vae_logvar is not None:
-            mask_vae = mask
-            vae_recon = ((x - vae_x) ** 2 * mask_vae).sum()
-            vae_recon_div = mask_vae.sum().clamp(min=1.0)
-            vae_kl = -0.5 * torch.sum(1 + vae_logvar - vae_mu.pow(2) - vae_logvar.exp())
-            vae_kl_div = torch.tensor(float(x.numel()), device=x.device)
-            L5 = vae_recon / vae_recon_div + vae_kl / vae_kl_div
-            L5_div = torch.tensor(1.0, device=x.device)
-            loss = loss + self.lam[4] * L5
-        else:
-            L5 = torch.tensor(0.0, device=state.device)
-            L5_div = torch.tensor(1.0, device=state.device)
+                loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5
 
         if lambda1 > 0:
             l1 = sum(
@@ -651,18 +650,31 @@ class TSDiffusion(ODEJumpEncoder):
                                               reconstruction_test=reconstruction_test,
                                               status_pred_window=delta_pred_window
                                               )
-                print(
+                val_parts = [
                     f"Epoch {ep}/{epochs} | "
                     f"Train(sampled) L1:{train_L1:.6f} L2:{train_L2:.6f} L3:{train_L3:.6f}  L4:{train_L4:.6f} L5:{train_L5:.6f} | "
-                    f"Val macro:{val_metrics['macro_mse']:.6f} ± {val_metrics['macro_se']:.6f} | "
-                    f"Val micro:{val_metrics['micro_mse']:.6f} ± {val_metrics['micro_se']:.6f}"
-                    f"Val macro (noise):{val_metrics['macro_mse_n']:.6f} ± {val_metrics['macro_se_n']:.6f} | "
-                    f"Val micro (noise):{val_metrics['micro_mse_n']:.6f} ± {val_metrics['micro_se_n']:.6f}"
-                    f"Val macro (state change):{val_metrics['macro_mse_s']:.6f} ± {val_metrics['macro_se_s']:.6f} | "
-                    f"Val micro (state change):{val_metrics['micro_mse_s']:.6f} ± {val_metrics['micro_se_s']:.6f}"
-                    f"Val macro (VAE):{val_metrics['macro_mse_v']:.6f} ± {val_metrics['macro_se_v']:.6f} | "
-                    f"Val micro (VAE):{val_metrics['micro_mse_v']:.6f} ± {val_metrics['micro_se_v']:.6f}"
-                )
+                ]
+                if self.lam[0] > 0:
+                    val_parts.append(
+                        f"Val macro:{val_metrics['macro_mse']:.6f} ± {val_metrics['macro_se']:.6f} | "
+                        f"Val micro:{val_metrics['micro_mse']:.6f} ± {val_metrics['micro_se']:.6f} "
+                    )
+                if self.lam[1] > 0:
+                    val_parts.append(
+                        f"Val macro (noise):{val_metrics['macro_mse_n']:.6f} ± {val_metrics['macro_se_n']:.6f} | "
+                        f"Val micro (noise):{val_metrics['micro_mse_n']:.6f} ± {val_metrics['micro_se_n']:.6f} "
+                    )
+                if self.lam[2] > 0:
+                    val_parts.append(
+                        f"Val macro (state change):{val_metrics['macro_mse_s']:.6f} ± {val_metrics['macro_se_s']:.6f} | "
+                        f"Val micro (state change):{val_metrics['micro_mse_s']:.6f} ± {val_metrics['micro_se_s']:.6f} "
+                    )
+                if self.lam[4] > 0:
+                    val_parts.append(
+                        f"Val macro (VAE):{val_metrics['macro_mse_v']:.6f} ± {val_metrics['macro_se_v']:.6f} | "
+                        f"Val micro (VAE):{val_metrics['micro_mse_v']:.6f} ± {val_metrics['micro_se_v']:.6f} "
+                    )
+                print("".join(val_parts))
             else:
                 print(
                     f"Epoch {ep}/{epochs} | "
@@ -676,16 +688,29 @@ class TSDiffusion(ODEJumpEncoder):
                 status_pred_window=delta_pred_window
                 )
             yield test_metrics
-            print(
-                f"          >> Test macro:{test_metrics['macro_mse']:.6f} ± {test_metrics['macro_se']:.6f} | "
-                f"micro:{test_metrics['micro_mse']:.6f} ± {test_metrics['micro_se']:.6f}"
-                f"          >> Test (Noise) macro:{test_metrics['macro_mse_n']:.6f} ± {test_metrics['macro_se_n']:.6f} | "
-                f"micro:{test_metrics['micro_mse_n']:.6f} ± {test_metrics['micro_se_n']:.6f}"
-                f"          >> Test (State Change) macro:{test_metrics['macro_mse_s']:.6f} ± {test_metrics['macro_se_s']:.6f} | "
-                f"micro:{test_metrics['micro_mse_s']:.6f} ± {test_metrics['micro_se_s']:.6f}"
-                f"          >> Test (VAE) macro:{test_metrics['macro_mse_v']:.6f} ± {test_metrics['macro_se_v']:.6f} | "
-                f"micro:{test_metrics['micro_mse_v']:.6f} ± {test_metrics['micro_se_v']:.6f}"
-            )
+            test_parts = []
+            if self.lam[0] > 0:
+                test_parts.append(
+                    f"          >> Test macro:{test_metrics['macro_mse']:.6f} ± {test_metrics['macro_se']:.6f} | "
+                    f"micro:{test_metrics['micro_mse']:.6f} ± {test_metrics['micro_se']:.6f}"
+                )
+            if self.lam[1] > 0:
+                test_parts.append(
+                    f"          >> Test (Noise) macro:{test_metrics['macro_mse_n']:.6f} ± {test_metrics['macro_se_n']:.6f} | "
+                    f"micro:{test_metrics['micro_mse_n']:.6f} ± {test_metrics['micro_se_n']:.6f}"
+                )
+            if self.lam[2] > 0:
+                test_parts.append(
+                    f"          >> Test (State Change) macro:{test_metrics['macro_mse_s']:.6f} ± {test_metrics['macro_se_s']:.6f} | "
+                    f"micro:{test_metrics['micro_mse_s']:.6f} ± {test_metrics['micro_se_s']:.6f}"
+                )
+            if self.lam[4] > 0:
+                test_parts.append(
+                    f"          >> Test (VAE) macro:{test_metrics['macro_mse_v']:.6f} ± {test_metrics['macro_se_v']:.6f} | "
+                    f"micro:{test_metrics['micro_mse_v']:.6f} ± {test_metrics['micro_se_v']:.6f}"
+                )
+            if test_parts:
+                print("\n".join(test_parts))
 
             if early_stopping:
                 score = (test_metrics["micro_mse"]*self.lam[0] + test_metrics["micro_mse_n"]*self.lam[1] + \
@@ -892,7 +917,10 @@ class TSDiffusion(ODEJumpEncoder):
                     return_x_hat=True, mask=m_train, mask_ts=mask_ts, test=False,only_gru=only_gru)
                 
                 offset_state_pred = (status_pred_window - (p - ts_batch.unsqueeze(-1))).clamp(min=0,max=status_pred_window)
-                offset_tmax = (tmax_hat).clamp(min=0,max=status_pred_window) 
+                if tmax_hat is None:
+                    offset_tmax = offset_state_pred
+                else:
+                    offset_tmax = (tmax_hat).clamp(min=0,max=status_pred_window) 
                 changing_state = ((offset_state_pred<status_pred_window)*(offset_state_pred>0)).float()
                 err = (offset_tmax - offset_state_pred * changing_state) / status_pred_window   # (B,T,S)
                 #err_change = err
@@ -903,6 +931,10 @@ class TSDiffusion(ODEJumpEncoder):
                 sse_s_bt  = sse_s_bt.detach().cpu().numpy()
                 nobs_s_bt = nobs_s_bt.detach().cpu().numpy()
                 
+
+                if noise_hat is None:
+                    noise_hat = torch.zeros_like(m_train)
+                    noise = torch.zeros_like(m_train)
                 sse_n_bt  = ((noise_hat-noise)**2).sum(dim=(1, 2))           # (B,)
                 nobs_n_bt = (torch.ones_like(noise)*mask_ts).sum(dim=(1, 2))               # (B,)
                 mse_n_bt  = (sse_n_bt / nobs_n_bt).detach().cpu().numpy()
