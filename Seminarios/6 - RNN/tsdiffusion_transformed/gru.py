@@ -274,7 +274,7 @@ class TSDF_GRU(TSDiffusion):
         hidden_dim: int = 256,
         static_dim: int = 0,
         status_dim: int = 0,
-        lam: list[float,float,float,float,float] = [0.9, 0.0, 0.0, 0.1, 0.0],
+        lam: list[float,float,float,float,float,float] = [0.9, 0.0, 0.0, 0.1, 0.0, 0.0],
         num_steps: int = 1000,
         cost_columns: list = None,
         bi_gru: bool = False,
@@ -282,7 +282,8 @@ class TSDF_GRU(TSDiffusion):
         bi_coupled: bool = False,
         log_likelihood: bool = False,
         variational_dropout: float = 0.0,
-        use_layernorm: bool = True
+        use_layernorm: bool = True,
+        sigma_temp: float = 0.7
         ):
         super().__init__(        
             in_channels=in_channels,
@@ -292,7 +293,8 @@ class TSDF_GRU(TSDiffusion):
             num_steps=num_steps,
             cost_columns=cost_columns,
             status_dim=status_dim,
-            log_likelihood=log_likelihood
+            log_likelihood=log_likelihood,
+            sigma_temp=sigma_temp
         )
         self.encoder = nn.Sequential(
             nn.Linear(in_channels*2, hidden_dim),
@@ -327,9 +329,10 @@ class TSDF_GRU(TSDiffusion):
                     nn.GELU(),
                     nn.Linear(hidden_dim // 2, 1)       # escalar
                 )   
+            # variância observacional para vae_tmax
         if self.lam[3] > 0.0:  
             self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
-        if self.lam[0] > 0.0:
+        if self.lam[0] > 0.0 or self.lam[4] > 0.0:
             self.encoder_ode_x = GRUEncoder(
                 hidden_dim,
                 hidden_dim,
@@ -344,18 +347,13 @@ class TSDF_GRU(TSDiffusion):
                 nn.GELU(),
                 nn.Linear(hidden_dim // 2, in_channels),
             )
+
             if log_likelihood:
                 self.lambda_head = nn.Sequential(
                     nn.Linear(hidden_dim  if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
                     nn.GELU(),
                     nn.Linear(hidden_dim // 2, 1)       # escalar
                 )
-        if self.lam[4] > 0:
-            self.vae_latent = nn.Sequential(
-                nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim * 2),
-                nn.GELU(),
-                nn.Linear(hidden_dim * 2, hidden_dim * 2)
-            )
 
     def forward(
         self,
@@ -380,8 +378,14 @@ class TSDF_GRU(TSDiffusion):
         """
         noise = None
         noise_hat = None
+        vae_x = None
         vae_mu = None
         vae_logvar = None
+        vae_tmax = None
+        vae_tmax_mu = None
+        vae_tmax_logvar = None
+        vae_tmax_logvar_obs = None
+        vae_logvar_obs = None
         t = t if t is not None else torch.randint(0, self.num_steps, (x.size(0),), device=x.device)
         if mask_ts is None and mask is not None:
             mask_ts = mask.any(dim=2, keepdim=True).float()
@@ -401,9 +405,9 @@ class TSDF_GRU(TSDiffusion):
         if static_feats is not None and self.static_dim > 0:
             se = self.static_proj(static_feats).unsqueeze(1)  # (b,1,model_dim)
             h = h + se
-        if self.lam[0]>0:
+        if self.lam[0]>0 or self.lam[4]>0:
             h = self.encoder_ode_x(h, timestamps, only_gru)
-        if self.lam[2]>0:
+        if self.lam[2]>0 or self.lam[5]>0:
             ht = self.encoder_ode_tmax(h, timestamps, only_gru)
             tmax_hat = self.tmax_head(ht)
         else:
@@ -416,10 +420,33 @@ class TSDF_GRU(TSDiffusion):
             eps = torch.randn_like(std)
             z_vae = vae_mu + eps * std
             vae_x = self.vae_decoder(z_vae)
+            vae_logvar_obs = self.vae_sigma_head(z_vae).clamp(min=-5.0, max=5.0)
+
+        if self.lam[5] > 0 and ht is not None:
+            mu_logvar_t = self.vae_tmax_latent(ht)
+            vae_tmax_mu, vae_tmax_logvar = torch.chunk(mu_logvar_t, 2, dim=-1)
+            std_t = torch.exp(0.5 * vae_tmax_logvar)
+            eps_t = torch.randn_like(std_t)
+            z_tmax = vae_tmax_mu + eps_t * std_t
+            vae_tmax = self.vae_tmax_decoder(z_tmax)
+            vae_tmax_logvar_obs = self.vae_tmax_sigma_head(z_tmax).clamp(min=-5.0, max=5.0)
 
         x_hat = self.decoder(h) if return_x_hat and self.lam[0]>0 else None
 
-        if test:
-            return h,h,ht,x_hat,tmax_hat, noise, noise_hat, vae_x, vae_mu, vae_logvar
-        else:
-            return h,h,ht,x_hat,tmax_hat, noise, noise_hat, vae_x, vae_mu, vae_logvar
+        return (
+            h,
+            h,
+            ht,
+            x_hat,
+            tmax_hat,
+            noise,
+            noise_hat,
+            vae_x,
+            vae_mu,
+            vae_logvar,
+            vae_tmax,
+            vae_tmax_mu,
+            vae_tmax_logvar,
+            vae_logvar_obs if 'vae_logvar_obs' in locals() else None,
+            vae_tmax_logvar_obs if 'vae_tmax_logvar_obs' in locals() else None,
+        )

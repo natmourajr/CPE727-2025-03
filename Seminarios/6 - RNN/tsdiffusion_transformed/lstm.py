@@ -268,7 +268,7 @@ class TSDF_LSTM(TSDiffusion):
         hidden_dim: int = 256,
         static_dim: int = 0,
         status_dim: int = 0,
-        lam: list[float,float,float,float,float] = [0.9, 0.0, 0.0, 0.1, 0.0],
+        lam: list[float,float,float,float,float,float] = [0.9, 0.0, 0.0, 0.1, 0.0, 0.0],
         num_steps: int = 1000,
         cost_columns: list = None,
         bi_lstm: bool = False,
