@@ -396,12 +396,14 @@ class TSDiffusion(ODEJumpEncoder):
 
         if self.lam[2]>0:
             #L3
-            offset_state_pred = (state_pred - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
-            offset_tmax = (tmax).clamp(min=0,max=status_pred_window) 
-            changing_state = ((offset_state_pred<status_pred_window) & (offset_state_pred>0)).float()
-            err = (offset_tmax - offset_state_pred * changing_state) / status_pred_window   # (B,T,S)
+            mask_tmax = mask.new_zeros(mask.size(0), mask.size(1), 1)  # usar máscara completa para VAE
+            mask_tmax[:,-1,:] = 1.0
+            offset_state_pred = (state_pred - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window) / status_pred_window
+            offset_tmax = tmax
+            changing_state = ((offset_state_pred<1) & (offset_state_pred>0)).float()
+            err = mask_tmax * (offset_tmax - offset_state_pred * changing_state)   # (B,T,S)
             err_no_change = err * (1-changing_state)
-            err_change = err * changing_state * 1000
+            err_change = err * changing_state * 1000.
             if self.log_likelihood:
                 lam_t_tmax = F.softplus(self.lambda_tmax_head(state_tmax)).clamp(min=1/(2*math.pi), max=2*math.pi)  # (B,T,1)
                 lam2_tmax  = lam_t_tmax.squeeze(-1)                                            # (B,T)
@@ -418,11 +420,11 @@ class TSDiffusion(ODEJumpEncoder):
 
                 # Média por timestep (B,T). Se preferir, some e divida por B*T explicitamente.
                 L3 = -(log_ptmax.sum())
-                L3_div = float(err.numel())
+                L3_div = float(err_change.size(0)*err_change.size(2))
             else:
-                sse_tmax_change = (err_change**2+err_no_change**2).sum(dim=-1)
+                sse_tmax_change = ((err_change**2)+(err_no_change**2)).sum(dim=-1)
                 L3 = sse_tmax_change.sum()
-                L3_div = float(err.numel())
+                L3_div = float(err_change.size(0)*err_change.size(2))
                  
         else:
             L3 = torch.tensor(0.0, device=state.device)
@@ -457,23 +459,23 @@ class TSDiffusion(ODEJumpEncoder):
             L5_div = torch.tensor(1.0, device=state.device)
 
         if self.lam[5] > 0 and vae_tmax is not None and vae_tmax_mu is not None and vae_tmax_logvar is not None:
-            offset_state_pred = (state_pred - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
-            offset_tmax = (vae_tmax).clamp(min=0,max=status_pred_window) 
-            changing_state = ((offset_state_pred<status_pred_window) & (offset_state_pred>0)).float()
-            err = (offset_tmax - offset_state_pred * changing_state) / status_pred_window   # (B,T,S)
+            mask_vae = mask.new_zeros(mask.size(0), mask.size(1), 1)  # usar máscara completa para VAE
+            mask_vae[:,-1,:] = 1.0            
+            offset_state_pred = (state_pred - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window) / status_pred_window
+            offset_tmax = (vae_tmax)
+            changing_state = ((offset_state_pred<1) & (offset_state_pred>0)).float()
+            err = (offset_tmax - offset_state_pred * changing_state)   # (B,T,S)
             err_no_change = err * (1-changing_state)
-            err_change = err * changing_state * 1000
+            err_change = err * changing_state
             if vae_tmax_logvar_obs is not None:
                 logvar_obs_t = (vae_tmax_logvar_obs + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
-                nll_obs_t = 0.5 * (logvar_obs_t + (err ** 2) / torch.exp(logvar_obs_t) + math.log(2 * math.pi)) + torch.abs(err_change) * 1000
-                vae_recon_t = (nll_obs_t).sum()
+                nll_obs_t = 0.5 * (logvar_obs_t + (err ** 2) / torch.exp(logvar_obs_t) + math.log(2 * math.pi)) + err_change**2 * 100
+                vae_recon_t = (nll_obs_t * mask_vae).sum()
             else:
-                vae_recon_t = (err_change ** 2 * 1000 + err_no_change ** 2).sum()
-            vae_recon_t_div = err.numel()
-            vae_kl_t = -0.5 * torch.sum(1 + vae_tmax_logvar - vae_tmax_mu.pow(2) - vae_tmax_logvar.exp())
-            vae_kl_t_div = err.numel()
-            L6 = vae_recon_t / vae_recon_t_div + kl_scale * (vae_kl_t / vae_kl_t_div)
-            L6_div = torch.tensor(1.0, device=x.device)
+                vae_recon_t = ((err_change ** 2 * 1000 + err_no_change ** 2)*mask_vae).sum()
+            vae_kl_t = -0.5 * torch.sum((1 + vae_tmax_logvar - vae_tmax_mu.pow(2) - vae_tmax_logvar.exp()) * mask_vae) 
+            L6 = (vae_recon_t + kl_scale * (vae_kl_t))
+            L6_div = mask_vae.sum().clamp(min=1.0)
         else:
             L6 = torch.tensor(0.0, device=state.device)
             L6_div = torch.tensor(1.0, device=state.device)
@@ -607,21 +609,21 @@ class TSDiffusion(ODEJumpEncoder):
         N = ds.tensors[0].shape[0]
         if N != len(y_win):
             raise ValueError(f"Inconsistência: dataset={N} vs rótulos={len(y_win)}.")
-
+        train_frac, val_frac, test_frac = 0.4, 0.2, 0.2
         # --- Split por grupo (proporcional): 60/20/20 ou 80/0/20
         if fixed_test_idx is not None:
             test_idx = np.asarray(fixed_test_idx, dtype=int)
             remain_mask = np.ones(N, dtype=bool); remain_mask[test_idx] = False
             tr_idx_rel, va_idx_rel, _ = self._split_by_group_proportions(
                 y_win[remain_mask], validate=validate,
-                train_frac=0.60, val_frac=0.20, test_frac=0.20, seed=seed_split
+                train_frac=train_frac, val_frac=val_frac, test_frac=test_frac, seed=seed_split
             )
             base = np.where(remain_mask)[0]
             train_idx = base[tr_idx_rel]
             val_idx   = base[va_idx_rel]
         else:
             train_idx, val_idx, test_idx = self._split_by_group_proportions(
-                y_win, validate=validate, train_frac=0.60, val_frac=0.20, test_frac=0.20, seed=seed_split
+                y_win, validate=validate, train_frac=train_frac, val_frac=val_frac, test_frac=test_frac, seed=seed_split
             )
         x_all_scaled = self.scale_tensor(ds.tensors[0][train_idx], ds.tensors[0])
         ds.tensors = (torch.tensor(x_all_scaled, dtype=torch.float32),) + ds.tensors[1:]
@@ -731,10 +733,10 @@ class TSDiffusion(ODEJumpEncoder):
                         vae_x * cc if vae_x is not None else None,
                         vae_tmax,
                         vae_tmax_mu,
-                    vae_tmax_logvar,
-                    vae_logvar_obs * cc if vae_logvar_obs is not None else None,
-                    vae_tmax_logvar_obs,
-                    kl_scale=self._kl_scale(ep, kl_start, kl_end, kl_warmup_epochs)
+                        vae_tmax_logvar,
+                        vae_logvar_obs * cc if vae_logvar_obs is not None else None,
+                        vae_tmax_logvar_obs,
+                        kl_scale=self._kl_scale(ep, kl_start, kl_end, kl_warmup_epochs)
                     )
 
                 scaler.scale(loss).backward()
@@ -1073,17 +1075,19 @@ class TSDiffusion(ODEJumpEncoder):
                     x_masked, timestamps=ts_batch, static_feats=s, 
                     return_x_hat=True, mask=m_train, mask_ts=mask_ts, test=False,only_gru=only_gru)
                 
-                offset_state_pred = (p - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window)
+                offset_state_pred = (p - ts_batch.unsqueeze(-1)).clamp(min=0,max=status_pred_window) / status_pred_window
                 if tmax_hat is None:
                     offset_tmax = offset_state_pred
                 else:
-                    offset_tmax = (tmax_hat).clamp(min=0,max=status_pred_window) 
-                changing_state = ((offset_state_pred<status_pred_window)*(offset_state_pred>0)).float()
-                err = ((offset_tmax - offset_state_pred) * changing_state) / status_pred_window   # (B,T,S)
+                    offset_tmax = (tmax_hat).clamp(min=0,max=1) 
+                mask_tmax = m.new_zeros(m.size(0),m.size(1),1)
+                mask_tmax[:,-1,:] = 1.0
+                changing_state = ((offset_state_pred<1)*(offset_state_pred>0)).float()
+                err = mask_tmax * ((offset_tmax - offset_state_pred) * changing_state)   # (B,T,S)
                 #err_change = err
 
                 sse_s_bt  = (err**2).sum(dim=(1, 2))           # (B,)
-                nobs_s_bt = (changing_state).sum(dim=(1, 2))+1e-8               # (B,)
+                nobs_s_bt = (changing_state * mask_tmax).sum(dim=(1, 2))+1e-8               # (B,)
                 mse_s_bt  = (sse_s_bt / nobs_s_bt).detach().cpu().numpy()
                 sse_s_bt  = sse_s_bt.detach().cpu().numpy()
                 nobs_s_bt = nobs_s_bt.detach().cpu().numpy()
@@ -1108,6 +1112,7 @@ class TSDiffusion(ODEJumpEncoder):
 
                 if vae_x is None:
                     vae_x = x
+
                 sse_v_bt  = ((x - vae_x)**2 * mask_err * cc).sum(dim=(1, 2))
                 nobs_v_bt = (mask_err * cc).sum(dim=(1, 2)).clamp(min=1.0)
                 mse_v_bt  = (sse_v_bt / nobs_v_bt).detach().cpu().numpy()
@@ -1135,30 +1140,30 @@ class TSDiffusion(ODEJumpEncoder):
                 if vae_tmax is None:
                     offset_vae_tmax = offset_state_pred
                 else:
-                    offset_vae_tmax = vae_tmax.clamp(min=0,max=status_pred_window) 
-                err_vt = ((offset_vae_tmax - offset_state_pred) * changing_state) / status_pred_window   # (B,T,S)
+                    offset_vae_tmax = vae_tmax.clamp(min=0,max=1) 
+                err_vt = mask_tmax * ((offset_vae_tmax - offset_state_pred) * changing_state)    # (B,T,S)
                 sse_vt_bt = (err_vt ** 2).sum(dim=(1,2))
-                nobs_vt_bt = (changing_state).sum(dim=(1, 2))+1e-8 
+                nobs_vt_bt = (changing_state * mask_tmax).sum(dim=(1, 2))+1e-8 
                 mse_vt_bt = (sse_vt_bt / nobs_vt_bt).detach().cpu().numpy()
                 sse_vt_bt = sse_vt_bt.detach().cpu().numpy()
                 nobs_vt_bt = nobs_vt_bt.detach().cpu().numpy()
-                mu_vt = offset_vae_tmax
+                mu_vt = offset_vae_tmax * changing_state * mask_tmax
                 logvar_vt = vae_tmax_logvar_obs if vae_tmax_logvar_obs is not None else torch.zeros_like(mu_vt)
                 logvar_vt = (logvar_vt + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
-                sigma_vt = torch.exp(0.5 * logvar_vt)
+                sigma_vt = torch.exp(0.5 * logvar_vt) * changing_state * mask_tmax
                 nll_vt = 0.5 * (
                     math.log(2 * math.pi) + logvar_vt + ((offset_state_pred - mu_vt) ** 2) / torch.exp(logvar_vt)
                 )
-                nll_vt = (nll_vt * changing_state).sum(dim=(1, 2))
+                nll_vt = (nll_vt * changing_state * mask_tmax).sum(dim=(1, 2))
                 nll_vt_bt = nll_vt.detach().cpu().numpy()
                 covered_vt = (
-                    (offset_state_pred >= (mu_vt - z90 * sigma_vt))
-                    * (offset_state_pred <= (mu_vt + z90 * sigma_vt))
-                    * changing_state
+                    (offset_state_pred * changing_state * mask_tmax >= (mu_vt - z90 * sigma_vt))
+                    * (offset_state_pred * changing_state * mask_tmax <= (mu_vt + z90 * sigma_vt))
+                    
                 ).float()
                 cov_vt_bt = covered_vt.sum(dim=(1, 2)).detach().cpu().numpy()
-                cov_den_vt_bt = changing_state.sum(dim=(1, 2)).clamp(min=1.0).detach().cpu().numpy()
-                width_vt_num = (2 * z90 * sigma_vt * changing_state).sum(dim=(1, 2)).detach().cpu().numpy()
+                cov_den_vt_bt = (changing_state * mask_tmax).sum(dim=(1, 2)).clamp(min=1.0).detach().cpu().numpy()
+                width_vt_num = (2 * z90 * sigma_vt * changing_state * mask_tmax).sum(dim=(1, 2)).detach().cpu().numpy()
                 width_vt_bt = width_vt_num / cov_den_vt_bt
 
                 for b in range(B):
@@ -1215,7 +1220,7 @@ class TSDiffusion(ODEJumpEncoder):
                     G_W_S[g]   = G_W_S.get(g, 0.0)   + w_s
                     G_SSE_S[g] = G_SSE_S.get(g, 0.0) + sse_s
                     G_WM2_S[g] = G_WM2_S.get(g, 0.0) + (w_s * mse_s * mse_s)
-                    G_MSE_N.setdefault(g, []).append(mse_n)
+                    G_MSE_S.setdefault(g, []).append(mse_s)
                     G_CNT[g] = G_CNT.get(g, 0) + 1
 
                     T_W   += w
