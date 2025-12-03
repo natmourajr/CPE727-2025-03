@@ -469,13 +469,15 @@ class TSDiffusion(ODEJumpEncoder):
             err_change = err * changing_state
             if vae_tmax_logvar_obs is not None:
                 logvar_obs_t = (vae_tmax_logvar_obs + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
-                nll_obs_t = 0.5 * (logvar_obs_t + (err ** 2) / torch.exp(logvar_obs_t) + math.log(2 * math.pi)) + err_change**2 * 100
-                vae_recon_t = (nll_obs_t * mask_vae).sum()
+                base_nll_t = 0.5 * (logvar_obs_t + (err ** 2) / torch.exp(logvar_obs_t) + math.log(2 * math.pi))
+                base_nll_t = base_nll_t.clamp_min(0.0)
+                weight_t = 1.0 + (1000.0 - 1.0) * changing_state
+                vae_recon_t = (base_nll_t * weight_t * mask_vae).sum()
             else:
                 vae_recon_t = ((err_change ** 2 * 1000 + err_no_change ** 2)*mask_vae).sum()
             vae_kl_t = -0.5 * torch.sum((1 + vae_tmax_logvar - vae_tmax_mu.pow(2) - vae_tmax_logvar.exp()) * mask_vae) 
-            L6 = (vae_recon_t + kl_scale * (vae_kl_t))
             L6_div = mask_vae.sum().clamp(min=1.0)
+            L6 = (vae_recon_t) + kl_scale * (vae_kl_t)
         else:
             L6 = torch.tensor(0.0, device=state.device)
             L6_div = torch.tensor(1.0, device=state.device)
@@ -483,15 +485,15 @@ class TSDiffusion(ODEJumpEncoder):
         if self.lam[1] == 0:
             L2 = torch.tensor(0.0, device=state.device)
             L2_div = torch.tensor(1.0, device=state.device)
-            loss = self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5 + self.lam[5]*L6
+            loss = self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5 + self.lam[5]*L6/L6_div
         else:
             L2 = F.mse_loss(noise, noise_hat, reduction='sum')
             L2_div = (torch.ones_like(state) * m_t).sum()
 
             if L2 / L2_div > 0.1:
-                loss = + self.lam[1] * L2 / L2_div + (self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5 + self.lam[5]*L6) * 1e-3
+                loss = + self.lam[1] * L2 / L2_div + (self.lam[0]*L1/L1_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5 + self.lam[5]*L6/L6_div) * 1e-3
             else:
-                loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5 + self.lam[5]*L6
+                loss = self.lam[0]*L1/L1_div + self.lam[1] * L2 / L2_div + self.lam[2]*L3/L3_div + self.lam[3]*L4/L4_div + self.lam[4]*L5 + self.lam[5]*L6/L6_div
 
         if lambda1 > 0:
             l1 = sum(
@@ -1154,15 +1156,16 @@ class TSDiffusion(ODEJumpEncoder):
                 nll_vt = 0.5 * (
                     math.log(2 * math.pi) + logvar_vt + ((offset_state_pred - mu_vt) ** 2) / torch.exp(logvar_vt)
                 )
+                nll_vt = nll_vt.clamp_min(0.0)
                 nll_vt = (nll_vt * changing_state * mask_tmax).sum(dim=(1, 2))
                 nll_vt_bt = nll_vt.detach().cpu().numpy()
                 covered_vt = (
-                    (offset_state_pred * changing_state * mask_tmax >= (mu_vt - z90 * sigma_vt))
-                    * (offset_state_pred * changing_state * mask_tmax <= (mu_vt + z90 * sigma_vt))
+                    (offset_state_pred >= (mu_vt - z90 * sigma_vt))
+                    * (offset_state_pred  <= (mu_vt + z90 * sigma_vt)) * changing_state * mask_tmax
                     
                 ).float()
                 cov_vt_bt = covered_vt.sum(dim=(1, 2)).detach().cpu().numpy()
-                cov_den_vt_bt = (changing_state * mask_tmax).sum(dim=(1, 2)).clamp(min=1.0).detach().cpu().numpy()
+                cov_den_vt_bt = (changing_state * mask_tmax).sum(dim=(1, 2)).clamp(min=1e-8).detach().cpu().numpy()
                 width_vt_num = (2 * z90 * sigma_vt * changing_state * mask_tmax).sum(dim=(1, 2)).detach().cpu().numpy()
                 width_vt_bt = width_vt_num / cov_den_vt_bt
 
