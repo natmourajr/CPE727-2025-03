@@ -222,5 +222,9 @@ __marimo__/
 # for Data folder
 Data/*
 
+Seminarios/6 - RNN/tsdiffusion.pt
+
+
 # tmp
 tmp/
+

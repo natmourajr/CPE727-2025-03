@@ -1,0 +1,1445 @@
+\documentclass[10pt]{beamer}
+
+% ======================
+% Pacotes básicos
+% ======================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[provide=*,main=portuguese]{babel}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage[numbers]{natbib} 
+
+\usetheme{Madrid} % pode trocar por: Berlin, CambridgeUS, Metropolis (se instalado), etc.
+
+% ======================
+% Infos da capa
+% ======================
+\title[Recorrent Neural Networks - RNNs]{Recorrent Neural Networks - RNNs\\
+Arquiteturas, Treinamento e Aplicações}
+\author{Fernanda Villa Verde, Leonardo Britto, Luiza Helena e Rodrigo Petrus}
+\institute{Utilização de RNNs em séries temporais e processamento de linguagem natural \\
+ LSTM / GRU / BiLSTM / BiGRU}
+\date{\today}
+
+% ======================
+% Início
+% ======================
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ======================
+% Agenda
+% ======================
+\begin{frame}{Agenda}
+  \tableofcontents
+\end{frame}
+
+% ======================
+\section{Motivação e Contexto Histórico}
+% ======================
+% ======================
+\begin{frame}{Motivação e Contexto Histórico}
+\footnotesize
+
+\textbf{Por que RNNs?}  
+As redes feedforward assumem entradas independentes e processam cada amostra isoladamente.  
+Entretanto, muitas tarefas reais exigem \textbf{modelagem temporal}:
+\begin{itemize}
+  \item Séries financeiras e sensoriais
+  \item Áudio e fala
+  \item Texto e linguagem natural
+  \item Sequências de vídeo
+\end{itemize}
+
+\medskip
+\textbf{Avanço conceitual:}  
+As \textbf{Redes Neurais Recorrentes (RNNs)} introduziram a noção de \textbf{memória de estados anteriores},  
+permitindo representar dependências temporais ao longo da sequência.
+
+
+\vspace{0.3cm}
+
+    \centering
+    \includegraphics[width=0.4\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/RNN.png}
+    \vspace{0.2cm}
+    \scriptsize
+    \textit{RNN: fluxo temporal de estados com memória.}
+
+
+\end{frame}
+
+
+% ======================
+\section{Linha do Tempo das RNNs}
+% ======================
+\begin{frame}{Linha do Tempo das RNNs}
+\small
+\setlength{\tabcolsep}{3pt} % (opcional) deixa a tabela mais compacta
+
+\begin{center}
+\begin{tabularx}{\linewidth}{|c|l|>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{Ano} & \textbf{Autor(es)} & \textbf{Contribuição} \\ \hline
+
+1982   & Hopfield                & Rede recorrente como memória associativa (não sequencial). \\ \hline
+1986   & Jordan                  & Recorrência via \textbf{saída} anterior. \\ \hline
+1990   & Elman                   & Recorrência via \textbf{estado oculto} (RNN padrão). \\ \hline
+1990   & Werbos                  & Formaliza \textbf{BPTT} para treinar RNNs. \\ \hline
+1991   & Hochreiter              & Demonstra o \textbf{vanishing gradient}. \\ \hline
+1997   & Hochreiter \& Schmidhuber & Introduzem \textbf{LSTM} (estado de célula preserva gradiente). \\ \hline
+1997   & Schuster \& Paliwal     & Introduzem \textbf{BiRNN} (contexto passado + futuro). \\ \hline
+2005  & Graves \& Schmidhuber         & Combinação: \textbf{LSTM + BiRNN}. \\ \hline
+2014   & Cho et al.              & Introduzem \textbf{GRU} (simplifica LSTM). \\ \hline
+2014  & Chung, J.          & Combinação: \textbf{GRU + BiRNN}. \\ \hline
+
+\end{tabularx}
+\end{center}
+\end{frame}
+
+
+% ======================
+\section{Modelos RNN Clássicos}
+% ======================
+
+
+% =========================================================
+% SLIDE 1 — Hopfield (1982)
+% =========================================================
+
+% ======================
+\begin{frame}{Hopfield Network (1982) - Memória associativa \cite{hopfield1982}}
+\footnotesize
+
+\textbf{Ideia central:}  
+A Hopfield Network é uma rede recorrente totalmente conectada e simétrica,  
+capaz de armazenar e recuperar padrões — funcionando como uma \textbf{memória associativa}.
+
+\vspace{0.3cm}
+\centering
+\includegraphics[width=0.65\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/hopfield.png}
+
+\vspace{0.15cm}
+\scriptsize
+\textit{Rede totalmente conectada: cada neurônio recebe sinais dos demais.}
+
+\vspace{0.3cm}
+\footnotesize
+\textbf{Resumo conceitual:}
+\begin{itemize}
+  \item \textbf{Conexões simétricas:} garantem estabilidade e convergência.
+  \item \textbf{Atualização recorrente:} cada neurônio depende do estado dos outros.
+  \item \textbf{Mínimo de energia:} estado fixo da rede corresponde a uma memória recuperada.
+  \item \textbf{Padrões aprendidos:} configurações estáveis codificadas nos pesos.
+\end{itemize}
+
+\vspace{0.2cm}
+\scriptsize
+\textit{A Hopfield Network introduz o princípio de memória associativa — base conceitual das RNNs.}
+
+\end{frame}
+% ======================
+
+
+
+% =========================================================
+% SLIDE 2 — Jordan Network (1986)
+% =========================================================
+\begin{frame}{Jordan Network (1986) \cite{jordan1986}}
+\footnotesize
+
+\textbf{Ideia central:} memória via \textbf{feedback da saída} em \emph{context units}.
+
+\medskip
+\textbf{Contexto (copia saída anterior):}
+\[
+\mathbf{c}_t \;=\; \mathbf{y}_{t-1}
+\]
+
+\textbf{Estado oculto:}
+\[
+\mathbf{h}_t \;=\; \phi\!\left(W_{xh}\,\mathbf{x}_t \;+\; W_{ch}\,\mathbf{c}_t \;+\; \mathbf{b}_h\right)
+\]
+
+\textbf{Saída:}
+\[
+\mathbf{y}_t \;=\; \psi\!\left(W_{hy}\,\mathbf{h}_t \;+\; \mathbf{b}_y\right)
+\]
+
+\medskip
+\textbf{Onde:} \(\phi\) tipicamente \(\tanh\) (ou ReLU) e \(\psi\) pode ser \(\text{softmax}\) (classificação) ou identidade (regressão).
+
+\medskip
+\textbf{Resumo:} a \textbf{memória} vem de \(\mathbf{y}_{t-1}\) (não de \(\mathbf{h}_{t-1}\)).
+\end{frame}
+
+% =========================================================
+% SLIDE 3 — Elman / SRN (1990)
+% =========================================================
+\begin{frame}{Elman (1990) - RNN: Simple Recurrent Network (SRN) \cite{elman1990}}
+\footnotesize
+
+\textbf{Ideia central:} recorrência no \textbf{estado oculto} — a RNN “padrão”.
+
+\medskip
+\textbf{Estado oculto (recorrente):}
+\[
+\mathbf{h}_t \;=\; \phi\!\left(W_{xh}\,\mathbf{x}_t \;+\; W_{hh}\,\mathbf{h}_{t-1} \;+\; \mathbf{b}_h\right)
+\]
+
+\textbf{Saída:}
+\[
+\mathbf{y}_t \;=\; \psi\!\left(W_{hy}\,\mathbf{h}_t \;+\; \mathbf{b}_y\right)
+\]
+
+ \textbf{Notação:}
+  \begin{itemize}
+    \item $x_t$: entrada no tempo $t$
+    \item $h_t$: estado oculto (memória)
+    \item $y_t$: saída predita
+    \item $W_{hh}$: pesos de transição (estado $\to$ estado)
+    \item $W_{xh}$: pesos de entrada (entrada $\to$ estado)
+    \item $W_{hy}$: pesos de saída (estado $\to$ saída)
+    \item $b_h, b_y$: vieses
+  \end{itemize}
+
+\medskip
+\textbf{Inicialização típica:} \(\mathbf{h}_0=\mathbf{0}\) (ou parâmetro treinável).
+
+\textbf{Observações:}
+\begin{itemize}
+  \item \(\phi\) costuma ser \(\tanh\); \(\psi\) pode ser \(\text{softmax}\) (classificação).
+  \item Base para variantes modernas (LSTM/GRU) que mitigam \emph{vanishing/exploding gradients}.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Werbos (1990) — Backpropagation Through Time (BPTT) \cite{werbos1990}}
+\footnotesize
+
+\textbf{Forward:}
+\[
+h_t = \phi(W_{xh} x_t + W_{hh} h_{t-1} + b_h), 
+\qquad
+y_t = \psi(W_{hy} h_t + b_y)
+\]
+
+\medskip
+\textbf{Perda total:}
+\[
+L = \sum_{t=1}^{T} \ell(y_t, \tilde{y}_t)
+\]
+
+\medskip
+\textbf{BPTT — o gradiente retropropaga no tempo:}
+\[
+\frac{\partial L}{\partial h_t}
+=
+\frac{\partial L}{\partial y_t}\frac{\partial y_t}{\partial h_t}
++
+\frac{\partial L}{\partial h_{t+1}}
+\frac{\partial h_{t+1}}{\partial h_t}
+\]
+
+\[
+\frac{\partial h_{t+1}}{\partial h_t} = D_{t+1} W_{hh},
+\quad
+D_{t+1} = \mathrm{diag}(1 - \tanh^2(\cdot))
+\]
+
+\[
+\frac{\partial L}{\partial W_{hh}}
+=
+\sum_{t=1}^{T}
+\left(\frac{\partial L}{\partial h_t}\right)(h_{t-1})^\top
+\]
+
+\medskip
+\textbf{Ponto-chave:}  
+O erro “viaja para trás” através do tempo, acumulando dependências.
+\end{frame}
+
+
+\begin{frame}{Werbos (1990) — Backpropagation Through Time (BPTT) \cite{werbos1990} (cont.)}
+\footnotesize
+\begin{columns}[T,onlytextwidth]
+
+  % ----- Coluna da figura -----
+  \begin{column}{0.50\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/BPTT.png} % ajuste o caminho se necessário
+    \scriptsize
+    \emph{A RNN vista ao longo do tempo. Cada estado $s_t$ influencia o próximo.}
+  \end{column}
+
+  % ----- Coluna da intuição -----
+  \begin{column}{0.50\textwidth}
+
+    \textbf{Ideia central}
+    \begin{itemize}\itemsep4pt
+      \item A RNN processa a sequência passo a passo.
+      \item Cada estado oculto $h_t$ guarda uma \textbf{memória} do passado.
+      \item O passado influencia o futuro através da recorrência.
+    \end{itemize}
+
+    \medskip
+
+    \textbf{Por que isso é importante?}
+    \begin{itemize}\itemsep4pt
+      \item Permite modelar dependências temporais.
+      \item Útil para texto, fala, séries temporais, sensores, controle, etc.
+    \end{itemize}
+
+    \medskip
+
+    \textbf{Resumo mental:}
+    \scriptsize
+    \[
+    \text{estado novo} = f(\text{entrada atual},\
+    \text{lembrança do passado})
+    \]
+
+  \end{column}
+
+\end{columns}
+\end{frame}
+
+
+\begin{frame}{Hochreiter (1991) — Vanishing Gradient \cite{hochreiter1991}}
+\footnotesize
+
+\textbf{Equação-chave (forma simplificada do gradiente):}
+\[
+\frac{\partial L}{\partial h_t}
+=
+\frac{\partial L}{\partial h_T}
+\prod_{k=t+1}^{T}
+\frac{\partial h_k}{\partial h_{k-1}}
+\]
+
+\textbf{Para uma RNN simples com $\tanh$:}
+\[
+\frac{\partial h_k}{\partial h_{k-1}}
+=
+D_k \, W_{hh},
+\quad\text{onde}\quad
+D_k = \mathrm{diag}(1 - \tanh^2(\cdot)),
+\;\; \|D_k\|_2 \le 1.
+\]
+
+\textbf{Consequência:}
+\[
+\left\|\frac{\partial h_k}{\partial h_{k-1}}\right\|_2 \le \|W_{hh}\|_2
+\;\;\Rightarrow\;\;
+\left\|\frac{\partial L}{\partial h_t}\right\|
+\;\lesssim\;
+\|W_{hh}\|_2^{\,T-t}
+\]
+
+\medskip
+\textbf{Interpretação:}
+\begin{itemize}
+  \item Se $\|W_{hh}\|_2 < 1$: o gradiente \textbf{decai exponencialmente} → \textbf{vanishing gradient}.
+  \item Se $\|W_{hh}\|_2 > 1$: o gradiente pode \textbf{explodir}.
+  \item Esse efeito \textbf{não é de implementação}, mas da \textbf{matemática da recorrência}.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Hochreiter \& Schmidhuber (1997) — LSTM  \cite{hochreiter1997}}
+
+
+  \begin{center}
+    \includegraphics[width=0.55\textwidth]{/home/ferna/cognite/apresentacao/figs/LSTM.png}
+  \end{center}
+\medskip
+\scriptsize
+\textbf{Resumo:}
+\begin{itemize}
+  \item A LSTM adiciona \textbf{portas} para controlar escrita, esquecimento e leitura da memória.
+  \item O estado de célula $\mathbf{c}_t$ funciona como \textbf{rota de gradiente preservada}.
+  \item Resolve o problema identificado por \textbf{Hochreiter (1991)}.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Hochreiter \& Schmidhuber (1997) — LSTM (cont.)\cite{hochreiter1997}}
+\footnotesize
+
+\textbf{Ideia central:} introduzir um \textbf{estado de célula} $c_t$ com \textbf{rota de gradiente quase constante},
+permitindo \textbf{memória de longo prazo} e evitando \textbf{vanishing gradient}.
+
+\medskip
+\textbf{Equações da LSTM:}
+\[
+\begin{aligned}
+\mathbf{i}_t &= \sigma(W_{xi}\mathbf{x}_t + W_{hi}\mathbf{h}_{t-1} + \mathbf{b}_i) & \text{(porta de entrada)}\\
+\mathbf{f}_t &= \sigma(W_{xf}\mathbf{x}_t + W_{hf}\mathbf{h}_{t-1} + \mathbf{b}_f) & \text{(porta de esquecimento)}\\
+\tilde{\mathbf{c}}_t &= \tanh(W_{xc}\mathbf{x}_t + W_{hc}\mathbf{h}_{t-1} + \mathbf{b}_c) & \text{(conteúdo candidato)}\\[4pt]
+\mathbf{c}_t &= \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t & \text{(estado de célula)}\\[4pt]
+\mathbf{o}_t &= \sigma(W_{xo}\mathbf{x}_t + W_{ho}\mathbf{h}_{t-1} + \mathbf{b}_o) & \text{(porta de saída)}\\
+\mathbf{h}_t &= \mathbf{o}_t \odot \tanh(\mathbf{c}_t) & \text{(estado oculto)}
+\end{aligned}
+\]
+
+\medskip
+\textbf{Por que isso evita vanishing gradient?}
+
+\[
+\frac{\partial \mathbf{c}_t}{\partial \mathbf{c}_{t-1}} = \mathbf{f}_t
+\]
+
+Se $\mathbf{f}_t \approx 1$, então:
+\[
+\frac{\partial L}{\partial \mathbf{c}_t} \approx \frac{\partial L}{\partial \mathbf{c}_{t-1}}
+\quad\Rightarrow\quad
+\text{gradiente flui sem decair}
+\]
+
+
+
+\end{frame}
+
+
+
+
+\begin{frame}{Schuster \& Paliwal (1997) — RNN Bidirecional (BiRNN) \cite{schuster1997}}
+\footnotesize
+
+\textbf{Ideia central:} processar a sequência \textbf{nos dois sentidos} — 
+um fluxo temporal \textbf{forward} ($t=1\to T$) e outro \textbf{backward} ($t=T\to 1$),
+permitindo que cada posição tenha acesso ao \textbf{passado e ao futuro}.
+
+\medskip
+\textbf{Equações da BiRNN:}
+\[
+\overrightarrow{h}_t = \phi\!\left(W_x^{\rightarrow}\,x_t + W_h^{\rightarrow}\,\overrightarrow{h}_{t-1} + b^{\rightarrow}\right)
+\]
+
+\[
+\overleftarrow{h}_t = \phi\!\left(W_x^{\leftarrow}\,x_t + W_h^{\leftarrow}\,\overleftarrow{h}_{t+1} + b^{\leftarrow}\right)
+\]
+
+\textbf{Fusão (saída no tempo $t$):}
+\[
+h_t = [\,\overrightarrow{h}_t \,;\, \overleftarrow{h}_t\,]
+\quad\text{(concatenação, mais comum)}
+\]
+
+\medskip
+\textbf{Interpretação:}
+\begin{itemize}
+  \item A rede \textbf{forward} captura contexto do \textbf{passado}.
+  \item A rede \textbf{backward} captura contexto do \textbf{futuro}.
+  \item A combinação fornece \textbf{representações mais ricas por tempo} $t$.
+\end{itemize}
+
+\medskip
+\textbf{Aplicações típicas:}
+\begin{itemize}
+  \item Rotulação de sequência (POS tagging, NER, chunking)
+  \item Reconhecimento de fala e alinhamento temporal (CTC, seq2seq)
+  \item Modelos de atenção e embeddings contextuais (pré-transformer)
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Graves \& Schmidhuber (2005) - BiLSTM — Bidirectional LSTM \cite{graves2005}}
+
+  \scriptsize
+ 
+      \centering
+      \textbf{BiLSTM}   
+      \includegraphics[width=0.55\linewidth]{/home/ferna/cognite/apresentacao/figs/BiLSTM.png}
+   \centering
+   
+   \medskip
+\textbf{Por que utilizar BiLSTM?}
+\begin{itemize}
+  \item Mantém a \textbf{memória de longo prazo} da LSTM.
+  \item Excelente para tarefas onde o \textbf{contexto futuro é relevante}.
+  \item Muito utilizada em \textbf{NLP} (POS tagging, NER, parsing), \textbf{fala}, \textbf{bio-sinais}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Graves \& Schmidhuber (2005) - BiLSTM — Bidirectional LSTM (cont.) \cite{graves2005}}
+\footnotesize
+
+\textbf{Ideia central:} aplicar uma \textbf{LSTM} no sentido \textbf{forward} e outra no sentido \textbf{backward},
+de modo que cada passo temporal tenha acesso a \textbf{passado + futuro}.
+
+\medskip
+\textbf{LSTM forward:}
+\[
+\overrightarrow{h}_t,\,\overrightarrow{c}_t = \text{LSTM}_{\rightarrow}(x_t, \overrightarrow{h}_{t-1}, \overrightarrow{c}_{t-1})
+\]
+
+\textbf{LSTM backward:}
+\[
+\overleftarrow{h}_t,\,\overleftarrow{c}_t = \text{LSTM}_{\leftarrow}(x_t, \overleftarrow{h}_{t+1}, \overleftarrow{c}_{t+1})
+\]
+
+\textbf{Fusão (saída no tempo $t$):}
+\[
+h_t = [\,\overrightarrow{h}_t \,;\, \overleftarrow{h}_t\,]
+\quad\text{(concatenação, mais comum)}
+\]
+
+\medskip
+\textbf{Interpretação:}
+\begin{itemize}
+  \item \(\overrightarrow{h}_t\): informações do \textbf{passado}.
+  \item \(\overleftarrow{h}_t\): informações do \textbf{futuro}.
+  \item A fusão fornece uma representação \textbf{contextual bidirecional}.
+\end{itemize}
+
+
+
+\end{frame}
+
+\begin{frame}{Cho et al. (2014) — GRU (Gated Recurrent Unit) \cite{cho2014}}
+
+
+  \begin{center}
+    \includegraphics[width=0.65\textwidth]{/home/ferna/cognite/apresentacao/figs/GRU.png}
+  \end{center}
+\medskip
+\textbf{Por que GRU ficou popular?}
+\begin{itemize}
+  \item Menos parâmetros que LSTM → \textbf{mais leve}.
+  \item Desempenho comparável em muitas tarefas sequenciais.
+  \item Treino mais estável que RNN simples (não sofre vanishing severo).
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Cho et al. (2014) — GRU (Gated Recurrent Unit)  (cont.) \cite{cho2014}}
+\footnotesize
+
+\textbf{Ideia central:} simplificar a LSTM mantendo a capacidade de \textbf{memória de longo prazo},
+reduzindo o número de portas e \textbf{sem estado de célula separado} ($h_t$ = memória).
+
+\medskip
+\textbf{Equações da GRU:}
+\[
+\mathbf{z}_t = \sigma(W_{xz}\mathbf{x}_t + W_{hz}\mathbf{h}_{t-1} + \mathbf{b}_z)
+\quad\text{(porta de atualização)}
+\]
+
+\[
+\mathbf{r}_t = \sigma(W_{xr}\mathbf{x}_t + W_{hr}\mathbf{h}_{t-1} + \mathbf{b}_r)
+\quad\text{(porta de reset)}
+\]
+
+\[
+\tilde{\mathbf{h}}_t = \tanh\!\left(W_{xh}\mathbf{x}_t + W_{hh}(\mathbf{r}_t \odot \mathbf{h}_{t-1}) + \mathbf{b}_h\right)
+\quad\text{(conteúdo candidato)}
+\]
+
+\[
+\mathbf{h}_t = (1-\mathbf{z}_t)\odot \mathbf{h}_{t-1} + \mathbf{z}_t \odot \tilde{\mathbf{h}}_t
+\quad\text{(estado oculto atualizado)}
+\]
+
+\medskip
+\textbf{Interpretação:}
+\begin{itemize}
+  \item $\mathbf{z}_t$ decide \textbf{quanto do passado manter}.
+  \item $\mathbf{r}_t$ decide \textbf{quanto ignorar do passado} ao propor novo conteúdo.
+  \item Não possui estado de célula $c_t$: \textbf{memória é mantida em $h_t$}.
+\end{itemize}
+
+
+
+\end{frame}
+
+\begin{frame}{Chung, J. (2014) - BiGRU — Gated Recurrent Unit Bidirecional \cite{chung2014}}
+
+
+  \scriptsize
+ 
+      \centering
+      \textbf{BiGRU}
+     
+
+      \includegraphics[width=0.55\linewidth]{/home/ferna/cognite/apresentacao/figs/BiGRU.png}
+
+   \centering
+   \medskip
+\textbf{Por que utilizar BiGRU?}
+\begin{itemize}
+  \item Mantém as vantagens da GRU (menos parâmetros que LSTM).
+  \item Boa estabilidade em sequências longas.
+  \item Muito utilizada em \textbf{NLP, fala, anotação de sequência, NER, segmentação}.
+\end{itemize}
+
+
+\end{frame}
+
+
+\begin{frame}{Chung, J. (2014) - BiGRU — Gated Recurrent Unit Bidirecional  (cont.) \cite{chung2014}}
+\footnotesize
+
+\textbf{Ideia central:} aplicar uma \textbf{GRU} no sentido \textbf{forward} e outra no sentido \textbf{backward}, 
+combinando seus estados ocultos para obter \textbf{contexto passado + futuro}.
+
+\medskip
+\textbf{GRU forward:}
+\[
+\overrightarrow{h}_t = \text{GRU}_{\rightarrow}(x_t, \overrightarrow{h}_{t-1})
+\]
+
+\textbf{GRU backward:}
+\[
+\overleftarrow{h}_t = \text{GRU}_{\leftarrow}(x_t, \overleftarrow{h}_{t+1})
+\]
+
+\textbf{Fusão (saída no tempo $t$):}
+\[
+h_t = [\,\overrightarrow{h}_t \,;\, \overleftarrow{h}_t\,]
+\quad\text{(concatenação)}
+\]
+
+\medskip
+
+\textbf{Interpretação:}
+\begin{itemize}
+  \item \(\overrightarrow{h}_t\) captura dependências \textbf{anteriores} na sequência.
+  \item \(\overleftarrow{h}_t\) captura dependências \textbf{futuras}.
+  \item A concatenação fornece uma \textbf{representação mais rica} em cada passo temporal.
+\end{itemize}
+
+
+
+\end{frame}
+
+
+
+
+% ======================
+\section{Arquiteturas Bidirecionais e Fusão Pós-BiRNN}
+% ======================
+\begin{frame}{Arquiteturas Bidirecionais: Acoplada vs. Desacoplada \cite{serdyuk2018}}
+\footnotesize
+
+\textbf{Objetivo:} Capturar dependências temporais \textbf{passado $\leftrightarrow$ futuro}.
+
+\vspace{0.3cm}
+\textbf{1) BiRNN Acoplada (Convencional)}
+\begin{itemize}
+  \item \textbf{Forward} e \textbf{Backward} recebem \textbf{a mesma entrada} $x_t$.
+  \item São processadas \textbf{em paralelo} e \textbf{independentes} entre si.
+  \item A fusão ocorre \textbf{após} o cálculo dos dois estados:
+\[
+\overrightarrow{h}_t = f(x_t, \overrightarrow{h}_{t-1}),
+\quad
+\overleftarrow{h}_t = f(x_t, \overleftarrow{h}_{t+1}),
+\quad
+z_t = [\,\overrightarrow{h}_t ; \overleftarrow{h}_t\,].
+\]
+  \item \textbf{Usada apenas offline}, pois depende de informação futura.
+\end{itemize}
+
+\vspace{0.35cm}
+\textbf{2) BiRNN Desacoplada (Teacher--Student)}
+\begin{itemize}
+  \item O ramo \textbf{backward é treinado primeiro} (usa contexto futuro).
+  \item Depois, a rede \textbf{forward é treinada usando} $x_t$ \textbf{e} a representação do backward como \textbf{sinal professor}:
+\[
+\overleftarrow{h}_t = f(x_t, \overleftarrow{h}_{t+1}) \quad \text{(treino offline)}
+\]
+\[
+\overrightarrow{h}_t = g(x_t, \overrightarrow{h}_{t-1},\, \overleftarrow{h}_t) \quad \text{(treino do aluno)}
+\]
+  \item Na \textbf{inferência}, somente $\overrightarrow{h}_t$ é usado → \textbf{modelo causal}.
+\end{itemize}
+
+\vspace{0.35cm}
+\centering
+\textit{\small Acoplada = duas direções independentes em paralelo. \\
+Desacoplada = backward como \textbf{professor} → forward \textbf{aprende a prever sem ver o futuro}.}
+\end{frame}
+
+\begin{frame}{Técnicas de Fusão Bidirecional pós-BiRNN:}
+
+  \begin{itemize}
+    \item Concatenação Direta
+    \item Fusão gated
+    \item Fusão recorrente (Fuser RNN)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Fusão Bidirecional pós-BiRNN: Concatenação direta \cite{schuster1997,graves2005}}
+  Após processar a sequência com uma BiRNN (BiLSTM/BiGRU), precisamos combinar as
+  representações das duas direções em um vetor único para cada passo de tempo $t$
+  \[
+    z_t = [\,h_t^{\rightarrow} ; h_t^{\leftarrow}\,]
+  \]
+  \begin{itemize}
+    \item Simples, padrão em BiLSTM/BiGRU.
+    \item Mantém toda a informação das duas direções.
+    \item Limitação: trata passado e futuro como igualmente relevantes, sem controle dinâmico.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Fusão Bidirecional pós-BiRNN: Fusão \textit{gated} (seleção dinâmica) \cite{serdyuk2018}}
+  \vspace{0.3cm}
+  \[
+    g_t = \sigma\big(W_g [\,h_t^{\rightarrow} ; h_t^{\leftarrow}\,] + b_g\big)
+  \]
+  \[
+    z_t = g_t \odot h_t^{\rightarrow} \;+\; (1-g_t) \odot h_t^{\leftarrow}
+  \]
+  \scriptsize
+  \[
+    \begin{aligned}
+      &g_t &: \text{vetor de pesos entre 0 e 1 (gate dinâmico)} \\
+      &W_g, b_g &: \text{parâmetros aprendidos} \\
+      &\odot &: \text{produto elemento a elemento}
+    \end{aligned}
+  \]
+
+  \normalsize
+  \begin{itemize}
+    \item A rede aprende quando confiar mais no histórico causal ($h_t^{\rightarrow}$)
+          ou no contexto futuro ($h_t^{\leftarrow}$).
+     \begin{itemize}
+\item $g_t \!\approx\! 1$ → usa mais $h_t^{\rightarrow}$ (passado);
+\item $g_t \!\approx\! 0$ → usa mais $h_t^{\leftarrow}$ (futuro);
+\item $0<g_t<1$ → mistura adaptativa.
+\end{itemize}
+          \item Melhora robustez em sinais ruidosos.
+    \item A fusão gated aprende automaticamente quanto de passado ou futuro é relevante em cada passo.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Fusão Bidirecional pós-BiRNN: Fusão recorrente (\textit{fuser RNN}) \cite{serdyuk2018}}
+    \vspace{0.3cm}
+
+  \[
+    z_t = [\,h_t^{\rightarrow} ; h_t^{\leftarrow}\,]
+  \]
+  \[
+    u_t = \text{GRU}_\text{fuser}(z_t, u_{t-1})
+  \]
+  \begin{itemize}
+  \item Após concatenar as direções da BiRNN, uma GRU (ou LSTM) unidirecional processa a sequência fundida $z_t$.
+     \item Gera uma representação \textbf{causal} $u_t$, pois depende apenas de $u_{t-1}$ e $z_t$.
+  \item Atua como um \textbf{refinador temporal}: suaviza ruídos da BiRNN, estabiliza a dinâmica e acumula contexto adicional ao longo do tempo.
+   \item Permite treinar com \textbf{contexto bidirecional} (offline), mas \textbf{implantar apenas um modelo causal} (online), ideal para aplicações em tempo real.
+\end{itemize}
+
+
+\end{frame}
+
+\begin{frame}{Comparativo de Estratégias de Fusão Bidirecional}
+  \scriptsize
+  \renewcommand{\arraystretch}{1.3}
+  \setlength{\tabcolsep}{3pt}
+
+  \begin{table}[h]
+    \centering
+    \resizebox{\textwidth}{!}{%
+      \begin{tabular}{@{}p{2.2cm}p{3.5cm}p{4cm}p{3.5cm}@{}}
+        \toprule
+        \textbf{Método} &
+        \textbf{Mecânica de Fusão} &
+        \textbf{Vantagens Principais} &
+        \textbf{Aplicações Típicas} \\
+        \midrule
+
+        \textbf{Concatenação} &
+        Combina diretamente os estados das direções:
+        $\displaystyle z_t = [\,h_t^{\rightarrow} ; h_t^{\leftarrow}\,]$ &
+        \begin{itemize}
+          \item Simples e eficiente.
+          \item Mantém toda a informação temporal.
+          \item Fácil de integrar com MLPs/CNNs.
+        \end{itemize}
+        &
+        \begin{itemize}
+          \item Classificação e regressão offline.
+          \item Representação de contexto completo.
+          \item Modelos base ou ablação.
+        \end{itemize}
+        \\
+
+        \textbf{Fusão Gated} &
+        Calcula um gate dinâmico:
+        $\displaystyle z_t = g_t \odot h^{\rightarrow}_t
+          + (1-g_t)\odot h^{\leftarrow}_t$,
+        onde $\displaystyle g_t = \sigma\!\big(W_g [h^{\rightarrow}_t;h^{\leftarrow}_t]\big)$
+        &
+        \begin{itemize}
+          \item Adapta a contribuição de cada direção por timestep.
+          \item Robusto a ruído e desbalanceamento temporal.
+          \item Oferece interpretabilidade (causal/anticausal).
+        \end{itemize}
+        &
+        \begin{itemize}
+          \item Séries ruidosas (sensores, texto clínico).
+          \item Diagnóstico temporal.
+          \item Detecção de eventos.
+        \end{itemize}
+        \\
+
+        \textbf{Fuser RNN} &
+        Empilha uma RNN extra sobre a fusão:
+        $\displaystyle
+          u_t = \mathrm{GRU}_\text{fuser}
+          ([h^{\rightarrow}_t;h^{\leftarrow}_t], u_{t-1})$
+        &
+        \begin{itemize}
+          \item Agrega contexto de longo prazo.
+          \item Suaviza e refina a sequência.
+          \item Permite distilação causal para deploy online.
+        \end{itemize}
+        &
+        \begin{itemize}
+          \item Modelos industriais/tempo real.
+          \item Reconstrução e previsão contínua.
+          \item “Teacher–student” bidirecional $\rightarrow$ causal.
+        \end{itemize}
+        \\
+
+        \bottomrule
+      \end{tabular}%
+    }
+  \end{table}
+
+  \vspace{0.01cm}
+  \centering
+  \textit{\small Concat = simples, Gate = adaptativo, Fuser = refinamento temporal e causal.}
+\end{frame}
+
+% ======================
+\section{Regularização e Estabilização em RNNs}
+% ======================
+
+% ======================
+\begin{frame}{Regularização e Estabilização em RNNs}
+\footnotesize
+
+O treinamento de \textbf{Redes Neurais Recorrentes (RNNs)} exige técnicas específicas
+para lidar com \textbf{instabilidades de gradiente} e \textbf{overfitting},
+mantendo a coerência temporal e a convergência estável do modelo.
+
+\medskip
+\textbf{Objetivos principais:}
+\begin{itemize}
+  \item Evitar explosão/vanishing de gradientes.
+  \item Melhorar generalização em sequências longas.
+  \item Estabilizar ativações internas e acelerar o aprendizado.
+\end{itemize}
+
+\medskip
+\textbf{Técnicas essenciais:}
+\begin{enumerate}
+  \item \textbf{Gradient Clipping \cite{pascanu2013}} — limita a norma do gradiente (\( \|g\|_2 \leq c \)) para evitar atualizações instáveis.  
+        
+  \item \textbf{Variational Dropout \cite{gal2016}} — aplica a mesma máscara de dropout ao longo do tempo, preservando a coerência temporal.  
+        
+  \item \textbf{Layer Normalization \cite{ba2016}} — normaliza as ativações por camada e timestep, reduzindo flutuações internas e melhorando a estabilidade numérica.  
+       
+\end{enumerate}
+
+\medskip
+Essas estratégias combinadas formam a base para o treinamento robusto de RNNs,
+LSTMs e GRUs em contextos de sequências longas e ruído nos dados.
+
+\end{frame}
+% ======================
+
+\begin{frame}{Pascanu, Mikolov \& Bengio (2013) — Gradient Clipping \cite{pascanu2013}}
+\scriptsize
+
+\textbf{Motivação:}  
+Em redes recorrentes (RNNs) e arquiteturas profundas, o problema do \textbf{exploding gradient}
+faz com que os gradientes cresçam descontroladamente, causando instabilidade numérica e divergência no treinamento.
+
+\medskip
+\textbf{Ideia principal:}  
+Limitar a norma do gradiente (\textit{gradient norm clipping}) mantendo o vetor dentro de um raio máximo \(c\).
+
+\vspace{0.2cm}
+
+\textbf{1) Gradiente completo}
+\[
+g = \nabla_{\theta} L
+\]
+\begin{itemize}
+  \item \(g\): vetor de derivadas da perda em relação aos parâmetros.
+  \item Norma L2: \(\|g\|_2 = \sqrt{\sum_i (\partial L/\partial \theta_i)^2}\).
+\end{itemize}
+
+\vspace{0.2cm}
+
+\textbf{2) Regra de clipping}
+\[
+\text{se } \|g\|_2 > c,\qquad g \leftarrow \frac{c}{\|g\|_2}\, g
+\]
+\begin{itemize}
+  \item Fator de reescala: \(\alpha = \frac{c}{\|g\|_2} < 1\).
+  \item Preserva a \textbf{direção} do gradiente; reduz apenas sua \textbf{magnitude}.
+\end{itemize}
+
+\vspace{0.2cm}
+
+\textbf{3) Resultado do clipping}
+\[
+\left\|\frac{c}{\|g\|_2} g \right\|_2 = c
+\]
+\begin{itemize}
+ \item Previne saltos muito grandes na superfície de perda.  
+ \item Garante que a atualização permaneça num “raio seguro” em torno dos parâmetros.  
+ \item Contribui para estabilidade numérica, e facilita o treinamento de redes profundas ou recorrentes.
+\end{itemize}
+\end{frame}
+
+
+
+
+
+
+
+
+\begin{frame}{Gal \& Ghahramani (2016) - Variational Dropout \cite{gal2016}}
+\footnotesize
+
+\textbf{Problema do dropout tradicional em RNNs:}\\
+Se uma \textbf{máscara diferente} for aplicada a cada timestep:
+  
+\begin{itemize}
+  \item o ruído muda a cada timestep,
+  \item \textbf{desestabiliza a memória} da rede, pois não há aplicação nas conexões recorrentes.
+\end{itemize}
+
+\medskip
+
+\textbf{Solução: Variational Dropout}
+\begin{itemize}
+  \item A \textbf{mesma máscara de dropout} é mantida para todos os timesteps, inclusive nas conexões recorrentes.
+  \item Preserva a coerência temporal, mantendo a mesma estrutura ativa ou inativa durante toda a sequência, estabilizando o aprendizado.
+  \item Reduz overfitting sem destruir o estado recorrente.
+\end{itemize}
+
+\centering
+\includegraphics[width=0.80\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/variationalRNN.png}
+% (se você não tiver a imagem, eu gero uma versão em estilo hand-drawn para slide)
+
+
+\end{frame}
+
+
+\begin{frame}{Gal \& Ghahramani (2016) - Variational Dropout (cont.) \cite{gal2016}}
+
+  Em frameworks modernos:
+  \[
+    h_t = f\big(W_{hh}\,(d_h \odot h_{t-1}) + W_{xh}\,(d_x \odot x_t)\big)
+  \]
+
+  \scriptsize
+  \[
+  \begin{aligned}
+    &h_t &: \text{estado oculto no tempo } t \\
+    &x_t &: \text{entrada no tempo } t \\
+    &W_{hh}, W_{xh} &: \text{matrizes de pesos recorrentes e de entrada} \\
+    &d_h, d_x &: \text{máscara de dropout, } d_h, d_x \sim \text{Bernoulli}(p) \\
+    &p &: \text{probabilidade de retenção (ex: } p = 0.8\text{)} \\
+    &\odot &: \text{produto elemento a elemento} \\
+    &f(\cdot) &: 
+       \begin{cases}
+         \tanh(\cdot), & \text{em uma RNN simples} \\
+         \text{gates + }\tanh(\cdot), & \text{em uma GRU} \\
+         \text{combinação das portas } (i,f,o,g), & \text{em um LSTM}
+       \end{cases}
+  \end{aligned}
+  \]
+  
+
+\end{frame}
+
+
+\begin{frame}{Ba, Kiros \& Hinton (2016) - Layer Normalization (LN) \cite{ba2016}}
+ \small
+  \begin{itemize}
+    \item Normaliza as ativações dentro de cada camada, em cada passo de tempo, de forma independente do tamanho do batch:
+      \[
+        \text{LN}(h_t) = \gamma \frac{h_t - \mu_t}{\sqrt{\sigma_t^2 + \varepsilon}} + \beta
+\quad\text{com }\varepsilon>0 \text{ pequeno.}
+      \]
+      \scriptsize
+      \[
+      \begin{aligned}
+        &h_t &: \text{vetor de ativações da camada no tempo } t \\
+        &\mu_t, \sigma_t &: \text{média e desvio padrão das ativações em } h_t \\
+        &\gamma, \beta &: \text{parâmetros aprendidos de escala e deslocamento}
+      \end{aligned}
+      \]
+       \small
+    \item Reduz instabilidade do gradiente e acelera a convergência, especialmente em sequências longas.
+    \item Em LSTMs/GRUs, é aplicada nas transformações lineares de cada porta:
+      \[
+        i_t = \sigma(\text{LN}(W_i[h_{t-1},x_t]) + b_i)
+      \]
+      \scriptsize
+      \[
+      \begin{aligned}
+        &i_t &: \text{porta de entrada (input gate)} \\
+        &W_i &: \text{pesos da porta de entrada} \\
+        &[h_{t-1},x_t] &: \text{concatenação do estado anterior e da entrada atual} \\
+        &b_i &: \text{termo de viés (bias)}
+      \end{aligned}
+      \]
+      \small
+      O mesmo processo é aplicado às demais portas (f, o, g), mantendo escalas consistentes entre todas as transformações internas.
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}{Comparação entre LSTM, GRU, BiLSTM e BiGRU}
+  RNNs permanecem relevantes em nichos específicos: dispositivos embarcados com recursos limitados, processamento em tempo real com baixa latência, e aplicações onde paralelização não é crítica. \\ 
+  
+  \scriptsize
+  \begin{table}[h]
+    \centering
+    \resizebox{\textwidth}{!}{%
+      \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \textbf{Característica} & \textbf{LSTM} & \textbf{GRU} & \textbf{BiLSTM} & \textbf{BiGRU} \\ 
+        \midrule
+        Portas & 3 (forget, input, output) & 2 (reset, update) & 3 (duas direções) & 2 (duas direções) \\
+       Estados internos & $C_t$, $h_t$ & $h_t$ & $C_t$, $\overrightarrow{h}_t$, $\overleftarrow{h}_t$ & $\overrightarrow{h}_t$, $\overleftarrow{h}_t$ \\
+        Contexto capturado & Passado & Passado & Passado e futuro & Passado e futuro \\
+        Nº de parâmetros & Alto & $\sim$25\% menor & $\sim$2× o da LSTM & $\sim$2× o da GRU \\
+        Velocidade de treino & Mais lenta & Mais rápida & Mais lenta (duas passagens) & Razoável (duas passagens) \\
+        Capacidade de modelagem & Alta & Boa & Muito alta & Alta \\
+        Aplicações típicas & Séries longas & Modelos leves & NLP, voz, texto bidir. & NLP leve, embeddings \\
+        \bottomrule
+      \end{tabular}%
+    }
+  \end{table}
+
+  \vspace{0.3cm}
+  \small
+  \textbf{Resumo:}  
+  Modelos bidirecionais (BiLSTM/BiGRU) exploram dependências temporais em ambas as direções.  
+  GRU e BiGRU são mais leves; LSTM e BiLSTM tendem a capturar relações mais complexas.
+  \end{frame}
+
+
+\begin{frame}{Conclusões Principais}
+\footnotesize
+
+\textbf{1) Contribuição Conceitual das RNNs}
+\begin{itemize}
+  \item Introduzem a ideia de \textbf{estado oculto} como \textbf{memória dinâmica}.
+  \item Permitem modelar séries temporais, fala, texto e qualquer dado sequencial.
+  \item Fundamentam a passagem de redes estáticas → modelos temporais.
+\end{itemize}
+
+\medskip
+\textbf{2) Contribuição Matemática}
+\begin{itemize}
+  \item BPTT torna explícita a \textbf{dependência temporal no gradiente}.
+  \item Vanishing/Exploding não é falha de implementação — é da \textbf{recorrência}.
+  \item LSTM e GRU criam \textbf{caminhos estáveis} para o gradiente ao longo do tempo.
+\end{itemize}
+
+\medskip
+\textbf{3) Arquiteturas bidirecionais}
+\begin{itemize}
+  \item BiLSTM/BiGRU incorporam \textbf{contexto futuro} → melhores embeddings.
+  \item Ainda são eficazes quando há \textbf{causalidade}, \textbf{baixa latência} ou \textbf{poucos dados}.
+  \item \textbf{Transformers não substituem RNNs}: estendem a ideia com \textbf{multihead attention}.
+\end{itemize}
+
+\medskip
+\textbf{Mensagem Final:}
+RNNs são o \textbf{ponto de transição} entre redes neurais clássicas e modelos de atenção.
+Entender suas equações é entender \textbf{o alicerce} do processamento moderno de sequências.
+\end{frame}
+
+% ======================
+\section{Casos de Uso em Séries Temporais e Processamento de Linguagem Natural}
+% ======================
+
+\begin{frame}{Caso de Uso em Séries Temporais}
+\footnotesize
+
+\textbf{Problema:}  
+Modelar séries temporais industriais (compressores) com amostragem irregular, dados faltantes e alta dimensionalidade.
+Dois cenários: \textbf{predição} e \textbf{reconstrução} utilizando arquiteturas recorrentes (RNNs e BiRNNs).
+
+\medskip
+\textbf{Estratégias adotadas:}
+\begin{itemize}
+  \item Avaliação de modelos clássicos e bidirecionais.
+  \item Teste de três técnicas de fusão pós-BiRNN (concat/ gate / GRU fuser).
+  \item Uso de regularização temporal: layer normalization.
+\end{itemize}
+
+\medskip
+\textbf{Base de dados:}  
+Cognite — Sinais reais de sensores de um compressor industrial offshore.
+
+\vspace{0.25cm}
+\centering
+\includegraphics[width=0.45\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/12series.png}
+
+\vspace{0.2cm}
+\scriptsize
+\textit{Exemplo de séries reais utilizadas no estudo (12 sinais simultâneos).}
+
+\end{frame}
+
+
+\begin{frame}{Caso de Uso em Séries Temporais - Metodologia de Treinamento e Avaliação}
+  \textbf{Figura de Mérito:}
+  \begin{itemize}
+    \item Micro MSE (Mean Squared Error)
+  \end{itemize}
+
+  \textbf{Setup de Treino:}
+  \begin{itemize}
+    \item Divisão de dados: 60\% treino, 20\% validação, 20\% teste.
+    \item Otimizador: Adam W 
+    \item Warm up
+    \item Schedular
+    \item Weight decay (L2 regularization).
+    \item Early stopping com paciência de 20 épocas para Predição (com 300 épocas no treinamento) e 50 épocas para Reconstrução (com 500 épocas no treinamento).
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Caso de Uso em Séries Temporais - Metodologia de Treinamento e Avaliação}
+
+  \begin{itemize}
+    % ====================== PREDIÇÃO ======================
+    \item \textbf{Predição:}
+      \begin{itemize}
+        \item Loss: MSE no último timestamp de cada janela
+        \[
+          \mathcal{L}
+          =
+          \frac{1}{\sum_{t=1}^{T} m_t}
+          \sum_{t=1}^{T}
+            m_t \cdot (x_t - \hat{x}_t)^2
+        \]
+      \end{itemize}
+
+    % ==================== RECONSTRUÇÃO ====================
+    \item \textbf{Reconstrução:}
+      \begin{itemize}
+        \item Inserção de difusão de ausência (missingness diffusion)
+        \item Loss: último timestamp da janela \\
+              L1 — NLL Gaussiano ponderado por \(\hat\lambda_t\):
+        \[
+          \text{sse}_t \;=\; \sum_{c}\big(\hat x_{t,c}-x_{t,c}\big)^2, 
+          \qquad
+          \hat\lambda_t \;=\; \mathrm{softplus}\!\big(W_\lambda h_t + b_\lambda\big)
+        \]
+        \[
+          \log p(x_t\mid h_t)\;=\;-\tfrac12\,\hat\lambda_t\,\text{sse}_t 
+          \;+\; \tfrac12\,n\,\log\hat\lambda_t 
+          \;-\; \tfrac12\,n\log(2\pi)
+        \]
+        \[
+          \mathcal{L}_1 \;=\; -\sum_{t}\log p(x_t\mid h_t)
+        \]
+
+        \item Layer Normalization
+         
+      \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Caso de Uso em Séries Temporais - Metodologia de Treinamento e Avaliação}
+
+  \[
+\mathrm{Softplus}_\beta(x)
+= \frac{1}{\beta}\,\log\!\bigl(1 + e^{\beta x}\bigr)
+\]
+ \vspace{0.2cm}
+  \small
+  \textbf{Softplus}: função de ativação suave que aproxima a ReLU, 
+  evitando regiões mortas e garantindo derivada contínua. 
+  Controla-se a suavidade via o parâmetro $\beta$: valores maiores tornam
+  a curva mais próxima da ReLU; menores tornam a função mais suave.
+\vspace{0.25cm}
+\centering
+\includegraphics[width=0.45\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/softplus.png}
+
+\end{frame}
+
+\begin{frame}{Caso de Uso em Séries Temporais - Resultados MSE micro na Predição e Reconstrução}
+\centering
+ \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/comparcao.png}
+     
+ A reconstrução alcança resultados melhores que a predição, apesar de ser mais complexa, pois além de informar o que a predição já faz,
+ a reconstrução recupera os valores ausentes da série temporal por difusão.
+
+\end{frame}
+
+
+
+\begin{frame}{Resultados - MSE micro na Predição}
+\centering
+\footnotesize
+
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Predição} 
+& \textbf{Média} 
+& \textbf{Desvio padrão} 
+& \textbf{Tempo treinamento(min)} 
+& \textbf{Melhor época} 
+& \textbf{Total de épocas} \\
+\midrule
+LSTM                         & 0.6795 & {$\pm\,0.3659$} & 1.17 & 15 & 35 \\
+GRU                          & 0.5921 & {$\pm\,0.3298$} & 0.88 & 33 & 53 \\
+BiLSTM                       & 0.6639 & {$\pm\,0.4266$} & 3.01 & 24 & 44 \\
+BiLSTM coupled               & 0.6613 & {$\pm\,0.3704$} & 2.44 & 14 & 34 \\
+BiLSTM coupled gate          & 0.6699 & {$\pm\,0.3597$} & 1.98 & 15 & 35 \\
+BiLSTM coupled GRU Fuser     & 0.7415 & {$\pm\,0.3805$} & 2.77 & 12 & 32 \\
+BiGRU                        & 0.5610 & {$\pm\,0.3509$} & 4.45 & 69 & 89 \\
+BiGRU coupled                & 0.5683 & {$\pm\,0.3482$} & 4.80 & 76 & 96 \\
+BiGRU coupled gate           & 0.6053 & {$\pm\,0.3852$} & 2.38 & 31 & 51 \\
+BiGRU coupled GRU Fuser      & 0.6868 & {$\pm\,0.3208$} & 2.75 & 13 & 33 \\
+\bottomrule
+\end{tabular}
+}
+
+\vspace{1.5mm}
+{\scriptsize
+\raggedright
+\begin{itemize}
+  \item[\(\star\)] \textbf{Regra dos Dois Desvios Padrão:} 
+  Valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo de confiança de 95\%.
+
+
+  \item[\(\star\)] \textbf{Treinamento:} 
+  300 épocas com early stopping de 20 épocas.
+
+  
+  \item[\(\star\)] \textbf{Teste de Wilcoxon:} 
+  Não foi possível realizar o teste estatístico de Wilcoxon entre os melhores modelos de predição e reconstrução,
+  pois há forte desbalanceamento entre as classes.
+\end{itemize}
+}
+
+\end{frame}
+
+
+
+\begin{frame}{Resultados - MSE micro na Reconstrução}
+\centering
+\footnotesize
+
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Reconstrução} 
+& \textbf{Média} 
+& \textbf{Desvio padrão} 
+& \textbf{Tempo treinamento(min)} 
+& \textbf{Melhor época} 
+& \textbf{Total de épocas} \\
+\midrule
+LSTM                         & 0.3925 & {$\pm\,0.0443$} & 4.64  & 53  & 103 \\
+GRU                          & 0.2914 & {$\pm\,0.0432$} & 3.80  & 70  & 120 \\
+BiLSTM                       & 0.1372 & {$\pm\,0.0400$} & 17.73 & 140 & 190 \\
+BiLSTM gate                  & 0.1333 & {$\pm\,0.0358$} & 22.14 & 183 & 233 \\
+BiLSTM GRU Fuser             & 0.1532 & {$\pm\,0.0380$} & 15.03 & 60  & 110 \\
+BiLSTM coupled               & 0.1440 & {$\pm\,0.0334$} & 14.58 & 112 & 162 \\
+BiLSTM coupled gate          & 0.1433 & {$\pm\,0.0424$} & 12.64 & 83  & 133 \\
+BiLSTM coupled GRU Fuser     & 0.1390 & {$\pm\,0.0433$} & 18.86 & 88  & 138 \\
+BiGRU                        & 0.1339 & {$\pm\,0.0355$} & 21.85 & 207 & 257 \\
+BiGRU gate                   & 0.1613 & {$\pm\,0.0276$} & 8.36  & 38  & 88  \\
+BiGRU GRU Fuser              & 0.1234 & {$\pm\,0.0409$} & 45.05 & 268 & 318 \\
+BiGRU coupled                & 0.1414 & {$\pm\,0.0383$} & 13.91 & 99  & 149 \\
+BiGRU coupled gate           & 0.1405 & {$\pm\,0.0379$} & 11.57 & 81  & 131 \\
+BiGRU coupled GRU Fuser      & 0.1463 & {$\pm\,0.0388$} & 14.63 & 67  & 117 \\
+\bottomrule
+\end{tabular}
+}
+
+
+\vspace{1.5mm}
+{\scriptsize
+\raggedright
+\begin{itemize}
+  \item[\(\star\)] \textbf{Regra dos Dois Desvios Padrão:} 
+  Valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo de confiança de 95\%.
+
+
+  \item[\(\star\)] \textbf{Treinamento:} 
+  500 épocas com early stopping de 50 épocas.
+
+
+  \item[\(\star\)] \textbf{Teste de Wilcoxon:} 
+  Não foi possível realizar o teste estatístico de Wilcoxon entre os melhores modelos de predição e reconstrução,
+  pois há forte desbalanceamento entre as classes.
+
+\end{itemize}
+}
+\end{frame}
+
+
+
+
+% ================= SLIDE 5 =================
+\begin{frame}{Cao de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network - HARNN (2019) \cite{huang2019_hierarchical_multilabel_text_classification}}
+  \small
+  \textbf{Problema:} Classificação multirrótulo hierárquica na DBpedia (L1=9, L2=70, L3=219). \\
+    \textbf{Desafio:} prever vários rótulos mantendo coerência pai→filho e lidando com desbalanceamento.
+  \centering
+  \includegraphics[width=0.9\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/harnn.png}
+\end{frame}
+
+% ================= SLIDE 4 =================
+\begin{frame}{Caso de Uso em Processamento de Linguagem Natural: Hierarchical Attention-based Recurrent Neural Network (HARNN) (2019) \cite{huang2019_hierarchical_multilabel_text_classification}}
+  \scriptsize
+
+  % ===== ITEM 1 =====
+  
+    \textbf{1) Documentation Representing Layer (DRL)}
+      \begin{itemize}
+         \scriptsize
+        \item Cada palavra vira um vetor de embedding e a BiLSTM lê a frase nos dois sentidos,
+              produzindo uma representação contextual do documento.
+        \item Cada classe da árvore hierárquica tem seu embedding de rótulo, que funciona como
+              uma \emph{consulta de atenção} ligando o documento à hierarquia.
+      \end{itemize}
+  
+
+  \vspace{0.35cm}
+
+  % ===== ITEM 2 (AGORA EM DUAS COLUNAS) =====
+   \textbf{2) Hierarchical Attention-based Recurrent Layer (HAM)}
+ 
+
+  \begin{columns}[T,onlytextwidth]
+    % ----- COLUNA 1: TEXTO -----
+    \begin{column}{0.55\textwidth}
+       \scriptsize
+      \begin{itemize}
+        \item \textbf{TCA - Text--Category Attention}: destaca as palavras mais relevantes para cada categoria do nível,
+              comparando as palavras do texto com o vetor (embedding) da própria categoria
+              e montando um ``resumo por categoria''.
+        \item \textbf{CPM - Category Prediction Module}: usa esses resumos para prever as categorias do nível.
+        \item \textbf{CDM - Category Dependency Module}: passa sinais do nível de cima para o de baixo, ajudando a manter
+              coerência (L1 guia L2; L2 guia L3).
+      \end{itemize}
+    \end{column}
+
+    % ----- COLUNA 2: FIGURA -----
+    \begin{column}{0.35\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/apresentacao/figs/HAM.png}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.10cm}
+
+  % ===== ITEM 3 =====
+
+   \textbf{3) Hybrid Predicting Layer (HPL)}
+      \begin{itemize}
+         \scriptsize
+        \item Junta a visão local (por nível) com a visão global do documento.
+        \item Gera a decisão final, equilibrando consistência hierárquica e detalhe específico.
+      \end{itemize}
+
+
+\end{frame}
+
+
+% ================= SLIDE 17 =================
+\begin{frame}{Resultados HARNN -- Dados de teste}
+  \scriptsize
+  \begin{columns}[T,onlytextwidth]
+
+    % ----- Coluna esquerda: tabelas -----
+    \begin{column}{0.55\textwidth}
+      \centering
+      \textbf{Métricas micro}\\[0.2cm]
+      \begin{tabular}{lccc}
+        \toprule
+        \textbf{Método} & F1$_{\text{micro}}$ & Prec$_{\text{micro}}$ & Rec$_{\text{micro}}$ \\
+        \midrule
+        REG LOG          & 0.8123 & 0.8123 & 0.8123 \\
+        XGBoost          & 0.9182 & 0.9312 & 0.9060 \\
+        HARNN adaptado & 0.9701 & \textbf{0.9764} & 0.9639 \\
+        HARNN campeã     & \textbf{0.9739} & 0.9755 & \textbf{0.9722} \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.35cm}
+      \textbf{Métricas macro}\\[0.2cm]
+      \begin{tabular}{lccc}
+        \toprule
+        \textbf{Método} & F1$_{\text{macro}}$ & Prec$_{\text{macro}}$ & Rec$_{\text{macro}}$ \\
+        \midrule
+        REG LOG          & 0.7114 & 0.7335 & 0.7314 \\
+        XGBoost          & 0.8640 & 0.9055 & 0.8322 \\
+        HARNN adaptado & 0.9475 & \textbf{0.9617} & 0.9373 \\
+        HARNN campeã     & \textbf{0.9548} & 0.9586 & \textbf{0.9524} \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.35cm}
+      \textbf{Subset accuracy}\\[0.2cm]
+      \begin{tabular}{lc}
+        \toprule
+        \textbf{Método} & Subset\_Acc \\
+        \midrule
+        REG LOG          & 0.7355 \\
+        XGBoost          & 0.7853 \\
+        HARNN adaptado & 0.9266 \\
+        HARNN campeã     & \textbf{0.9412} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+
+    % ----- Coluna direita: interpretação -----
+    \begin{column}{0.45\textwidth}
+      \begin{itemize}
+        \item \textbf{Ganho claro no nível micro}:\\
+              HARNN campeã supera todas as demais em F1 e Recall.
+        \item \textbf{Macro com melhora robusta}:\\
+              $+0{,}0908$ em F1 vs.\ XGBoost; $+0{,}2434$ vs.\ REG LOG e
+              vs.\ adaptado $+0{,}0073$ --- melhor equilíbrio entre classes.
+        \item \textbf{Subset accuracy bem superior}:\\
+              0{,}9412 ($+15{,}6$ pp sobre XGBoost; $+20{,}6$ pp sobre REG LOG;
+              $+1{,}46$ pp sobre HARNN adaptado).
+        \item \textbf{Trade-off precisão/recall}:\\
+              HARNN campeã tem precisão levemente menor
+              ($-0{,}09$ pp micro; $-0{,}31$ pp macro) em relação ao adaptado,
+              mas o recall maior ($+0{,}83$ pp micro; $+1{,}51$ pp macro)
+              melhora cobertura de classes de cauda e aumenta F1.
+      \end{itemize}
+    \end{column}
+
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}[allowframebreaks]{Referências}
+  \tiny
+  \bibliographystyle{ieeetr}   % estilo numérico
+  \bibliography{refs}          % usa o arquivo refs.bib
+\end{frame}
+
+\end{document}
