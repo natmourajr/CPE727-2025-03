@@ -1191,72 +1191,111 @@ Cognite — Sinais reais de sensores de um compressor industrial offshore.
 
 \end{frame}
 
-\begin{frame}{Resultados - MSE micro na Predição e Reconstrução}
-\small
-\begin{columns}[T,onlytextwidth]
 
-% -------------------------------- LEFT TABLE: Prediction --------------------------------
-\begin{column}{0.48\textwidth}
+
+\begin{frame}{Resultados - MSE micro na Predição}
 \centering
-\textbf{Predição}\\[-0.3mm]
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{lcc}
+\footnotesize
+
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
 \toprule
-\textbf{Configuração} & \textbf{Média} & \textbf{Desvio padrão} \\
+\textbf{Predição} 
+& \textbf{Média} 
+& \textbf{Desvio padrão} 
+& \textbf{Tempo treinamento(min)} 
+& \textbf{Melhor época} 
+& \textbf{Total de épocas} \\
 \midrule
-\textbf{BiGRU coupled}           & 0.5610 & {$\pm\,0.3509$} \\
-BiGRU                      & 0.5684 & {$\pm\,0.3483$} \\
-GRU                                & 0.5921 & {$\pm\,0.3298$} \\
-BiGRU  gate                 & 0.6054 & {$\pm\,0.3852$} \\
-BiLSTM                      & 0.6613 & {$\pm\,0.3705$} \\
-BiLSTM coupled                            & 0.6639 & {$\pm\,0.4266$} \\
-BiLSTM  gate                & 0.6699 & {$\pm\,0.3597$} \\
-LSTM                               & 0.6795 & {$\pm\,0.3659$} \\
-BiGRU  GRU Fuser            & 0.6869 & {$\pm\,0.3208$} \\
-BiLSTM  GRU Fuser           & 0.7416 & {$\pm\,0.3806$} \\
+LSTM                         & 0.6795 & {$\pm\,0.3659$} & 1.17 & 15 & 35 \\
+GRU                          & 0.5921 & {$\pm\,0.3298$} & 0.88 & 33 & 53 \\
+BiLSTM                       & 0.6639 & {$\pm\,0.4266$} & 3.01 & 24 & 44 \\
+BiLSTM coupled               & 0.6613 & {$\pm\,0.3704$} & 2.44 & 14 & 34 \\
+BiLSTM coupled gate          & 0.6699 & {$\pm\,0.3597$} & 1.98 & 15 & 35 \\
+BiLSTM coupled GRU Fuser     & 0.7415 & {$\pm\,0.3805$} & 2.77 & 12 & 32 \\
+BiGRU                        & 0.5610 & {$\pm\,0.3509$} & 4.45 & 69 & 89 \\
+BiGRU coupled                & 0.5683 & {$\pm\,0.3482$} & 4.80 & 76 & 96 \\
+BiGRU coupled gate           & 0.6053 & {$\pm\,0.3852$} & 2.38 & 31 & 51 \\
+BiGRU coupled GRU Fuser      & 0.6868 & {$\pm\,0.3208$} & 2.75 & 13 & 33 \\
 \bottomrule
 \end{tabular}
-}% <-- fecha o \resizebox
-\end{column}
-
-% -------------------------------- RIGHT TABLE: Reconstruction --------------------------------
-\begin{column}{0.48\textwidth}
-\centering
-\textbf{Reconstrução}\\[-0.3mm]
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{lcc}
-\toprule
-\textbf{Configuração} & \textbf{Média} & \textbf{Desvio padrão} \\
-\midrule
-\textbf{BiGRU coupled GRU Fuser}           & 0.1234 & {$\pm\,0.0409$} \\
-BiLSTM coupled gate                        & 0.1333 & {$\pm\,0.0359$} \\
-BiGRU coupled                             & 0.1339 & {$\pm\,0.0355$} \\
-BiLSTM coupled                            & 0.1373 & {$\pm\,0.0401$} \\
-BiLSTM GRU Fuser           & 0.1390 & {$\pm\,0.0433$} \\
-BiGRU gate                 & 0.1406 & {$\pm\,0.0379$} \\
-BiGRU                     & 0.1414 & {$\pm\,0.0384$} \\
-BiLSTM gate                & 0.1434 & {$\pm\,0.0425$} \\
-BiLSTM                     & 0.1441 & {$\pm\,0.0335$} \\
-BiGRU GRU Fuser            & 0.1464 & {$\pm\,0.0389$} \\
-BiLSTM coupled GRU Fuser                   & 0.1532 & {$\pm\,0.0381$} \\
-BiGRU coupled gate                         & 0.1613 & {$\pm\,0.0277$} \\
-GRU                                & 0.2914 & {$\pm\,0.0433$} \\
-LSTM                               & 0.3926 & {$\pm\,0.0443$} \\
-\bottomrule
-\end{tabular}
-}% <-- fecha o \resizebox
-\end{column}
-
-\end{columns}
+}
 
 \vspace{1.5mm}
 {\scriptsize
-\(\star\) \textbf{Regra dos Dois Desvios Padrão:} 
-Valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo de confiança de 95\%.\\
-\(\star\)\textbf{Teste de Wilcoxon:} Não foi possível realizar o teste estatístico de Wilcoxon entre os melhores modelos de predição e reconstrução,
-pois há forte desbalanceamento entre as classes.}
+\raggedright
+\begin{itemize}
+  \item[\(\star\)] \textbf{Regra dos Dois Desvios Padrão:} 
+  Valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo de confiança de 95\%.
+
+
+  \item[\(\star\)] \textbf{Treinamento:} 
+  300 épocas com early stopping de 20 épocas.
+
+  
+  \item[\(\star\)] \textbf{Teste de Wilcoxon:} 
+  Não foi possível realizar o teste estatístico de Wilcoxon entre os melhores modelos de predição e reconstrução,
+  pois há forte desbalanceamento entre as classes.
+\end{itemize}
+}
 
 \end{frame}
+
+
+
+\begin{frame}{Resultados - MSE micro na Reconstrução}
+\centering
+\footnotesize
+
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Reconstrução} 
+& \textbf{Média} 
+& \textbf{Desvio padrão} 
+& \textbf{Tempo treinamento(min)} 
+& \textbf{Melhor época} 
+& \textbf{Total de épocas} \\
+\midrule
+LSTM                         & 0.3925 & {$\pm\,0.0443$} & 4.64  & 53  & 103 \\
+GRU                          & 0.2914 & {$\pm\,0.0432$} & 3.80  & 70  & 120 \\
+BiLSTM                       & 0.1372 & {$\pm\,0.0400$} & 17.73 & 140 & 190 \\
+BiLSTM gate                  & 0.1333 & {$\pm\,0.0358$} & 22.14 & 183 & 233 \\
+BiLSTM GRU Fuser             & 0.1532 & {$\pm\,0.0380$} & 15.03 & 60  & 110 \\
+BiLSTM coupled               & 0.1440 & {$\pm\,0.0334$} & 14.58 & 112 & 162 \\
+BiLSTM coupled gate          & 0.1433 & {$\pm\,0.0424$} & 12.64 & 83  & 133 \\
+BiLSTM coupled GRU Fuser     & 0.1390 & {$\pm\,0.0433$} & 18.86 & 88  & 138 \\
+BiGRU                        & 0.1339 & {$\pm\,0.0355$} & 21.85 & 207 & 257 \\
+BiGRU gate                   & 0.1613 & {$\pm\,0.0276$} & 8.36  & 38  & 88  \\
+BiGRU GRU Fuser              & 0.1234 & {$\pm\,0.0409$} & 45.05 & 268 & 318 \\
+BiGRU coupled                & 0.1414 & {$\pm\,0.0383$} & 13.91 & 99  & 149 \\
+BiGRU coupled gate           & 0.1405 & {$\pm\,0.0379$} & 11.57 & 81  & 131 \\
+BiGRU coupled GRU Fuser      & 0.1463 & {$\pm\,0.0388$} & 14.63 & 67  & 117 \\
+\bottomrule
+\end{tabular}
+}
+
+
+\vspace{1.5mm}
+{\scriptsize
+\raggedright
+\begin{itemize}
+  \item[\(\star\)] \textbf{Regra dos Dois Desvios Padrão:} 
+  Valores dentro de \(\mu \pm 2\sigma\) correspondem aproximadamente ao intervalo de confiança de 95\%.
+
+
+  \item[\(\star\)] \textbf{Treinamento:} 
+  500 épocas com early stopping de 50 épocas.
+
+
+  \item[\(\star\)] \textbf{Teste de Wilcoxon:} 
+  Não foi possível realizar o teste estatístico de Wilcoxon entre os melhores modelos de predição e reconstrução,
+  pois há forte desbalanceamento entre as classes.
+
+\end{itemize}
+}
+\end{frame}
+
 
 
 
