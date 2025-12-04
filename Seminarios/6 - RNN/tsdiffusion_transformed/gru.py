@@ -300,6 +300,7 @@ class TSDF_GRU(TSDiffusion):
             nn.Linear(in_channels*2, hidden_dim),
             nn.ReLU(),
         )
+        self.state_dim = hidden_dim if not (bi_gru and bi_method == 'concat') else hidden_dim * 2
 
         self.static_dim = static_dim
         if static_dim > 0:
@@ -310,7 +311,7 @@ class TSDF_GRU(TSDiffusion):
 
         if status_dim > 0:
             self.tmax_head = nn.Sequential(
-                nn.Linear(hidden_dim  if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
+                nn.Linear(self.state_dim, hidden_dim // 2),
                 nn.ReLU(),
                 nn.Linear(hidden_dim // 2, status_dim)
             )
@@ -325,13 +326,13 @@ class TSDF_GRU(TSDiffusion):
             )
             if self.log_likelihood:
                 self.lambda_tmax_head = nn.Sequential(
-                    nn.Linear(hidden_dim  if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
+                    nn.Linear(self.state_dim, hidden_dim // 2),
                     nn.GELU(),
                     nn.Linear(hidden_dim // 2, 1)       # escalar
                 )   
             # variância observacional para vae_tmax
         if self.lam[3] > 0.0:  
-            self.miss_head = nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, 1)
+            self.miss_head = nn.Linear(self.state_dim, 1)
         if self.lam[0] > 0.0 or self.lam[4] > 0.0:
             self.encoder_ode_x = GRUEncoder(
                 hidden_dim,
@@ -343,17 +344,49 @@ class TSDF_GRU(TSDiffusion):
                 use_layernorm=use_layernorm
             )
             self.decoder = nn.Sequential(
-                nn.Linear(hidden_dim if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
+                nn.Linear(self.state_dim, hidden_dim // 2),
                 nn.GELU(),
                 nn.Linear(hidden_dim // 2, in_channels),
             )
 
             if log_likelihood:
                 self.lambda_head = nn.Sequential(
-                    nn.Linear(hidden_dim  if not (bi_gru and bi_method=='concat') else hidden_dim * 2, hidden_dim // 2),
+                    nn.Linear(self.state_dim, hidden_dim // 2),
                     nn.GELU(),
                     nn.Linear(hidden_dim // 2, 1)       # escalar
                 )
+        if self.lam[4] > 0:
+            self.vae_latent = nn.Sequential(
+                nn.Linear(self.state_dim, hidden_dim * 2),
+                nn.GELU(),
+                nn.Linear(hidden_dim * 2, hidden_dim * 2)
+            )
+            self.vae_decoder = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.GELU(),
+                nn.Linear(hidden_dim, in_channels)
+            )
+            self.vae_sigma_head = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.GELU(),
+                nn.Linear(hidden_dim, in_channels)
+            )
+        if self.lam[5] > 0 and status_dim > 0:
+            self.vae_tmax_latent = nn.Sequential(
+                nn.Linear(self.state_dim, hidden_dim * 2),
+                nn.GELU(),
+                nn.Linear(hidden_dim * 2, hidden_dim * 2)
+            )
+            self.vae_tmax_decoder = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim // 2),
+                nn.GELU(),
+                nn.Linear(hidden_dim // 2, status_dim)
+            )
+            self.vae_tmax_sigma_head = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim // 2),
+                nn.GELU(),
+                nn.Linear(hidden_dim // 2, status_dim)
+            )
 
     def forward(
         self,
