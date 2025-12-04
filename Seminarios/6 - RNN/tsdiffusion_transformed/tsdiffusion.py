@@ -471,7 +471,7 @@ class TSDiffusion(ODEJumpEncoder):
                 logvar_obs_t = (vae_tmax_logvar_obs + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
                 base_nll_t = 0.5 * (logvar_obs_t + (err ** 2) / torch.exp(logvar_obs_t) + math.log(2 * math.pi))
                 base_nll_t = base_nll_t.clamp_min(0.0)
-                weight_t = 1.0 + (1000.0 - 1.0) * changing_state
+                weight_t = 1.0 + (100.0 - 1.0) * changing_state
                 vae_recon_t = (base_nll_t * weight_t * mask_vae).sum()
             else:
                 vae_recon_t = ((err_change ** 2 * 1000 + err_no_change ** 2)*mask_vae).sum()
@@ -611,7 +611,7 @@ class TSDiffusion(ODEJumpEncoder):
         N = ds.tensors[0].shape[0]
         if N != len(y_win):
             raise ValueError(f"Inconsistência: dataset={N} vs rótulos={len(y_win)}.")
-        train_frac, val_frac, test_frac = 0.4, 0.2, 0.2
+        train_frac, val_frac, test_frac = 0.6, 0.2, 0.2
         # --- Split por grupo (proporcional): 60/20/20 ou 80/0/20
         if fixed_test_idx is not None:
             test_idx = np.asarray(fixed_test_idx, dtype=int)
