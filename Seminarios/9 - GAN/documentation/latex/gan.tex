@@ -1,0 +1,1276 @@
+\documentclass{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{breakurl}
+%\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage[backend=biber,style=ieee]{biblatex}
+\graphicspath{{./images/}}
+\addbibresource{references.bib}
+
+\usetheme{Madrid}
+\usecolortheme{dolphin}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}{\raggedright\insertcaption\par}
+\setbeamertemplate{headline}{
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[anchor=north east, xshift=-0.3cm, yshift=-0.2cm]
+            at (current page.north east)
+            {\includegraphics[width=1.5cm]{ufrj_logo_horizontal.png}};
+    \end{tikzpicture}
+}
+
+\title[GANs]{Generative Adversarial Nets (GANs)}
+\author{João Vítor Correia Pessoa\\ Pedro Pablo Riascos Henao\\ Breno de Lima Galves}
+\institute{Universidade Federal do Rio de Janeiro (UFRJ)}
+
+\makeatletter
+\setbeamertemplate{footline}
+{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=3ex,dp=1.5ex]{date in head/foot}%
+    \hspace*{1ex}
+    \usebeamerfont{date in head/foot}
+    \hfill
+    \insertshortdate{}%
+    \hspace*{2em}%
+    \insertframenumber{} / \inserttotalframenumber\hspace*{1ex}%
+  \end{beamercolorbox}}%
+  \vskip0pt
+}
+\makeatother
+
+\begin{document}
+% TITLEPAGE
+\begin{frame}
+    \titlepage
+\end{frame}
+% SUMMARY
+\begin{frame}{Summary}
+    \begin{itemize}
+        \item Introduction
+        \item Statistical Transformation
+        \item Definition
+        \item Architecture
+        \item Mathematical foundation
+        \item Derived Models and Enhancements
+        \item Final considerations
+        \item Bibliography
+    \end{itemize}
+\end{frame}
+% INTRODUCTION
+\section{Introduction}
+
+\begin{frame}{Motivation}
+    \begin{itemize}
+        \item Most practical ML solutions in vision and NLP were \textbf{discriminative}
+        \item Discriminative models: efficient, robust, backbone of ML
+        \item Examples:
+        \begin{itemize}
+            \item Convolutional Neural Networks (CNNs)
+            \item Logistic Regression
+            \item Support Vector Machines (SVMs)
+            \item Decision Trees and Random Forests
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Limitations of Discriminative Models}
+    \begin{block}{Key Limitation}
+        Discriminative models answer \textbf{``What is it?''} but not \textbf{``How was it made?''}
+    \end{block}
+    \begin{itemize}
+        \item No mechanism for sampling new data
+        \item Only map $X \rightarrow Y$ (classification/regression)
+        \item Cannot simulate complex real-world phenomena
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Generative Perspective}
+    \begin{itemize}
+        \item Generative models aim to learn:
+        
+        \[P(X) \quad \text{or} \quad P(X,Y)\]
+
+        \item Capture dependencies and correlations in data
+        \item Example: realistic face generation
+        \begin{itemize}
+            \item Discriminative: can classify misaligned eyes
+            \item Generative: would not generate unrealistic faces
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% STATISTICAL TRANSFORMATION
+\section{Statistical Transformation}
+
+\begin{frame}{Core Idea}
+    \begin{block}{Generative Models}
+        Generate complex random variables $X$ from simple distributions (Uniform, Gaussian)
+    \end{block}
+\end{frame}
+
+\begin{frame}{Challenge of Randomness}
+    \begin{itemize}
+        \item Computers are deterministic $\rightarrow$ pseudo-random numbers
+        \item Simplest case: $U \sim \mathcal{U}[0,1]$
+        \item Challenge: transform uniform distribution into complex distributions (e.g., pixels in realistic images)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Inverse Transform Method}
+    \begin{enumerate}
+        \item \textbf{CDF Definition:}
+        \[CDF_X(x) = \mathbb{P}(X \leq x)\]
+        \item \textbf{Transformation:}    
+        \[Y = CDF_X^{-1}(U), \quad U \sim \mathcal{U}[0,1]\]
+        \item \textbf{Result:}
+        \[CDF_Y(y) = \mathbb{P}(Y \leq y) = CDF_X(y)\]
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{Inverse Transform Visualization}
+    \centering
+    \begin{figure}
+        \includegraphics[width=0.85\linewidth]{cdf.jpg}
+        \caption{Inverse Transform process}
+    \end{figure}
+    
+    \small
+    \begin{itemize}
+        \item Observe the illustration of the inverse transform method above
+        \item In blue: the uniform distribution in $[0,1]$
+        \item In orange: the standard Gaussian (Normal) distribution
+        \item In gray: the mapping from the uniform to the Gaussian distribution ($CDF^{-1}$)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Core Concept}
+    \centering
+    \begin{block}{Inverse Transform Method}
+        Uses $CDF^{-1}$ to reshape a simple uniform distribution into a complex target distribution
+    \end{block}
+\end{frame}
+
+% GAN INSIGHT
+\section{GAN Insight}
+
+\begin{frame}{GANs as Learned Transformations}
+    \begin{itemize}
+        \item Generator learns complex transformation:
+        
+        \[G(z) \simeq F^{-1}(z)\]
+
+        \item $z$: simple noise vector (Gaussian/Uniform)
+        \item $G$: differentiable neural network
+        \item $G(z)$: realistic samples from target distribution
+        \item Discriminator provides feedback via gradients
+    \end{itemize}
+\end{frame}
+
+% PRE-GAN MODELS
+\section{Pre-GAN Generative Models}
+
+\begin{frame}{Probabilistic Graphical Models (PGMs)}
+    \begin{itemize}
+        \item Examples: Bayesian Networks, Markov Random Fields, Boltzmann Machines
+        \item Explicit modeling of joint distributions
+        \item \textbf{Limitations:}
+        \begin{itemize}
+            \item Complex conditional distributions
+            \item Poor scalability for high-dimensional data
+            \item Expensive and slow sampling
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Restricted Boltzmann Machines (RBMs)}
+    \begin{itemize}
+        \item Learn probability distribution via visible and hidden layers
+        \item Training: Contrastive Divergence
+        \item \textbf{Limitations:}
+        \begin{itemize}
+            \item Approximate and unstable training
+            \item Difficulty with complex data
+            \item Poor scalability for deep architectures
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Deep Belief Networks (DBNs)}
+    \begin{itemize}
+        \item Stack multiple RBMs $\rightarrow$ deep generative model
+        \item \textbf{Limitations:}
+        \begin{itemize}
+            \item Multi-stage training (layer by layer)
+            \item Slow sampling
+            \item Blurry and limited image quality
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Variational Autoencoders (VAEs)}
+    \begin{itemize}
+        \item Probabilistic encoder-decoder framework
+        \item Stable training, strong mathematical foundation
+        \item \textbf{Limitations:}
+        \begin{itemize}
+            \item Loss regularization $\rightarrow$ blurry images
+            \item Difficulty capturing high-frequency details
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% DEFINITION
+\section{Definition}
+
+\begin{frame}{Historical Context}
+    \centering
+    \begin{figure}
+        \includegraphics[width=0.6\linewidth]{goodlfellow_and_lecun.png}
+        \caption{Yann LeCun and Ian Goodfellow}
+    \end{figure}
+    
+    \begin{itemize}
+        \item Proposed by \textbf{Ian Goodfellow et al.}, NIPS 2014
+        \item Considered by Yann LeCun as: 
+        \textit{``The most interesting idea in the last 10 years of machine learning.''}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Formal Definition}
+    \begin{block}{Generative Adversarial Networks (GANs)}
+        Deep learning models composed of two neural networks in competition:
+        \begin{itemize}
+            \item \textbf{Generator}: creates new data from random noise
+            \item \textbf{Discriminator}: distinguishes real training data from fake samples
+        \end{itemize}
+        Both are trained simultaneously in a \textbf{zero-sum game}:  
+        \begin{itemize}
+            \item Generator aims to fool the Discriminator
+            \item Discriminator aims to resist being fooled
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}{Advantages over Previous Models}
+    \begin{enumerate}
+        \item Direct training on sampling, no likelihoods, integrals, or normalizations
+        \item More realistic samples, sharper, visually faithful outputs
+        \item No need for inverse CDF
+        \item Scales well to high-dimensional data (e.g., high-resolution images)
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{Theoretical Potential}
+    \begin{itemize}
+        \item GANs can, in theory, learn to imitate \textbf{any data distribution}
+        \item Applications across domains:
+        \begin{itemize}
+            \item Images
+            \item Music
+            \item Speech
+            \item Text
+        \end{itemize}
+        \item Capable of creating worlds strikingly similar to ours
+    \end{itemize}
+    \begin{block}{Interpretation}
+        Are GANs robotic artists or powerful mirror neurons?  
+        Either way, they represent a paradigm shift in generative modeling
+    \end{block}
+\end{frame}
+
+% ARCHITECTURE
+\section{Architecture}
+
+\begin{frame}{Central question}
+   \centering
+   \Large \textbf{How Do Two Networks Compete to Learn?}
+\end{frame}
+
+\begin{frame}{Adversarial Setup}
+   \begin{block}{Competitive Training}
+      Two neural networks trained against each other:
+      \begin{itemize}
+        \item Generator vs. Discriminator
+        \item The term \textit{adversarial} comes from this competitive setup
+      \end{itemize}
+   \end{block}
+\end{frame}
+
+\begin{frame}{Core Architecture}
+    \begin{itemize}
+        \item \textbf{Generator (G)}: noise $\rightarrow$ synthetic data
+        \item \textbf{Discriminator (D)}: real + fake data $\rightarrow$ probability
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Architecture Diagram}
+    \centering
+    \begin{figure}
+        \includegraphics[width=0.85\linewidth]{gan_architecture.png}
+        \caption{GAN Architecture Diagram}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Training Process}
+    \begin{enumerate}
+        \item Generator creates image from random noise
+        \item Discriminator receives real + fake images
+        \item Outputs authenticity probability
+        \item Loss computed $\rightarrow$ backpropagation updates both networks
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{Key Mechanism}
+    \begin{block}{Balance is Crucial}
+        \begin{itemize}
+            \item Both networks are differentiable
+            \item Gradient flows through D back to G
+            \item Balance matters:
+              \begin{itemize}
+                \item Too strong D → G cannot learn
+                \item Too weak D → training loses meaning
+              \end{itemize}
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}{Evolution}
+    \begin{itemize}
+        \item With stable training:
+        \item Generator improves continuously
+        \item Learns to produce highly realistic data
+        \item Becomes a “forger” capable of mimicking the dataset
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{MNIST Example}
+    \begin{itemize}
+        \item Discriminator: MLP classifier (real vs. fake digits)
+        \item Generator: inverse MLP (upsampling noise → image)
+        \item Downsampling vs. Upsampling
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{MNIST Diagram}
+    \centering
+    \begin{figure}
+        \includegraphics[width=0.85\linewidth]{mnist_example.png}
+        \caption{MNIST Example}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Opposing Loss Functions}
+    \begin{block}{Adversarial Objectives}
+        \begin{itemize}
+            \item Discriminator: maximize accuracy
+            \item Generator: minimize discriminator’s success
+            \item Loss functions push against each other
+            \item Result: generated images converge toward realism
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}{Beyond Basics}
+    \begin{itemize}
+        \item How far can synthetic data go?
+        \item Mathematical/statistical tools behind stability
+        \item Leads to advanced research in optimization, probability, and programming frameworks
+    \end{itemize}
+\end{frame}
+% MATHEMATICAL FOUNDATIONS
+\section{Mathematical Foundations}
+
+\begin{frame}{GANs as a Minimax Game: Model Definitions}
+    \begin{itemize}
+        \item GANs are formulated as a \textbf{two-player minimax game}
+        \item Framework is simpler when both $G$ and $D$ are \textbf{Multilayer Perceptrons (MLPs)}
+    \end{itemize}
+    \vspace{0.2cm}
+    
+    \begin{enumerate}
+        \item \textbf{Generator ($G$)}:
+        \begin{itemize}
+            \item Differentiable function $G(z; \theta_g)$, maps noise $z \sim p_z(z)$ to data space $x$.
+            \item Implicitly defines probability distribution $p_g$
+        \end{itemize}
+        \item \textbf{Discriminator ($D$)}:
+        \begin{itemize}
+            \item Function $D(x; \theta_d)$, outputs scalar $D(x)$
+            \item $D(x)$ is the probability $x$ comes from $p_{\text{data}}$ rather than $p_g$
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{The Minimax Objective}
+    \begin{block}{The Minimax Objective Function $V(G, D)$}
+        $$\min_G \max_D V(D,G) = E_{x \sim p_{\text{data}}(x)}[\log D(x)] + E_{z \sim p_z(z)}[\log(1-D(G(z)))]$$
+    \end{block}
+    
+    \begin{itemize}
+        \item \textbf{Discriminator ($D$)}: \textbf{maximizes} $V(D, G)$, aiming for correct classification (real vs. fake)
+        \item \textbf{Generator ($G$)}: \textbf{minimizes} $V(D, G)$, equivalent to minimizing $\log(1 - D(G(z)))$
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Training Implementation}
+    \begin{itemize}
+        \item Entire system trained via backpropagation using \textbf{Iterative SGD} on minibatches
+        \item Procedure alternates: \textbf{$k$ optimization steps for $D$} and \textbf{1 step for $G$}
+    \end{itemize}
+    \vspace{0.3cm}
+    
+    \textbf{Discriminator Optimization Steps ($\nabla_{\theta_d}$):} (Gradient Ascent for maximizing $V$)
+    $$\nabla_{\theta_d} \frac{1}{m} \sum_{i=1}^{m} \left[\log D(x^{(i)}) + \log \left(1-D(G(z^{(i)}))\right)\right]$$
+    \vspace{0.3cm}
+
+    \textbf{Generator Optimization Step ($\nabla_{\theta_g}$):} (Gradient Descent for minimizing $V$)
+    $$\nabla_{\theta_g} \frac{1}{m} \sum_{i=1}^{m} \log \left(1-D(G(z^{(i)}))\right)$$
+\end{frame}
+
+\begin{frame}{Practical Modification for $G$}
+    \begin{itemize}
+        \item \textbf{Issue}: Original objective ($\min \log(1 - D(G(z)))$) has \textbf{weak gradients} when $G$ is poor and $D$ is confident
+        \item This causes the objective to \textbf{saturate} early in training
+    \end{itemize}
+    \vspace{0.3cm}
+    
+    \begin{block}{Practical Fix}
+        $G$ is instead trained to \textbf{maximize $\log D(G(z))$}
+        \begin{itemize}
+            \item Result: Provides \textbf{significantly stronger gradients} at the start
+            \item Theoretical Result: This alternative objective leads to the \textbf{same fixed point} (equilibrium) as the original minimax game
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}{Proposition 1: The Optimal Discriminator (1/2)}
+    \begin{block}{Theoretical Context}
+        The analysis is performed in a non-parametric setting (infinite capacity for $G$ and $D$)
+    \end{block}
+    \textbf{Proposition 1:} For a fixed Generator $G$, the Optimal Discriminator $D^*_G$ is the one that maximizes the value function $V(G, D)$
+    \vspace{0.3cm}
+    \textbf{Optimization:} The value function $V(G,D)$ is rewritten as:
+    $$V(G,D) = \int_x \left[p_{\text{data}}(x) \log(D(x)) + p_g(x) \log(1-D(x))\right]dx$$
+    \vspace{0.2cm}
+    \begin{itemize}
+        \item $D$'s training is equivalent to maximizing the log-likelihood of correctly estimating the conditional probability $P(Y|x)$, where $Y$ indicates whether sample $x$ is real ($Y=1$) or generated ($Y=0$)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Proposition 1: The Optimal Discriminator (2/2)}
+    \textbf{Optimization Result:}
+    For a fixed $G$, the Optimal Discriminator $D^*_G(x)$ that maximizes $V(G,D)$ is given by:
+    $$D^*_G(x) = \frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_g(x)}$$
+    \vspace{0.3cm}
+    \textbf{Interpretation of $D^*_G(x)$:}
+    \begin{itemize}
+        \item $D^*_G(x)$ represents the probability that an observed sample $x$ came from the real data distribution ($p_{\text{data}}$), rather than the generated distribution ($p_g$)
+        \item When $p_{\text{data}}(x) \gg p_g(x)$, the sample is very likely to be real, and $D^*_G(x) \approx 1$
+        \item When $p_{\text{data}}(x) \ll p_g(x)$, the sample is very likely to be fake, and $D^*_G(x) \approx 0$
+        \item When $p_{\text{data}}(x) = p_g(x)$, the sample has an equal chance of being real or fake, and $D^*_G(x) = 1/2$
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Theorem 1: The Global Optimum}
+    \textbf{Theorem 1:} By substituting $D^*_G(x)$ into $V(G, D)$, we obtain the \textbf{Virtual Training Criterion $C(G)$}:
+    $$C(G) = \max_D V(G,D) = E_{x \sim p_{\text{data}}}[\log D^*_G(x)] + E_{x \sim p_g}[\log(1-D^*_G(x))]$$
+    
+    The global minimum of $C(G)$ is achieved \textbf{if and only if $\mathbf{p_g = p_{\text{data}}}$}.
+    \vspace{0.2cm}
+
+    \begin{itemize}
+        \item If $p_g = p_{\text{data}}$, then $D^*_G(x) = 1/2$
+        \item At this minimum, $C(G)$ reaches the value: $\mathbf{C^* = -\log 4}$
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Proof via Jensen–Shannon Divergence (JSD)}
+    \begin{itemize}
+        \item To prove the minimum, $C(G)$ is re-expressed using the \textbf{Kullback–Leibler (KL) Divergence} and the \textbf{Jensen–Shannon Divergence (JSD)}
+        \item The relationship established is:
+        $$C(G) = -\log(4) + 2 \cdot JSD (p_{\text{data}} \parallel p_g )$$
+    \end{itemize}
+    \vspace{0.3cm}
+    
+    \begin{block}{Conclusion}
+        \begin{itemize}
+            \item Since $JSD \geq 0$ (JSD is always non-negative)
+            \item The minimum value $C(G) = -\log 4$ is achieved \textbf{only when} $JSD = 0$
+            \item $JSD = 0$ requires $\mathbf{p_g = p_{\text{data}}}$, proving the global optimality
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}{Proposition 2: Convergence of Algorithm 1}
+    \begin{itemize}
+        \item If $G$ and $D$ have sufficient capacity, and $D$ is allowed to reach its optimum ($D^*_G$) at each step
+        \item Then $p_g$ is guaranteed to converge to $p_{\text{data}}$ when $G$ is updated to improve $C(G)$
+    \end{itemize}
+    \vspace{0.2cm}
+    
+    \textbf{The Mathematical Basis is Convexity:}
+    \begin{itemize}
+        \item The criterion $C(G) = \sup_D V(G,D)$ is \textbf{convex} in $p_g$
+        \item This ensures a \textbf{unique global optimum} (as proven by Theorem 1)
+        \item The generator update corresponds to a step of gradient descent for $p_g$, guaranteeing convergence to the optimum with sufficiently small updates
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Analogy for Global Optimum}
+    \begin{block}{Tug-of-War Analogy}
+        \begin{itemize}
+            \item Training GAN = \textbf{Tug-of-War} between $G$ and $D$
+            \item \textbf{Equilibrium} is reached when the rope is centered: $p_g = p_{\text{data}}$
+            \item At equilibrium, the Discriminator (judge) cannot distinguish the distributions: $\mathbf{D(x) = 1/2}$ everywhere
+            \item The JSD formalizes this "distance", which is minimized to zero at the optimum
+        \end{itemize}
+    \end{block}
+\end{frame}
+% ASSESSMENT
+\section{Assessment}
+
+\begin{frame}{Experiments Methodology}
+    \begin{itemize}
+        \item \textbf{Objective:} Quantitative and qualitative assessment of generated samples.
+        \item \textbf{Training Datasets:}
+        \begin{itemize}
+            \item MNIST (Handwritten digits)
+            \item Toronto Face Database (TFD)
+            \item CIFAR-10 (Tiny images)
+        \end{itemize}
+        \item \textbf{Base Architecture:} Generator ($G$) and Discriminator ($D$) models defined using \textbf{MLPs} (Multi-Layer Perceptrons)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Specific Network Architecture}
+    \begin{itemize}
+        \item \textbf{Generator Network ($G$):}
+        \begin{itemize}
+            \item Used a mix of \textbf{ReLU} and \textbf{Sigmoid} activations
+            \item \textbf{Noise} ($z$) is input only to the \textbf{lowest layer} of $G$
+        \end{itemize}
+        
+        \item \textbf{Sampling Process:}
+        \begin{itemize}
+            \item Generated samples are \textbf{fair random draws} and \textbf{uncorrelated}
+            \item \textbf{Does not rely} on Markov Chain mixing
+        \end{itemize}
+        
+        \item \textbf{Discriminator Network ($D$):}
+        \begin{itemize}
+            \item Used \textbf{Maxout} activations
+            \item \textbf{Dropout} was applied during the training of $D$ (regularization)
+        \end{itemize}
+        
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Quantitative Evaluation: Likelihood Estimation}
+    \begin{block}{The Challenge of Explicit Likelihood}
+        Due to the \textbf{implicit} nature of the generative model ($p_g$), the exact likelihood ($p(x)$) is \textbf{intractable}
+    \end{block}
+    
+    \textbf{Technique Used: Gaussian Parzen Window}
+    \begin{itemize}
+        \item \textbf{Procedure:} Fit a Gaussian Parzen Window to the samples generated by $G$
+        \item \textbf{Metric:} Report the \textbf{log-likelihood} under this Parzen distribution
+        \item \textbf{Parameter $\sigma$:} Obtained through \textbf{cross-validation} on the validation set
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Quantitative Evaluation: Results and Limitations}
+    \begin{itemize}
+        \item \textbf{Limitations (Parzen):} The method has \textbf{reasonably high variance} and does not perform well in high-dimensional spaces.
+        \item \textbf{Results:} GANs proved to be \textbf{competitive} when compared to:
+        \begin{itemize}
+            \item DBN (Deep Belief Networks)
+            \item Stacked CAE (Contractive Autoencoders)
+            \item Deep GSN (Generative Stochastic Networks)
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Qualitative Evaluation and Samples}
+    \begin{itemize}
+        \item \textbf{Visual Quality:} Generated visual samples are considered \textbf{competitive} with the best generative models in the literature
+        \item \textbf{Non-Memorization:}
+        \begin{itemize}
+            \item Visualizations confirm the model \textbf{did not memorize} the training set
+            \item Demonstrated by comparing generated samples with their nearest training example
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Advantages}
+    \begin{itemize}
+        \item \textbf{Computational Simplicity:}
+        \begin{itemize}
+            \item Requires \textbf{Backpropagation Only} for training.
+            \item \textbf{No Inference} or \textbf{Markov Chains} are needed for sampling (simpler than RBMs/DBMs)
+            \item High \textbf{Design Flexibility} for incorporating differentiable functions
+        \end{itemize}
+        \item \textbf{Representational Strength:}
+        \begin{itemize}
+            \item Ability to represent \textbf{sharp} (even degenerate) distributions, unlike Markov Chain methods
+        \end{itemize}
+        \item \textbf{Statistical Benefit:}
+        \begin{itemize}
+            \item $G$ is updated indirectly via $D$ gradients, which helps prevent input components from being \textbf{directly copied}, reducing $\textit{overfitting}$
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Disadvantages}
+    \begin{itemize}
+        \item \textbf{Lack of Explicit $\mathbf{p_g(x)}$:}
+        \begin{itemize}
+            \item No explicit probability distribution; $p(x)$ must be \textbf{approximated} (e.g., via Parzen estimation)
+        \end{itemize}
+        \item \textbf{Training Instability:}
+        \begin{itemize}
+            \item Requires \textbf{Synchronization} between $D$ and $G$ to maintain balance
+        \end{itemize}
+        \item \textbf{Risk of Mode Collapse:}
+        \begin{itemize}
+            \item The \textbf{"Helvetica scenario"} occurs when $G$ is over-trained, mapping many $z$ values to the same $x$
+            \item \textbf{Result:} Generated samples show \textbf{low diversity} (failure to model the full data distribution)
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% DERIVED MODELS AND ENHANCEMENTS
+\section{Derived Models and Enhancements}
+
+\begin{frame}{Key GAN Variants}
+    Due to the sheer number of models, we will focus on several notable variants:
+    \begin{itemize}
+        \item \textbf{DCGAN} (Deep Convolutional GAN)
+        \item \textbf{WGAN} (Wasserstein GAN)
+        \item \textbf{cGAN} (Conditional GAN)
+        \item \textbf{Pix2Pix} (Image-to-Image Translation)
+        \item \textbf{CycleGAN} (Unpaired Image-to-Image Translation)
+        \item \textbf{Style-GAN} (Style-based Generator Architecture)
+    \end{itemize}
+\end{frame}
+
+\subsection{Deep Convolutional GAN (DCGAN)}
+
+\begin{frame}{DCGAN}
+  \begin{itemize}
+    \item Proposed by \textit{Radford et al.} (2015)
+    \item Designed to overcome instability and limitations of original GANs
+    \item Introduced systematic use of CNNs for image generation
+    \item Result: higher visual quality and improved training stability
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Key Architectural Features}
+  \textbf{Generator:}
+  \begin{itemize}
+    \item $\text{ConvTranspose2D}$ layers for upsampling
+    \item No fully connected layers after initial projection
+    \item \textbf{BatchNorm} in most layers (except output)
+    \item $\text{ReLU}$ activations internally, $\text{tanh}$ at output
+  \end{itemize}
+
+  \textbf{Discriminator:}
+  \begin{itemize}
+    \item $\text{Conv2D}$ with stride for downsampling (no pooling)
+    \item \textbf{LeakyReLU} activations
+    \item \textbf{BatchNorm} (except input layer)
+    \item Final $\text{sigmoid}$ for real vs. fake probability
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Loss Function}
+  \begin{itemize}
+    \item Standard Binary Cross-Entropy (BCE) objective:
+  \end{itemize}
+  
+\[\mathcal{L}_D = -\mathbb{E}_{x \sim p_{\text{data}}}[\log D(x)] 
+    - \mathbb{E}_{z \sim p_z}[\log(1 - D(G(z)))]\]
+
+\[\mathcal{L}_G = -\mathbb{E}_{z \sim p_z}[\log(D(G(z)))]\]
+
+\begin{itemize}
+    \item Implemented as BCE with logits (e.g., \texttt{BCELoss})
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Generator Architecture}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{dcgan_architecture.png}
+    \caption{DCGAN Generator $G(z)$: latent vector $\rightarrow$ $64 \times 64 \times 3$ image}
+  \end{figure}
+
+  \begin{itemize}
+    \item Latent vector $z$ (100-dim) progressively upsampled
+    \item Feature map size doubles, depth halves at each stage
+    \item Example: $4 \times 4 \rightarrow 8 \times 8 \rightarrow \dots \rightarrow 64 \times 64$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Why DCGAN Outperforms Original GAN}
+  \textbf{Original GAN:}
+  \begin{itemize}
+    \item Relied on MLPs (ignored spatial structure)
+    \item Training highly unstable
+    \item Generated blurry, inconsistent images
+    \item More prone to \textit{mode collapse}
+  \end{itemize}
+
+  \textbf{DCGAN:}
+  \begin{itemize}
+    \item CNNs capture local patterns (edges, textures)
+    \item Convolutions exploit spatial structure
+    \item Produces sharper, more realistic images
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Semantic Latent Space Manipulation}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{dcgan_example.png}
+    \caption{Bedroom dataset: removing "window" filters in latent space}
+  \end{figure}
+
+  \begin{itemize}
+    \item Top: unmodified samples (bedrooms with windows)
+    \item Bottom: windows removed or replaced by doors/mirrors
+    \item Shows separation of scene vs. object representation
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Training Stability and Rich Latent Space}
+  \textbf{Improved Stability:}
+  \begin{itemize}
+    \item BatchNorm, ReLU/LeakyReLU, Conv/ConvTranspose reduce vanishing gradients
+    \item Training becomes smoother and more reliable
+  \end{itemize}
+
+  \textbf{Richer Latent Representations:}
+  \begin{itemize}
+    \item Continuous and semantic latent space
+    \item Enables smooth interpolation between samples
+    \item Controllable attribute manipulation
+    \item Style control — foundation for later models (e.g., StyleGAN)
+  \end{itemize}
+\end{frame}
+
+\subsection{Wasserstein Generative Adversarial Network (WGAN)}
+
+\begin{frame}{WGAN}
+  \begin{itemize}
+    \item WGAN was introduced by Arjovsky et al. (2017).
+    \item It replaces the Jensen-Shannon divergence with the Wasserstein distance (Earth Mover's Distance - EMD).
+    \item Measures the minimum effort required to transform $P_g$ into $P_r$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Wasserstein Distance}
+    \[
+        W(P_r, P_g) = \inf_{\gamma \in \Pi(P_r, P_g)} 
+        \mathbb{E}_{(x,y) \sim \gamma} [||x-y||]
+    \]
+  \begin{itemize}
+    \item $\Pi(P_r, P_g)$: set of joint distributions with marginals $P_r$ and $P_g$.
+    \item Interpretation: minimum transport cost between distributions.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Improvements of WGAN}
+  \begin{itemize}
+    \item \textbf{Stability}: Provides meaningful gradients even without initial overlap.
+    \item \textbf{Vanishing Gradients}: Prevents loss saturation.
+    \item \textbf{Mode Collapse}: Smooth penalization encourages sample diversity.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Critic}
+  \begin{itemize}
+    \item Replaces the traditional discriminator.
+    \item Returns a score that approximates the Wasserstein distance.
+  \end{itemize}
+    \[
+        W(P_r, P_g) = \sup_{C \in \mathcal{L}_1} 
+        \mathbb{E}_{x \sim P_r}[C(x)] - \mathbb{E}_{z \sim P(z)}[C(G(z))]
+    \]
+\end{frame}
+
+\begin{frame}{Discriminator vs Critic}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{critic_vs_discriminator.png}
+    \caption{Optimal discriminator and critic when learning to differentiate two Gaussians. The minimax GAN discriminator saturates and results in vanishing gradients, while the WGAN critic provides clean gradients across the space}
+  \end{figure}
+\end{frame}
+
+
+\begin{frame}{Lipschitz Constraint}
+  \begin{itemize}
+    \item The Critic must be 1-Lipschitz:
+    \[
+          ||C(x_1) - C(x_2)|| \le ||x_1 - x_2||
+    \]
+    \item In the original WGAN: \textbf{weight clipping}
+    \item Problem: limits modeling capacity
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Loss Functions}
+  \textbf{Critic:}
+    \[
+        L_C = \mathbb{E}_{z \sim P(z)}[C(G(z))] - \mathbb{E}_{x \sim P_r}[C(x)]
+    \]
+  \textbf{Generator:}
+    \[
+        L_G = -\mathbb{E}_{z \sim P(z)}[C(G(z))]
+    \]
+\end{frame}
+
+\begin{frame}{WGAN-GP (Gradient Penalty)}
+  \begin{itemize}
+    \item Gulrajani et al. (2017)
+    \item Replaces weight clipping with gradient penalty
+    \item Enforces 1-Lipschitz constraint more robustly
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Critic Loss in WGAN-GP}
+    \[
+        L_{C_{GP}} = 
+        \underbrace{\mathbb{E}_{z \sim P(z)}[C(G(z))] - \mathbb{E}_{x \sim P_r}[C(x)]}_{\text{Wasserstein Loss}} 
+        + \underbrace{\lambda \mathbb{E}_{\hat{x} \sim P_{\hat{x}}}[(||\nabla_{\hat{x}} C(\hat{x})||_2 - 1)^2]}_{\text{Gradient Penalty}}
+    \]
+  \begin{itemize}
+    \item $\lambda$: hyperparameter (typically 10)
+    \item $\hat{x}$: interpolation between real $x$ and generated $G(z)$
+    \item Penalty enforces gradient norm $\approx 1$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Recap}
+  \begin{itemize}
+    \item WGAN improves training stability and sample quality
+    \item WGAN-GP is the preferred method, avoiding issues of weight clipping
+    \item Produces more realistic samples and robust training
+  \end{itemize}
+\end{frame}
+
+\subsection{cGan}
+
+\begin{frame}{cGAN}
+  \begin{itemize}
+    \item Conditional GAN (cGAN) introduced by Mirza and Osindero (2014).
+    \item Extends the original GAN by adding conditional information ($y$).
+    \item Enables controlled generation of samples based on input conditions.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Architecture}
+  \begin{itemize}
+    \item Condition $y$ can be a class label, semantic map, or other modality.
+    \item Both Generator ($G$) and Discriminator ($D$) receive $y$ as input.
+    \item Provides control over generated outputs.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Conditional adversarial net}
+    \centering
+    \begin{figure}
+        \includegraphics[width=0.85\linewidth]{cgan_architecture.png}
+        \caption{Conditional adversarial net}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Generator}
+  \begin{itemize}
+    \item Input: noise vector $z$ and condition $y$.
+    \item Learns mapping:
+    \[
+      G: z, y \rightarrow x'
+    \]
+    \item Typically, $z$ and $y$ are concatenated before being fed into the network.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Discriminator}
+  \begin{itemize}
+    \item Input: sample ($x$ or $x'$) and condition $y$.
+    \item Learns to classify whether $x$ is real or fake given $y$.
+    \[
+      D: (x \text{ or } x'), y \rightarrow \text{probability (real vs. fake)}
+    \]
+    \item $y$ is concatenated with $x$ at input or intermediate layers.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Loss Function}
+  \begin{itemize}
+    \item Modified from original GAN loss to include condition $y$.
+    \item Objective:
+    \[
+      \min_G \max_D V(D, G) = 
+      \mathbb{E}_{x \sim P_{data}(x)} [\log D(x|y)] + 
+      \mathbb{E}_{z \sim P_z(z)} [\log (1 - D(G(z|y)))]
+    \]
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Loss Details}
+  \textbf{Discriminator Loss ($L_D$):}
+    \[
+        \max_D V(D, G) = 
+        \mathbb{E}_{x \sim P_{data}(x)} [\log D(x,y)] + 
+        \mathbb{E}_{z \sim P_z(z)} [\log (1 - D(G(z,y), y))]
+    \]
+  \textbf{Generator Loss ($L_G$):}
+    \[\min_G V(D, G) = 
+    \mathbb{E}_{z \sim P_z(z)} [\log (1 - D(G(z,y), y))]\]
+\end{frame}
+
+\begin{frame}{Key Applications}
+  \begin{itemize}
+    \item \textbf{Image Generation}  
+      \begin{itemize}
+        \item Condition ($y$): Class Label ("Cat", "Car")  
+        \item Output ($x'$): Image corresponding to the class  
+      \end{itemize}
+
+    \item \textbf{Image-to-Image Translation (Pix2Pix)}  
+      \begin{itemize}
+        \item Condition ($y$): Semantic Map (street contours)  
+        \item Output ($x'$): Realistic street photo  
+      \end{itemize}
+
+    \item \textbf{Text Generation}  
+      \begin{itemize}
+        \item Condition ($y$): Sentence prefix  
+        \item Output ($x'$): Continuation of the sentence  
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Recap}
+  \begin{itemize}
+    \item cGAN extends GANs with conditional control.
+    \item Enables targeted and meaningful sample generation.
+    \item Foundation for many applications in vision and language.
+  \end{itemize}
+\end{frame}
+
+\subsection{Pix2Pix}
+
+\begin{frame}{Pix2Pix (Image-to-Image Translation)}
+  \begin{itemize}
+    \item Pix2Pix proposed by Isola et al. (2017)
+    \item Built directly on the Conditional GAN (cGAN) architecture
+    \item Learns a mapping from input image ($x$) to output image ($y$) based on a condition
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Image-to-Image Translation Overview}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.85\textwidth]{pix2pix_overview.png}
+    \caption{General-purpose conditional adversarial networks for image-to-image translation. Same architecture and objective, trained on different paired datasets}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Fundamental Requirement: Paired Data}
+  \begin{itemize}
+    \item Pix2Pix requires paired training data.
+    \item Each input image (Domain A) must have a corresponding aligned output image (Domain B).
+  \end{itemize}
+
+  \begin{itemize}
+    \item \textbf{Contour/Sketch Map → Real Photo}  
+      \begin{itemize}
+        \item Application: Image generation from drawing
+      \end{itemize}
+
+    \item \textbf{Semantic Map → Street Photo}  
+      \begin{itemize}
+        \item Application: Urban landscape synthesis
+      \end{itemize}
+
+    \item \textbf{Infrared Image → RGB Image}  
+      \begin{itemize}
+        \item Application: Modality conversion
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Generator (U-Net)}
+  \begin{itemize}
+    \item Uses U-Net architecture instead of a standard fully convolutional network
+    \item Encoder-decoder with skip connections linking encoder layers to corresponding decoder layers
+    \item \textbf{Advantage:} Skip connections transfer low-frequency information (contours, global structure) directly to the output, preserving input structure and reducing blurring
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Generator Architectures}
+  \begin{itemize}
+    \item Two choices for the generator architecture
+    \item \textbf{U-Net}: encoder-decoder with skip connections
+    \item Skip connections link mirrored layers in encoder and decoder stacks
+    \item Advantage: preserves spatial information and reduces blurring in generated images
+  \end{itemize}
+
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{pix2pix_unet_generator.png}
+    \caption{U-Net generator: encoder-decoder with skip connections between mirrored layers}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Discriminator (PatchGAN)}
+  \begin{itemize}
+    \item Uses PatchGAN architecture.
+    \item Classifies $N \times N$ patches of the output image as real or fake
+    \item \textbf{Advantage:} Forces the Generator to focus on high-frequency details (texture, style), producing sharper and more realistic outputs
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Total Loss Function}
+    \[
+    L_{Total}(G, D) = L_{cGAN}(G, D) + \lambda L_{L1}(G)
+    \]
+  \begin{itemize}
+    \item Combination of adversarial loss and reconstruction loss
+    \item $\lambda$ (commonly $\lambda=100$) controls the weight of the L1 loss
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Loss Details}
+  \textbf{Adversarial Loss ($L_{cGAN}$):}
+    \[
+    L_{cGAN}(G, D) = 
+    \mathbb{E}_{x,y} [\log D(x,y)] + 
+    \mathbb{E}_{x,z} [\log (1 - D(x, G(x,z)))]
+    \]
+  \textbf{Reconstruction Loss ($L_{L1}$):}
+    \[
+    L_{L1}(G) = \mathbb{E}_{x,y} [||y - G(x)||_1]
+    \]
+  \begin{itemize}
+    \item Ensures generated image is not only realistic but also matches the target image
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Effect of Different Losses}
+  \begin{itemize}
+    \item Different loss functions induce different quality of results
+    \item Each column shows outputs trained under a different loss
+    \item Highlights how adversarial loss, L1/L2 reconstruction loss, or combinations affect realism and fidelity
+  \end{itemize}
+
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.60\textwidth]{pix2pix_loss_comparison.png}
+    \caption{Comparison of results under different loss functions. Each column corresponds to a distinct training loss}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Recap}
+  \begin{itemize}
+    \item Pix2Pix enables supervised image-to-image translation using paired data
+    \item U-Net generator preserves structure, PatchGAN discriminator enforces detail
+    \item Combined adversarial and L1 losses yield realistic and faithful translations
+  \end{itemize}
+\end{frame}
+
+\subsection{CycleGAN}
+
+\begin{frame}{CycleGAN}
+  \begin{itemize}
+    \item Proposed by Zhu et al. (2017)
+    \item Elegant solution for image-to-image translation when paired data is scarce or unavailable
+    \item Learns mappings between two domains $X$ and $Y$ without requiring 1:1 correspondence
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Innovation: Unpaired Data}
+  \begin{itemize}
+    \item CycleGAN works with unpaired datasets
+    \item Learns translation between collections of images from Domain $X$ and Domain $Y$
+  \end{itemize}
+
+  \begin{itemize}
+    \item \textbf{Domain X: Horses → Domain Y: Zebras}  
+      Application: Species conversion
+    \item \textbf{Domain X: Summer Photos → Domain Y: Winter Photos}  
+      Application: Season transfer
+    \item \textbf{Domain X: Photos (Style A) → Domain Y: Paintings (Style B)}  
+      Application: Artistic style transfer
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Architecture}
+  \begin{itemize}
+    \item Two complementary GANs form a cycle:
+    \item \textbf{GAN $X \rightarrow Y$:}
+      \begin{itemize}
+        \item Generator $G$: maps $X \rightarrow Y$
+        \item Discriminator $D_Y$: distinguishes real $Y$ from generated $G(X)$
+      \end{itemize}
+    \item \textbf{GAN $Y \rightarrow X$:}
+      \begin{itemize}
+        \item Generator $F$: maps $Y \rightarrow X$
+        \item Discriminator $D_X$: distinguishes real $X$ from generated $F(Y)$
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Total Loss Function}
+  \[
+    L_{Total} = L_{GAN}(G, D_Y) + L_{GAN}(F, D_X) + \lambda L_{cyc}(G, F)
+  \]
+  \begin{itemize}
+    \item \textbf{Adversarial Loss ($L_{GAN}$):} ensures generated images are indistinguishable from real ones in target domain
+    \item \textbf{Cycle Consistency Loss ($L_{cyc}$):} enforces that translation and re-translation return the original image
+    \item \textbf{Identity Loss ($L_{id}$, optional):} preserves color and composition if input already belongs to target domain
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Cycle Consistency Details}
+  \textbf{Forward Cycle ($X \rightarrow Y \rightarrow X$):}
+    \[
+    L_{cyc\_forward} = \mathbb{E}_{x}[||F(G(x)) - x||_1]
+    \]
+  \textbf{Backward Cycle ($Y \rightarrow X \rightarrow Y$):}
+    \[
+    L_{cyc\_backward} = \mathbb{E}_{y}[||G(F(y)) - y||_1]
+    \]
+    \[
+    L_{cyc}(G, F) = L_{cyc\_forward} + L_{cyc\_backward}
+    \]
+\end{frame}
+
+\begin{frame}{Impact and Applications}
+  \begin{itemize}
+    \item Enables image-to-image translation without paired datasets
+    \item Applications: species conversion, season transfer, artistic style transfer
+    \item Opened new possibilities in domains where paired data is prohibitive
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Beyond CycleGAN}
+  \begin{itemize}
+    \item \textbf{ProGAN} (Karras et al.): introduced progressive growing for higher resolution
+    \item \textbf{StyleGAN}: evolution of ProGAN, with style-based generator architecture.
+    \item Marked unprecedented leaps in photorealistic image generation quality and resolution
+  \end{itemize}
+\end{frame}
+
+
+\subsection{StyleGAN}
+
+\begin{frame}{StyleGAN}
+  \begin{itemize}
+    \item Proposed by Karras et al. (2018)
+    \item Built on ProGAN but introduces a new generator architecture inspired by style transfer
+    \item Goal: disentangle latent factors, enabling intuitive control over generated image attributes
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Key Architectural Innovations}
+  \begin{itemize}
+    \item \textbf{Mapping Network:}
+      \begin{itemize}
+        \item Transforms latent vector $z$ into intermediate vector $w$ using an 8-layer MLP
+        \item $w$ resides in latent space $\mathcal{W}$, designed to be less entangled than $Z$
+        \item Facilitates separation of variation factors (pose, color, identity)
+      \end{itemize}
+    \item \textbf{Style Injection (AdaIN):}
+      \begin{itemize}
+        \item Generator renamed to Synthesis Network, starts from a constant tensor
+        \item Styles ($w$) applied at each resolution block via Adaptive Instance Normalization (AdaIN)
+        \item Low-resolution styles: control global attributes (pose, face shape, hair type)
+        \item High-resolution styles: control fine details (hair color, freckles, wrinkles)
+      \end{itemize}
+    \item \textbf{Noise Injection:}
+      \begin{itemize}
+        \item Adds uncorrelated stochastic noise at each synthesis block
+        \item Controls fine stochastic variation (hair strands, textures) without affecting high-level attributes
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{StyleGAN Generator Summary}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.50\textwidth]{stylegan_architecture.png}
+    \caption{StyleGAN generator: mapping network $f$, synthesis network $g$, AdaIN style injection, and noise addition}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Truncation Trick in StyleGAN}
+  \begin{itemize}
+    \item \textbf{Goal:} Improve image quality by sampling from a truncated latent space
+    \item Compute center of mass of $W$: 
+    \[\bar{w} = \mathbb{E}_{z \sim P(z)}[f(z)]\]
+      representing the “average face” in FFHQ
+    \item Scale deviation from $\bar{w}$:
+    \[w' = \bar{w} + \psi (w - \bar{w}), \quad \psi < 1\]
+    \item \(\psi \to 0\): all faces converge to the mean face (no artifacts).
+    \item Negative \(\psi\): produces the opposite or “anti-face”
+    \item High-level attributes often flip: viewpoint, glasses, age, coloring, hair length, gender
+    \item Works reliably in $W$ space without modifying the loss function
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Truncation Trick Example}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.85\textwidth]{stylegan_examples.png}
+    \caption{Effect of truncation trick as a function of style scale $\psi$: mean face at $\psi=0$, anti-face at negative $\psi$.}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{StyleGAN2 (2020)}
+  \begin{itemize}
+    \item Addressed visual artifacts in StyleGAN1 (droplet artifacts, static textures)
+    \item \textbf{Key Improvements:}
+      \begin{itemize}
+        \item Removed AdaIN mean/variance normalization; replaced with style modulation and demodulation
+        \item Introduced \textbf{Path Length Regularization}: enforces smooth, proportional mapping in latent space
+        \item Eliminated skip connections from ProGAN design for greater stability
+      \end{itemize}
+    \item \textbf{Results:}
+      \begin{itemize}
+        \item Sharper, more coherent images
+        \item Better disentanglement of latent space
+        \item Higher stability and quality across scales
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Impact}
+  \begin{itemize}
+    \item StyleGAN revolutionized controllable image generation
+    \item Enabled semantic manipulation of attributes (pose, style, fine details)
+    \item StyleGAN2 further improved realism and coherence, eliminating artifacts
+    \item Established a foundation for subsequent models (StyleGAN3, diffusion-based approaches)
+  \end{itemize}
+\end{frame}
+
+\section{Final Considerations}
+\begin{frame}{Final Considerations}
+  \begin{itemize}
+    \item GANs established a powerful new paradigm for generative modeling, framed as a zero-sum minimax game between two networks
+    \item This approach avoids complex and often intractable probability calculations required by earlier methods
+    \item Subsequent research has focused primarily on control and application
+    \item Advanced architectures such as \textbf{StyleGAN} introduced controllable and disentangled latent spaces, transforming GANs from simple data generators into models that enable semantic control over the generation process
+  \end{itemize}
+\end{frame}
+
+\end{document}
