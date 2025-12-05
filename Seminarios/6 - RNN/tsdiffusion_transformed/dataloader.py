@@ -125,5 +125,69 @@ class DataLoader():
 
         self.df = df
 
+    def add_next_anomaly_timestamp(self, column: str, value: float, boundary: str):
+        """
+        Cria uma coluna 'anomaly' com o timestamp do PRÓXIMO evento em que
+        a coluna `column` atinge/infringe o `value`, de acordo com `boundary`:
+        - boundary = "above": evento quando column >= value
+        - boundary = "below": evento quando column <= value
 
-    
+        Durante o próprio evento (períodos em que já está fora do limite),
+        a coluna 'anomaly' fica como NaT. Quando volta para a zona "normal",
+        passa a apontar para o próximo timestamp de evento.
+        """
+
+        df = self.df.copy()
+        df.ffill(inplace=True)
+        df.bfill(inplace=True)
+        scaler = RobustScaler()
+        df = pd.DataFrame(scaler.fit_transform(df), columns=df.columns, index=df.index)
+        if df.empty or column not in df.columns:
+            self.df = df
+            return
+
+        series = df[column]
+        b = boundary.lower()
+        if b == "above":
+            is_anom = series >= value
+        elif b == "below":
+            is_anom = series <= value
+        else:
+            raise ValueError("boundary deve ser 'above' ou 'below'")
+
+        n = len(df)
+        # inicializa coluna com NaT
+        anomaly_col = np.full(n, np.datetime64("NaT"), dtype="datetime64[ns]")
+
+        # se não há nenhum evento, só salva a coluna vazia
+        if not is_anom.any():
+            df["anomaly"] = anomaly_col
+            self.df = df
+            return
+
+        mask = is_anom.to_numpy()
+
+        # posições de INÍCIO de eventos (True depois de False)
+        start_mask = mask & ~np.concatenate(([False], mask[:-1]))
+        start_pos = np.flatnonzero(start_mask)
+
+        if len(start_pos) == 0:
+            df["anomaly"] = anomaly_col
+            self.df = df
+            return
+
+        # para cada índice i, achar o primeiro start_pos > i
+        idx = np.arange(n)
+        next_start_idx_idx = np.searchsorted(start_pos, idx, side="right")
+        valid = next_start_idx_idx < len(start_pos)
+
+        index_values = df.index.to_numpy()
+        next_ts = np.full(n, np.datetime64("NaT"), dtype="datetime64[ns]")
+        next_indices = start_pos[next_start_idx_idx[valid]]
+        next_ts[valid] = index_values[next_indices]
+
+        # durante o evento (mask == True) deve ser NaT
+        next_ts[mask] = np.datetime64("NaT")
+
+        df["anomaly"] = next_ts
+        self.df = df

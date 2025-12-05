@@ -6,6 +6,7 @@ import math
 import torch.nn.functional as F
 import numpy as np
 import pandas as pd
+import time
 from torch.utils.data import DataLoader, Subset
 
 max_drop = 0.3
@@ -357,6 +358,7 @@ class TSDiffusion(ODEJumpEncoder):
         ts_batch: torch.Tensor,
         mask: torch.Tensor,
         mask_train: torch.Tensor,
+        cc: torch.Tensor,
         state_pred: torch.Tensor,
         status_pred_window: np.float32,
         noise,
@@ -375,11 +377,15 @@ class TSDiffusion(ODEJumpEncoder):
         if x_hat is not None:
             #L1
             mask_err = mask * (1 - mask_train) # erro ao longo dos C canais observados 
-            sse = (((x_hat - x)**2) * mask_err).sum(dim=-1) # (B,T) 
+            sse = (((x_hat - x)**2) * mask_err * cc).sum(dim=-1) # (B,T) 
             #nobs =x_hat.numel() # -½ λ ||x-μ||^2 + ½ log λ
-            nobs = mask_err.sum(dim=-1).clamp(min=1e-8) # -½ λ ||x-μ||^2 + ½ log λ
+            nobs = (mask_err*cc).sum(dim=-1).clamp(min=1e-8) # -½ λ ||x-μ||^2 + ½ log λ
             if self.log_likelihood:
-                lam_t = F.softplus(self.lambda_head(torch.cat([state,noise_hat],dim=-1))).clamp(min=1/(2*math.pi),max=2*math.pi) # (B,T,1) 
+                lam_t = F.softplus(
+                    self.lambda_head(
+                        torch.cat(
+                            [state,noise_hat if noise_hat is not None else torch.zeros_like(state)],dim=-1
+                            ))).clamp(min=1/(2*math.pi),max=2*math.pi) # (B,T,1) 
                 lam2 = lam_t.squeeze(-1) # (B,T)  
                 log_px = -0.5 * lam2 * sse + 0.5 * nobs * torch.log(lam2) - 0.5 * nobs * math.log(2*math.pi) # (B,T) 
                 # Se quiser normalizar para não depender de C/T, use média por observação: # loss por (B,T) normalizada por nobs: 
@@ -442,16 +448,16 @@ class TSDiffusion(ODEJumpEncoder):
             L4_div = 1.0
 
         if self.lam[4] > 0 and vae_x is not None and vae_mu is not None and vae_logvar is not None:
-            mask_vae = mask * (1 - mask_train)
+            mask_vae = mask
             if vae_logvar_obs is not None:
                 logvar_obs = (vae_logvar_obs + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
                 nll_obs = 0.5 * (logvar_obs + ((x - vae_x) ** 2) / torch.exp(logvar_obs) + math.log(2 * math.pi))
-                vae_recon = (nll_obs * mask_vae).sum()
+                vae_recon = (nll_obs * mask_vae * cc).sum()
             else:
-                vae_recon = ((x - vae_x).pow(2) * mask_vae).sum()
-            vae_recon_div = mask_vae.sum().clamp(min=1.0)
+                vae_recon = ((x - vae_x).pow(2) * mask_vae * cc).sum()
+            vae_recon_div = (mask_vae * cc).sum().clamp(min=1.0)
             vae_kl = -0.5 * torch.sum(1 + vae_logvar - vae_mu.pow(2) - vae_logvar.exp())
-            vae_kl_div = torch.tensor(float(x.numel()), device=x.device)
+            vae_kl_div = vae_logvar.numel()
             L5 = vae_recon / vae_recon_div + kl_scale * (vae_kl / vae_kl_div)
             L5_div = torch.tensor(1.0, device=x.device)
         else:
@@ -477,7 +483,7 @@ class TSDiffusion(ODEJumpEncoder):
                 vae_recon_t = ((err_change ** 2 * 1000 + err_no_change ** 2)*mask_vae).sum()
             vae_kl_t = -0.5 * torch.sum((1 + vae_tmax_logvar - vae_tmax_mu.pow(2) - vae_tmax_logvar.exp()) * mask_vae) 
             L6_div = mask_vae.sum().clamp(min=1.0)
-            L6 = (vae_recon_t) + kl_scale * (vae_kl_t)
+            L6 = (vae_recon_t / L6_div) + kl_scale * (vae_kl_t / L6_div)
         else:
             L6 = torch.tensor(0.0, device=state.device)
             L6_div = torch.tensor(1.0, device=state.device)
@@ -567,7 +573,8 @@ class TSDiffusion(ODEJumpEncoder):
         rebuild: bool = True,
         kl_start: float = 0.001,
         kl_end: float = 1.0,
-        kl_warmup_epochs: int = 50
+        kl_warmup_epochs: int = 50,
+        train_fraction: float = 0.6
     ):
         delta_pred_window = np.float32(status_pred_window / TS_SPAN)
         # exemplo para ODEJumpEncoder: ajuste nomes conforme sua classe
@@ -611,7 +618,8 @@ class TSDiffusion(ODEJumpEncoder):
         N = ds.tensors[0].shape[0]
         if N != len(y_win):
             raise ValueError(f"Inconsistência: dataset={N} vs rótulos={len(y_win)}.")
-        train_frac, val_frac, test_frac = 0.6, 0.2, 0.2
+        val_frac = (1.0 - train_fraction) / 2
+        train_frac, val_frac, test_frac = train_fraction, val_frac, val_frac
         # --- Split por grupo (proporcional): 60/20/20 ou 80/0/20
         if fixed_test_idx is not None:
             test_idx = np.asarray(fixed_test_idx, dtype=int)
@@ -665,6 +673,7 @@ class TSDiffusion(ODEJumpEncoder):
         total_steps     = max(epochs * steps_per_epoch, 1)
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
         for ep in range(1, epochs + 1):
+            epoch_start = time.time()
             self.train()
             total_train = [[0.0, 0.0] for _ in range(6)]  # L1..L6
             scaler = torch.amp.GradScaler()
@@ -717,14 +726,15 @@ class TSDiffusion(ODEJumpEncoder):
                 with torch.amp.autocast(device_type='cuda'):
 
                     loss, L1, L2, L3, L4, L5, L6 = self._compute_loss(
-                        x * cc, 
-                        x_hat * cc if x_hat is not None else None,
+                        x, 
+                        x_hat if x_hat is not None else None,
                         tmax,
                         state,
                         state_tmax,
                         ts_batch,
                         m, 
-                        m_train * cc,
+                        m_train,
+                        cc,
                         p,
                         delta_pred_window,
                         noise, 
@@ -732,11 +742,11 @@ class TSDiffusion(ODEJumpEncoder):
                         lambda1,
                         vae_mu,
                         vae_logvar,
-                        vae_x * cc if vae_x is not None else None,
+                        vae_x if vae_x is not None else None,
                         vae_tmax,
                         vae_tmax_mu,
                         vae_tmax_logvar,
-                        vae_logvar_obs * cc if vae_logvar_obs is not None else None,
+                        vae_logvar_obs if vae_logvar_obs is not None else None,
                         vae_tmax_logvar_obs,
                         kl_scale=self._kl_scale(ep, kl_start, kl_end, kl_warmup_epochs)
                     )
@@ -791,13 +801,13 @@ class TSDiffusion(ODEJumpEncoder):
                     val_parts.append(
                         f"Val macro (VAE):{val_metrics['macro_mse_v']:.6f} ± {val_metrics['macro_se_v']:.6f} | "
                         f"Val micro (VAE):{val_metrics['micro_mse_v']:.6f} ± {val_metrics['micro_se_v']:.6f} | "
-                        f"NLL:{val_metrics['micro_nll_v']:.6f} cov90:{val_metrics['micro_cov_v']:.3f} width90:{val_metrics['micro_width_v']:.6f} "
+                        f"ELBO:{val_metrics['micro_elbo_v']:.6f} NLL:{val_metrics['micro_nll_v']:.6f} cov90:{val_metrics['micro_cov_v']:.3f} width90:{val_metrics['micro_width_v']:.6f} "
                 )
                 if len(self.lam) > 5 and self.lam[5] > 0:
                     val_parts.append(
                         f"Val macro (VAE tmax):{val_metrics['macro_mse_vt']:.6f} ± {val_metrics['macro_se_vt']:.6f} | "
                         f"Val micro (VAE tmax):{val_metrics['micro_mse_vt']:.6f} ± {val_metrics['micro_se_vt']:.6f} | "
-                        f"NLL:{val_metrics['micro_nll_vt']:.6f} cov90:{val_metrics['micro_cov_vt']:.3f} width90:{val_metrics['micro_width_vt']:.6f} "
+                        f"ELBO:{val_metrics['micro_elbo_vt']:.6f} NLL:{val_metrics['micro_nll_vt']:.6f} cov90:{val_metrics['micro_cov_vt']:.3f} width90:{val_metrics['micro_width_vt']:.6f} "
                     )
                 print("".join(val_parts))
             else:
@@ -812,7 +822,19 @@ class TSDiffusion(ODEJumpEncoder):
                 all_groups=all_groups, only_gru=only_gru, reconstruction_test=reconstruction_test,
                 status_pred_window=delta_pred_window
                 )
-            yield test_metrics
+            # incluir losses de treino L1..L6 no dicionário retornado por época
+            epoch_time = time.time() - epoch_start
+            epoch_metrics = dict(test_metrics)
+            epoch_metrics.update({
+                "train_L1": float(train_L1),
+                "train_L2": float(train_L2),
+                "train_L3": float(train_L3),
+                "train_L4": float(train_L4),
+                "train_L5": float(train_L5),
+                "train_L6": float(train_L6),
+                "epoch_time": float(epoch_time),
+            })
+            yield epoch_metrics
             test_parts = []
             if self.lam[0] > 0:
                 test_parts.append(
@@ -833,24 +855,23 @@ class TSDiffusion(ODEJumpEncoder):
                 test_parts.append(
                     f"          >> Test (VAE) macro:{test_metrics['macro_mse_v']:.6f} ± {test_metrics['macro_se_v']:.6f} | "
                     f"micro:{test_metrics['micro_mse_v']:.6f} ± {test_metrics['micro_se_v']:.6f} | "
-                    f"NLL:{test_metrics['micro_nll_v']:.6f} cov90:{test_metrics['micro_cov_v']:.3f} width90:{test_metrics['micro_width_v']:.6f}"
+                    f"ELBO:{test_metrics['micro_elbo_v']:.6f} NLL:{test_metrics['micro_nll_v']:.6f} cov90:{test_metrics['micro_cov_v']:.3f} width90:{test_metrics['micro_width_v']:.6f}"
                 )
             if len(self.lam) > 5 and self.lam[5] > 0:
                 test_parts.append(
                     f"          >> Test (VAE tmax) macro:{test_metrics['macro_mse_vt']:.6f} ± {test_metrics['macro_se_vt']:.6f} | "
                     f"micro:{test_metrics['micro_mse_vt']:.6f} ± {test_metrics['micro_se_vt']:.6f} | "
-                    f"NLL:{test_metrics['micro_nll_vt']:.6f} cov90:{test_metrics['micro_cov_vt']:.3f} width90:{test_metrics['micro_width_vt']:.6f}"
+                    f"ELBO:{test_metrics['micro_elbo_vt']:.6f} NLL:{test_metrics['micro_nll_vt']:.6f} cov90:{test_metrics['micro_cov_vt']:.3f} width90:{test_metrics['micro_width_vt']:.6f}"
                 )
             if test_parts:
                 print("\n".join(test_parts))
 
             if early_stopping:
                 score = (test_metrics["micro_mse"]*self.lam[0] + test_metrics["micro_mse_n"]*self.lam[1] + \
-                         test_metrics["micro_mse_s"]*self.lam[2] + test_metrics["micro_mse_v"]*self.lam[4] + \
-                         (test_metrics.get("micro_mse_vt", 0.0) * self.lam[5] if len(self.lam)>5 else 0.0) + \
+                         test_metrics["micro_mse_s"]*self.lam[2] + test_metrics["micro_elbo_v"]*self.lam[4] + \
+                         (test_metrics.get("micro_elbo_vt", 0.0) * self.lam[5] if len(self.lam)>5 else 0.0) + \
                 2 * (test_metrics["micro_se"]*self.lam[0] + test_metrics["micro_se_n"]*self.lam[1] \
-                     + test_metrics["micro_se_s"]*self.lam[2] + test_metrics["micro_se_v"]*self.lam[4] \
-                     + (test_metrics.get("micro_se_vt", 0.0) * self.lam[5] if len(self.lam)>5 else 0.0)))
+                     + test_metrics["micro_se_s"]*self.lam[2]))
                 improved = score < best_score
                 if improved:
                     self.save("tsdiffusion.pt"); best_score = score
@@ -879,11 +900,11 @@ class TSDiffusion(ODEJumpEncoder):
         if self.lam[4] > 0:
             parts.append(f"macro (VAE): {final_metrics['macro_mse_v']:.6f} ± {final_metrics['macro_se_v']:.6f} | "
                          f"micro (VAE): {final_metrics['micro_mse_v']:.6f} ± {final_metrics['micro_se_v']:.6f} | "
-                         f"NLL:{final_metrics['micro_nll_v']:.6f} cov90:{final_metrics['micro_cov_v']:.3f} width90:{final_metrics['micro_width_v']:.6f} ")
+                         f"ELBO:{final_metrics['micro_elbo_v']:.6f} NLL:{final_metrics['micro_nll_v']:.6f} cov90:{final_metrics['micro_cov_v']:.3f} width90:{final_metrics['micro_width_v']:.6f} ")
         if len(self.lam) > 5 and self.lam[5] > 0:
             parts.append(f"macro (VAE tmax): {final_metrics['macro_mse_vt']:.6f} ± {final_metrics['macro_se_vt']:.6f} | "
                          f"micro (VAE tmax): {final_metrics['micro_mse_vt']:.6f} ± {final_metrics['micro_se_vt']:.6f} | "
-                         f"NLL:{final_metrics['micro_nll_vt']:.6f} cov90:{final_metrics['micro_cov_vt']:.3f} width90:{final_metrics['micro_width_vt']:.6f} ")
+                         f"ELBO:{final_metrics['micro_elbo_vt']:.6f} NLL:{final_metrics['micro_nll_vt']:.6f} cov90:{final_metrics['micro_cov_vt']:.3f} width90:{final_metrics['micro_width_vt']:.6f} ")
         print("".join(parts))
         pg = test_metrics["per_group_mse"]
         pg_sew = test_metrics["per_group_se_w"]
@@ -906,6 +927,16 @@ class TSDiffusion(ODEJumpEncoder):
         print("          >> per_group (weighted SE) VAE:",
         {g: f"{pg_v[g]:.6f} ± {pg_sew_v[g]:.6f} (n={pg_cnt[g]})" for g in sorted(pg.keys())}
         )
+        if self.lam[4] > 0:
+            pg_elbo_v = test_metrics["per_group_elbo_v"]
+            print("          >> per_group ELBO VAE:",
+            {g: f"{pg_elbo_v[g]:.6f}" for g in sorted(pg_elbo_v.keys())}
+            )
+        if len(self.lam) > 5 and self.lam[5] > 0:
+            pg_elbo_vt = test_metrics["per_group_elbo_vt"]
+            print("          >> per_group ELBO VAE tmax:",
+            {g: f"{pg_elbo_vt[g]:.6f}" for g in sorted(pg_elbo_vt.keys())}
+            )
         yield None
 
     def test_model_preforward(
@@ -946,8 +977,8 @@ class TSDiffusion(ODEJumpEncoder):
             ) for i in range(13)]
             res_index = [
                 (res[i]["micro_mse"]*self.lam[0] + res[i]["micro_mse_n"]*self.lam[1] + \
-                 res[i]["micro_mse_s"]*self.lam[2] + res[i]["micro_mse_v"]*self.lam[4] + \
-                 (res[i].get("micro_mse_vt", 0.0) * self.lam[5] if len(self.lam)>5 else 0.0) + \
+                 res[i]["micro_mse_s"]*self.lam[2] + res[i]["micro_elbo_v"]*self.lam[4] + \
+                 (res[i].get("micro_elbo_vt", 0.0) * self.lam[5] if len(self.lam)>5 else 0.0) + \
                 2 * (res[i]["micro_se"]*self.lam[0] + res[i]["micro_se_n"]*self.lam[1] \
                      + res[i]["micro_se_s"] * self.lam[2] + res[i]["micro_se_v"]*self.lam[4] \
                      + (res[i].get("micro_se_vt", 0.0) * self.lam[5] if len(self.lam)>5 else 0.0)) 
@@ -1027,6 +1058,10 @@ class TSDiffusion(ODEJumpEncoder):
         G_COV_VT   = {}
         G_TOTC_VT  = {}
         G_WWIDTH_VT= {}
+        G_ELBO_V_NUM  = {}
+        G_ELBO_V_DEN  = {}
+        G_ELBO_VT_NUM = {}
+        G_ELBO_VT_DEN = {}
 
         # globais (micro)
         T_W, T_SSE, T_WM2 = 0.0, 0.0, 0.0
@@ -1040,6 +1075,8 @@ class TSDiffusion(ODEJumpEncoder):
         T_WIDTH_V = 0.0
         T_COV_VT, T_COV_DEN_VT = 0.0, 0.0
         T_WIDTH_VT = 0.0
+        T_ELBO_V_NUM, T_ELBO_V_DEN = 0.0, 0.0
+        T_ELBO_VT_NUM, T_ELBO_VT_DEN = 0.0, 0.0
 
 
         with torch.no_grad():
@@ -1060,7 +1097,10 @@ class TSDiffusion(ODEJumpEncoder):
                     p = batch[-1]
                 x, ts_batch, m, cc = x.to(device), ts_batch.to(device), m.to(device), cc.to(device)
                 if s is not None: s = s.to(device)
-                if p is not None: p = p.to(device)
+                if p is not None: 
+                    p = p.to(device)
+                else:
+                    p = ts_batch.unsqueeze(-1)
 
                 B = x.shape[0]
                 yb = y_seq[pos:pos+B]
@@ -1099,7 +1139,7 @@ class TSDiffusion(ODEJumpEncoder):
                     noise_hat = torch.zeros_like(m_train)
                     noise = torch.zeros_like(m_train)
                 sse_n_bt  = ((noise_hat-noise)**2).sum(dim=(1, 2))           # (B,)
-                nobs_n_bt = (torch.ones_like(noise)*mask_ts).sum(dim=(1, 2))               # (B,)
+                nobs_n_bt = (torch.ones_like(noise)*mask_ts).sum(dim=(1, 2)).clamp(min=1.0)               # (B,)
                 mse_n_bt  = (sse_n_bt / nobs_n_bt).detach().cpu().numpy()
                 sse_n_bt  = sse_n_bt.detach().cpu().numpy()
                 nobs_n_bt = nobs_n_bt.detach().cpu().numpy()
@@ -1124,11 +1164,17 @@ class TSDiffusion(ODEJumpEncoder):
                 logvar_v = vae_logvar_obs if vae_logvar_obs is not None else torch.zeros_like(mu_v)
                 logvar_v = (logvar_v + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
                 sigma_v = torch.exp(0.5 * logvar_v)
+                # KL por amostra (soma sobre dims)
+                if vae_mu is not None and vae_logvar is not None:
+                    kl_v_per_b = -0.5 * (1 + vae_logvar - vae_mu.pow(2) - vae_logvar.exp()).sum(dim=(1, 2))
+                else:
+                    kl_v_per_b = torch.zeros(x.size(0), device=x.device, dtype=x.dtype)
                 nll_v = 0.5 * (
                     math.log(2 * math.pi) + logvar_v + ((x - mu_v) ** 2) / torch.exp(logvar_v)
                 )
                 nll_v = (nll_v * mask_err * cc).sum(dim=(1, 2))
                 nll_v_bt = nll_v.detach().cpu().numpy()
+                kl_v_bt = kl_v_per_b.detach().cpu().numpy()
                 covered_v = (
                     (x >= (mu_v - z90 * sigma_v))
                     * (x <= (mu_v + z90 * sigma_v))
@@ -1153,12 +1199,17 @@ class TSDiffusion(ODEJumpEncoder):
                 logvar_vt = vae_tmax_logvar_obs if vae_tmax_logvar_obs is not None else torch.zeros_like(mu_vt)
                 logvar_vt = (logvar_vt + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
                 sigma_vt = torch.exp(0.5 * logvar_vt) * changing_state * mask_tmax
+                if vae_tmax_mu is not None and vae_tmax_logvar is not None:
+                    kl_vt_per_b = -0.5 * (1 + vae_tmax_logvar - vae_tmax_mu.pow(2) - vae_tmax_logvar.exp()).sum(dim=(1, 2))
+                else:
+                    kl_vt_per_b = torch.zeros(x.size(0), device=x.device, dtype=x.dtype)
                 nll_vt = 0.5 * (
                     math.log(2 * math.pi) + logvar_vt + ((offset_state_pred - mu_vt) ** 2) / torch.exp(logvar_vt)
                 )
                 nll_vt = nll_vt.clamp_min(0.0)
                 nll_vt = (nll_vt * changing_state * mask_tmax).sum(dim=(1, 2))
                 nll_vt_bt = nll_vt.detach().cpu().numpy()
+                kl_vt_bt = kl_vt_per_b.detach().cpu().numpy()
                 covered_vt = (
                     (offset_state_pred >= (mu_vt - z90 * sigma_vt))
                     * (offset_state_pred  <= (mu_vt + z90 * sigma_vt)) * changing_state * mask_tmax
@@ -1169,6 +1220,16 @@ class TSDiffusion(ODEJumpEncoder):
                 width_vt_num = (2 * z90 * sigma_vt * changing_state * mask_tmax).sum(dim=(1, 2)).detach().cpu().numpy()
                 width_vt_bt = width_vt_num / cov_den_vt_bt
 
+                # dimensões latentes (por amostra) para normalizar o KL
+                if vae_logvar is not None:
+                    z_latent_dim = float(vae_logvar.shape[1] * vae_logvar.shape[2])
+                else:
+                    z_latent_dim = 1.0
+                if vae_tmax_logvar is not None:
+                    z_tmax_latent_dim = float(vae_tmax_logvar.shape[1] * vae_tmax_logvar.shape[2])
+                else:
+                    z_tmax_latent_dim = 1.0
+
                 for b in range(B):
                     g   = int(yb[b])
                     w   = float(nobs_bt[b])
@@ -1178,6 +1239,11 @@ class TSDiffusion(ODEJumpEncoder):
                     mse_v = float(mse_v_bt[b])
                     sse_v = float(sse_v_bt[b])
                     nll_vb = float(nll_v_bt[b])
+                    kl_vb = float(kl_v_bt[b])
+                    # NLL média por ponto observado e KL médio por dimensão latente
+                    nll_mean_vb = nll_vb / max(w_v, 1e-8)
+                    kl_mean_vb = kl_vb / max(z_latent_dim, 1.0)
+                    elbo_vb = nll_mean_vb + kl_mean_vb
                     cov_vb = float(cov_v_bt[b])
                     cov_den_vb = float(cov_den_v_bt[b])
                     width_vb = float(width_v_bt[b])
@@ -1201,6 +1267,10 @@ class TSDiffusion(ODEJumpEncoder):
                     mse_vt = float(mse_vt_bt[b])
                     sse_vt = float(sse_vt_bt[b])
                     nll_vtb = float(nll_vt_bt[b])
+                    kl_vtb = float(kl_vt_bt[b])
+                    nll_mean_vtb = nll_vtb / max(w_vt, 1e-8)
+                    kl_mean_vtb = kl_vtb / max(z_tmax_latent_dim, 1.0)
+                    elbo_vtb = nll_mean_vtb + kl_mean_vtb
                     cov_vtb = float(cov_vt_bt[b])
                     cov_den_vtb = float(cov_den_vt_bt[b])
                     width_vtb = float(width_vt_bt[b])
@@ -1212,10 +1282,14 @@ class TSDiffusion(ODEJumpEncoder):
                     G_TOTC_V[g] = G_TOTC_V.get(g, 0.0) + cov_den_vb
                     G_COV_V[g] = G_COV_V.get(g, 0.0) + cov_vb
                     G_WWIDTH_V[g] = G_WWIDTH_V.get(g, 0.0) + width_vb * cov_den_vb
+                    G_ELBO_V_NUM[g] = G_ELBO_V_NUM.get(g, 0.0) + elbo_vb * w_v
+                    G_ELBO_V_DEN[g] = G_ELBO_V_DEN.get(g, 0.0) + w_v
                     G_NLL_VT[g] = G_NLL_VT.get(g, 0.0) + nll_vtb
                     G_TOTC_VT[g] = G_TOTC_VT.get(g, 0.0) + cov_den_vtb
                     G_COV_VT[g] = G_COV_VT.get(g, 0.0) + cov_vtb
                     G_WWIDTH_VT[g] = G_WWIDTH_VT.get(g, 0.0) + width_vtb * cov_den_vtb
+                    G_ELBO_VT_NUM[g] = G_ELBO_VT_NUM.get(g, 0.0) + elbo_vtb * w_vt
+                    G_ELBO_VT_DEN[g] = G_ELBO_VT_DEN.get(g, 0.0) + w_vt
                     G_W_N[g]   = G_W_N.get(g, 0.0)   + w_n
                     G_SSE_N[g] = G_SSE_N.get(g, 0.0) + sse_n
                     G_WM2_N[g] = G_WM2_N.get(g, 0.0) + (w_n * mse_n * mse_n)
@@ -1246,11 +1320,15 @@ class TSDiffusion(ODEJumpEncoder):
                     T_COV_V += cov_vb
                     T_COV_DEN_V += cov_den_vb
                     T_WIDTH_V += width_vb * cov_den_vb
+                    T_ELBO_V_NUM += elbo_vb * w_v
+                    T_ELBO_V_DEN += w_v
                     T_NLL_VT += nll_vtb
                     T_W_NLL_VT += w_vt
                     T_COV_VT += cov_vtb
                     T_COV_DEN_VT += cov_den_vtb
                     T_WIDTH_VT += width_vtb * cov_den_vtb
+                    T_ELBO_VT_NUM += elbo_vtb * w_vt
+                    T_ELBO_VT_DEN += w_vt
 
 
         # grupos a reportar
@@ -1283,6 +1361,9 @@ class TSDiffusion(ODEJumpEncoder):
                 "per_group_sum_nobs_vt": {},
                 "micro_nll_v": float("nan"), "micro_nll_vt": float("nan"),
                 "macro_nll_v": float("nan"), "macro_nll_vt": float("nan"),
+                "micro_elbo_v": float("nan"), "micro_elbo_vt": float("nan"),
+                "macro_elbo_v": float("nan"), "macro_elbo_vt": float("nan"),
+                "per_group_elbo_v": {}, "per_group_elbo_vt": {},
                 "micro_cov_v": float("nan"), "micro_cov_vt": float("nan"),
                 "macro_cov_v": float("nan"), "macro_cov_vt": float("nan"),
                 "micro_width_v": float("nan"), "micro_width_vt": float("nan"),
@@ -1317,6 +1398,8 @@ class TSDiffusion(ODEJumpEncoder):
         per_group_cov_vt       = {}
         per_group_width_v      = {}
         per_group_width_vt     = {}
+        per_group_elbo_v       = {}
+        per_group_elbo_vt      = {}
         per_group_nll_v        = {}
         per_group_nll_vt       = {}
         per_group_cov_v        = {}
@@ -1449,6 +1532,7 @@ class TSDiffusion(ODEJumpEncoder):
                 per_group_nll_v[g] = float(G_NLL_V.get(g, 0.0) / max(Wg_v, 1e-8))
                 per_group_cov_v[g] = float(G_COV_V.get(g, 0.0) / max(G_TOTC_V.get(g, 0.0), 1.0))
                 per_group_width_v[g] = float(G_WWIDTH_V.get(g, 0.0) / max(G_TOTC_V.get(g, 0.0), 1.0))
+                per_group_elbo_v[g] = float(G_ELBO_V_NUM.get(g, 0.0) / max(G_ELBO_V_DEN.get(g, 0.0), 1e-8))
             else:
                 per_group_mse_v[g]    = float("nan")
                 per_group_se_unw_v[g] = float("nan")
@@ -1456,6 +1540,7 @@ class TSDiffusion(ODEJumpEncoder):
                 per_group_nll_v[g]    = float("nan")
                 per_group_cov_v[g]    = float("nan")
                 per_group_width_v[g]  = float("nan")
+                per_group_elbo_v[g]   = float("nan")
 
             if Wg_vt > 0.0:
                 mu_g_vt = G_SSE_VT[g] / Wg_vt
@@ -1480,6 +1565,7 @@ class TSDiffusion(ODEJumpEncoder):
                 per_group_nll_vt[g] = float(G_NLL_VT.get(g, 0.0) / max(Wg_vt, 1e-8))
                 per_group_cov_vt[g] = float(G_COV_VT.get(g, 0.0) / max(G_TOTC_VT.get(g, 0.0), 1.0))
                 per_group_width_vt[g] = float(G_WWIDTH_VT.get(g, 0.0) / max(G_TOTC_VT.get(g, 0.0), 1.0))
+                per_group_elbo_vt[g] = float(G_ELBO_VT_NUM.get(g, 0.0) / max(G_ELBO_VT_DEN.get(g, 0.0), 1e-8))
             else:
                 per_group_mse_vt[g]    = float("nan")
                 per_group_se_unw_vt[g] = float("nan")
@@ -1487,6 +1573,7 @@ class TSDiffusion(ODEJumpEncoder):
                 per_group_nll_vt[g]    = float("nan")
                 per_group_cov_vt[g]    = float("nan")
                 per_group_width_vt[g]  = float("nan")
+                per_group_elbo_vt[g]   = float("nan")
 
 
         # micro (ponderado por nobs) – SE ponderado
@@ -1512,6 +1599,8 @@ class TSDiffusion(ODEJumpEncoder):
             micro_se_vt = float(math.sqrt(s2_micro_vt / max(total_cnt, 1))) if T_W_VT > 0 else float("nan")
             micro_nll_v = float(T_NLL_V / max(T_W_NLL_V, 1e-8)) if T_W_NLL_V > 0 else float("nan")
             micro_nll_vt = float(T_NLL_VT / max(T_W_NLL_VT, 1e-8)) if T_W_NLL_VT > 0 else float("nan")
+            micro_elbo_v = float(T_ELBO_V_NUM / max(T_ELBO_V_DEN, 1e-8)) if T_ELBO_V_DEN > 0 else float("nan")
+            micro_elbo_vt = float(T_ELBO_VT_NUM / max(T_ELBO_VT_DEN, 1e-8)) if T_ELBO_VT_DEN > 0 else float("nan")
             micro_cov_v = float(T_COV_V / max(T_COV_DEN_V, 1.0)) if T_COV_DEN_V > 0 else float("nan")
             micro_cov_vt = float(T_COV_VT / max(T_COV_DEN_VT, 1.0)) if T_COV_DEN_VT > 0 else float("nan")
             micro_width_v = float(T_WIDTH_V / max(T_COV_DEN_V, 1.0)) if T_COV_DEN_V > 0 else float("nan")
@@ -1525,6 +1614,7 @@ class TSDiffusion(ODEJumpEncoder):
             micro_nll_v = float("nan"); micro_nll_vt = float("nan")
             micro_cov_v = float("nan"); micro_cov_vt = float("nan")
             micro_width_v = float("nan"); micro_width_vt = float("nan")
+            micro_elbo_v = float("nan"); micro_elbo_vt = float("nan")
 
         # macro: média das MÉDIAS por grupo (não-ponderado) e SE entre grupos
         mu_gs = [per_group_mse[g] for g in groups if np.isfinite(per_group_mse[g])]
@@ -1538,6 +1628,8 @@ class TSDiffusion(ODEJumpEncoder):
         mu_gs_cov_vt = [per_group_cov_vt[g] for g in groups if np.isfinite(per_group_cov_vt[g])] if 'per_group_cov_vt' in locals() else []
         mu_gs_width_v = [per_group_width_v[g] for g in groups if np.isfinite(per_group_width_v[g])] if 'per_group_width_v' in locals() else []
         mu_gs_width_vt = [per_group_width_vt[g] for g in groups if np.isfinite(per_group_width_vt[g])] if 'per_group_width_vt' in locals() else []
+        mu_gs_elbo_v = [per_group_elbo_v[g] for g in groups if np.isfinite(per_group_elbo_v[g])] if 'per_group_elbo_v' in locals() else []
+        mu_gs_elbo_vt = [per_group_elbo_vt[g] for g in groups if np.isfinite(per_group_elbo_vt[g])] if 'per_group_elbo_vt' in locals() else []
         G_eff = len(mu_gs)
         G_eff_n = len(mu_gs_n)
         G_eff_s = len(mu_gs_s)
@@ -1549,6 +1641,8 @@ class TSDiffusion(ODEJumpEncoder):
         G_eff_cov_vt = len(mu_gs_cov_vt)
         G_eff_width_v = len(mu_gs_width_v)
         G_eff_width_vt = len(mu_gs_width_vt)
+        G_eff_elbo_v = len(mu_gs_elbo_v)
+        G_eff_elbo_vt = len(mu_gs_elbo_vt)
         if G_eff >= 1:
             macro_mse = float(np.mean(mu_gs))
             if G_eff >= 2:
@@ -1603,6 +1697,8 @@ class TSDiffusion(ODEJumpEncoder):
         macro_cov_vt = float(np.mean(mu_gs_cov_vt)) if G_eff_cov_vt >= 1 else float("nan")
         macro_width_v = float(np.mean(mu_gs_width_v)) if G_eff_width_v >= 1 else float("nan")
         macro_width_vt = float(np.mean(mu_gs_width_vt)) if G_eff_width_vt >= 1 else float("nan")
+        macro_elbo_v = float(np.mean(mu_gs_elbo_v)) if G_eff_elbo_v >= 1 else float("nan")
+        macro_elbo_vt = float(np.mean(mu_gs_elbo_vt)) if G_eff_elbo_vt >= 1 else float("nan")
 
 
         return {
@@ -1641,6 +1737,10 @@ class TSDiffusion(ODEJumpEncoder):
             "macro_nll_v": macro_nll_v, "macro_nll_vt": macro_nll_vt,
             "per_group_nll_v": per_group_nll_v,
             "per_group_nll_vt": per_group_nll_vt,
+            "micro_elbo_v": micro_elbo_v, "micro_elbo_vt": micro_elbo_vt,
+            "macro_elbo_v": macro_elbo_v, "macro_elbo_vt": macro_elbo_vt,
+            "per_group_elbo_v": per_group_elbo_v,
+            "per_group_elbo_vt": per_group_elbo_vt,
             "micro_cov_v": micro_cov_v, "micro_cov_vt": micro_cov_vt,
             "macro_cov_v": macro_cov_v, "macro_cov_vt": macro_cov_vt,
             "per_group_cov_v": per_group_cov_v,

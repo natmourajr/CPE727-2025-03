@@ -299,10 +299,10 @@ class TSDF_LSTM(TSDiffusion):
             log_likelihood=log_likelihood,
             sigma_temp=sigma_temp
         )
-        self.encoder = nn.Sequential(
+        '''self.encoder = nn.Sequential(
             nn.Linear(in_channels*2, hidden_dim),
             nn.ReLU(),
-        )
+        )'''
         self.state_dim = hidden_dim if not (bi_lstm and bi_method == 'concat') else hidden_dim * 2
         self.static_dim = static_dim
         if static_dim > 0:
