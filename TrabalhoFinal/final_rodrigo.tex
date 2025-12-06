@@ -1,0 +1,648 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+
+% =======================
+% Pacotes básicos
+% =======================
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\title[Predição de Mudança de Estado]{Desenvolver um modelo gerador de séries temporais multivariadas
+          para um compressor industrial offshore baseado em RNN e VAEs.}
+\author{Rodrigo Petrus Domingues}
+\institute{CPE727 -- Deep Learning}
+\date{\today}
+
+\begin{document}
+
+% =======================
+% Capa
+% =======================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =======================
+% Sumário
+% =======================
+\begin{frame}{Sumário}
+  \tableofcontents
+\end{frame}
+
+% =======================
+% Seção: Motivação
+% =======================
+\section{Motivação e Objetivos}
+
+\begin{frame}{Motivação e Objetivos do trabalho}
+\noindent \textbf{Motivação:}
+    \begin{itemize}
+      \item Compressores industriais são ativos críticos (segurança, disponibilidade, custo).
+      \item As séries temporais multivariadas de sensores refletem o estado operacional.
+      \item Modelos generativos podem simular cenários operacionais variados.
+      \item Gêmeos digitais e simulações realistas auxiliam na manutenção preditiva
+    \end{itemize}
+
+\noindent \textbf{Objetivos do trabalho:}
+
+  \begin{itemize}
+    \item Desenvolver \textbf{modelos geradores} de séries temporais multivariadas
+          para um compressor industrial offshore.
+    \item Aprender, de forma não supervisionada, a distribuição dos sinais de processo
+          em janelas temporais.
+    \item Gerar novas trajetórias plausíveis para:
+      \begin{itemize}
+        \item simulação de cenários,
+        \item testes de algoritmos de monitoramento,
+        \item análise de variabilidade operacional.
+      \end{itemize}
+     \end{itemize}
+   \noindent \textbf{Comparar arquiteturas:}
+        \begin{itemize}
+          \item Modelos DEEP, LSTM, GRU, BiLSTM e BiGRU com GRU fuser, todos com otimização Adam;
+          \item Variações de treinamento (warmup, scheduler, RAdam, AdamW, variational dropout, difusão, log-likelihood e layernorm).
+        \end{itemize}
+
+
+\end{frame}
+
+% =======================
+% Seção: Base de dados e pré-processamento
+% =======================
+\section{Base de dados e pré-processamento}
+
+
+\begin{frame}{Base de dados e pré-processamento}
+
+\begin{columns}[t]
+  
+  \begin{column}[t]{0.48\textwidth}
+    \textbf{Base de dados}
+
+    \vspace{0.2cm}
+    Cognite — sinais reais de sensores de um compressor industrial offshore.
+
+    \vspace{0.3cm}
+    \centering
+    \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/rodrigo/12series.png}
+
+    \vspace{0.2cm}
+    \scriptsize
+    \textit{Exemplo de séries reais utilizadas no estudo (12 sinais simultâneos).}
+  \end{column}
+
+  \begin{column}[t]{0.48\textwidth}
+    \textbf{Pré-processamento}
+
+    \vspace{0.2cm}
+    \begin{itemize}
+      \item Estados operacionais:
+        \begin{itemize}
+          \item Estados originais: 6 (\(0\) a \(5\));
+          \item Estados finais: 3 (normal, alerta, falha).
+        \end{itemize}
+
+      \item Normalização robusta (RobustScaler) por sensor;
+      \item Série temporal com amostras a cada 5 minutos.
+      \item Segmentação em janelas:
+        \begin{itemize}
+          \item \texttt{window\_size = 10}, \texttt{window\_step = 10}
+          \item janelas não sobrepostas (modo gerador local).
+        \end{itemize}
+    \end{itemize}
+  \end{column}
+
+\end{columns}
+\end{frame}
+
+
+% =======================
+% Seção: Formulação Teórica
+% =======================
+\section{Formulação do Problema}
+
+\begin{frame}{Definição do problema (modo gerador)}
+
+  \begin{itemize}
+    \item Série multivariada: \(\mathbf{x}_t \in \mathbb{R}^{d}\), \(t = 1,\dots,T\), com \(d = 11\) sensores.
+    \item Construímos janelas temporais:
+      \[
+        \mathbf{X} = (x_{t-L+1}, \dots, x_t) \in \mathbb{R}^{L \times d}
+      \]
+      com \(L = 10\) passos de tempo.
+    \item Objetivo: aprender um \textbf{modelo gerador} para as janelas \(\mathbf{X}\):
+      \[
+        p_{\theta}(\mathbf{X}) \approx p_{\text{dados}}(\mathbf{X})
+      \]
+    \item Modelo latente (VAE + difusão):
+      \begin{itemize}
+        \item Encoder mapeia \(\mathbf{X}\) para um código latente \(z\);
+        \item Decoder reconstrói \(\hat{\mathbf{X}}\) a partir de \(z\);
+        \item O espaço latente é regularizado para permitir \textbf{amostrar novos} \(z\) e gerar janelas sintéticas.
+      \end{itemize}
+    \item Uso principal:
+      \begin{itemize}
+        \item Geração de séries realistas para simulação de cenários
+              e testes de algoritmos de monitoramento.
+      \end{itemize}
+  \end{itemize}
+
+  \vspace{0.3cm}
+  \noindent O modelo aprende a \textbf{recriar e amostrar} janelas de sensores compatíveis
+  com o comportamento real do compressor.
+\end{frame}
+
+
+\begin{frame}{Função de custo (modo gerador)}
+\small
+
+\begin{itemize}
+  \item O modelo original admite uma função de custo multi-termo:
+\[
+\mathcal{L} =
+\lambda_1 \mathcal{L}_{\text{rec}}
++ \lambda_2 \mathcal{L}_{\text{diff}}
++ \lambda_3 \mathcal{L}_{\text{time}}
++ \lambda_4 \mathcal{L}_{\text{mask}}
++ \boxed{\lambda_5 \mathcal{L}_{\text{VAE-}x}}
++ \lambda_6 \mathcal{L}_{\text{VAE-}\tau}
+\]
+\end{itemize}
+
+\vspace{0.2cm}
+
+\begin{itemize}
+  \item \textbf{Neste experimento, o foco é exclusivamente gerador}:
+    \[
+      \lambda_5 = 1,
+      \qquad
+      \lambda_{1,2,3,4,6} = 0
+    \]
+  \item O treinamento é, portanto, \textbf{não supervisionado}, visando aprender:
+    \[
+      p_\theta(\mathbf{X}) \approx p_{\text{dados}}(\mathbf{X})
+    \]
+\end{itemize}
+
+\vspace{0.2cm}
+
+\small
+\[
+\mathcal{L}_{\text{VAE-}x}
+=
+\underbrace{
+\mathbb{E}_{q(z|\mathbf{X})}
+\big[
+-\log p(\mathbf{X}\mid z)
+\big]
+}_{\text{erro de reconstrução}}
++
+\beta\,
+\underbrace{
+\mathrm{KL}\big(q(z\mid\mathbf{X}) \,\|\, \mathcal{N}(0,I)\big)
+}_{\text{regularização do espaço latente}}
+\]
+
+\vspace{0.2cm}
+
+\begin{itemize}
+  \item O termo de reconstrução garante fidelidade aos sinais reais.
+  \item O termo KL força um espaço latente contínuo e amostrável.
+  \item Isso permite \textbf{gerar novas janelas sintéticas} de sensores
+        com propriedades estatísticas similares às observadas.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Arquiteturas avaliadas}
+  \begin{itemize}
+    \item \textbf{TSDF\_DEEP}:
+      \begin{itemize}
+        \item Modelo feedforward sobre janelas (baseline não-recorrente).
+      \end{itemize}
+    \item \textbf{TSDF\_LSTM}:
+      \begin{itemize}
+        \item RNN LSTM unidirecional;
+        \item Versão \textbf{BiLSTM} (\texttt{bi\_lstm=True}).
+      \end{itemize}
+    \item \textbf{TSDF\_GRU}:
+      \begin{itemize}
+        \item RNN GRU unidirecional;
+        \item Versão \textbf{BiGRU} (\texttt{bi\_gru=True}).
+      \end{itemize}
+  \end{itemize}
+  \vspace{0.2cm}
+  \noindent \textbf{Hiperparâmetros principais}
+    \begin{itemize}
+      \item \texttt{in\_channels = 11}
+      \item \texttt{hidden\_dim = 11 * 32}
+      \item \texttt{status\_dim = 3}
+      \item Janela: \texttt{window\_size = 10}, \texttt{window\_step = 10}
+    \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{Arquitetura baseline: TSDF\_DEEP (feedforward)}
+  \begin{itemize}
+    \item Entrada: janela temporal \(\mathbf{X} = (x_1,\dots,x_L)\),
+          com \(x_t \in \mathbb{R}^{11}\) e máscara \(m_t \in \{0,1\}^{11}\).
+    \item Codificação inicial por MLP (por timestep):
+      \[
+        e_t = \phi\left( W_e [x_t \,\Vert\, m_t] + b_e \right),
+        \quad t = 1,\dots,L
+      \]
+      onde \(\phi(\cdot)\) é uma ativação não linear (ReLU/GELU).
+    \item Incorporação explícita do tempo:
+      \[
+        e'_t = \mathrm{MLP}\big([e_t \,\Vert\, t_t]\big)
+      \]
+      com \(t_t\) o timestamp normalizado do instante \(t\).
+    \item Representação latente da janela:
+      \begin{itemize}
+        \item Obtida independentemente por timestep (sem estados recorrentes);
+        \item Integra informação temporal apenas via timestamps explícitos.
+      \end{itemize}
+    \item Cabeças de saída (modo gerador):
+      \begin{align*}
+  \hat{x}_t &= f_{\theta}(e'_t) \quad \text{(reconstrução / geração)} 
+\end{align*}
+    \item Treinamento:
+      \begin{itemize}
+        \item Otimizador Adam;
+        \item Mesmas funções de perda usadas nos modelos recorrentes.
+      \end{itemize}
+    
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}{Arquitetura 1: LSTM}
+  \begin{itemize}
+    \item Entrada: janela temporal \(\mathbf{X} = (x_1,\dots,x_L)\), \(x_t \in \mathbb{R}^{11}\).
+    \item Codificação temporal com LSTM unidirecional:
+      \[
+        (h_t, c_t) = \mathrm{LSTM}(x_t, h_{t-1}, c_{t-1}), \quad t = 1,\dots,L
+      \]
+   \item Representação latente da janela:
+\[
+  z = h_L \in \mathbb{R}^{H}
+\]
+\item $z$ representa um código latente contínuo da dinâmica temporal.
+    \item Decoder:
+\[
+  \hat{\mathbf{X}} = p_\theta(\mathbf{X}\mid z)
+\]
+    \item Otimização:
+      \begin{itemize}
+        \item Otimizador Adam, minimizando perda conjunta (classificação de estado + regressão de tempo).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura 2: GRU}
+  \begin{itemize}
+    \item Mesma entrada: \(\mathbf{X} = (x_1,\dots,x_L)\), \(x_t \in \mathbb{R}^{11}\).
+    \item Codificação temporal com GRU unidirecional:
+      \[
+        h_t = \mathrm{GRU}(x_t, h_{t-1}), \quad t = 1,\dots,L
+      \]
+    \item Representação latente da janela:
+\[
+  z = h_L \in \mathbb{R}^{H}
+\]
+\item $z$ representa um código latente contínuo da dinâmica temporal.
+    \item Decoder:
+\[
+  \hat{\mathbf{X}} = p_\theta(\mathbf{X}\mid z)
+\]
+    \item Otimização:
+      \begin{itemize}
+        \item Otimizador Adam, com os mesmos hiperparâmetros do baseline Deep (learning rate, batch, etc.).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura 3: BiGRU + GRU fuser}
+  \begin{itemize}
+    \item Codificação da janela com BiGRU:
+      \[
+        h_t^{\rightarrow}, h_t^{\leftarrow} = \mathrm{BiGRU}(x_t, h_{t-1}^{\rightarrow}, h_{t+1}^{\leftarrow})
+      \]
+      \[
+        z_k = [h_L^{\rightarrow} \,\Vert\, h_1^{\leftarrow}] \in \mathbb{R}^{2H}
+      \]
+      onde \(z_k\) é o embedding da \(k\)-ésima janela.
+    \item Fusão temporal entre janelas com GRU fuser:
+      \[
+        m_k = \mathrm{GRU}_{\text{fuser}}(z_k, m_{k-1}), \quad k = 1,\dots,K
+      \]
+      \item Fuser captura dependências de longo alcance entre janelas,
+      produzindo um latente $\mathbf{m}_K$ adequado à geração.
+    \item Cabeças de saída a partir de \(m_K\):
+     \[
+\hat{\mathbf{X}} \sim p_\theta(\mathbf{X}\mid m_K)
+\]
+    \item Otimização:
+      \begin{itemize}
+        \item Adam sobre todos os parâmetros (BiGRU + GRU fuser + cabeças).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura 4: BiLSTM + GRU fuser}
+  \begin{itemize}
+    \item Codificação da janela com BiLSTM:
+      \[
+        (h_t^{\rightarrow}, c_t^{\rightarrow}), (h_t^{\leftarrow}, c_t^{\leftarrow})
+          = \mathrm{BiLSTM}(x_t,\dots)
+      \]
+      \[
+        z_k = [h_L^{\rightarrow} \,\Vert\, h_1^{\leftarrow}] \in \mathbb{R}^{2H}
+      \]
+    \item Fusão temporal entre janelas com GRU fuser:
+      \[
+        m_k = \mathrm{GRU}_{\text{fuser}}(z_k, m_{k-1}), \quad k = 1,\dots,K
+      \]
+        \item Fuser captura dependências de longo alcance entre janelas,
+      produzindo um latente $\mathbf{m}_K$ adequado à geração.
+    \item Cabeças de saída:
+      \[
+\hat{\mathbf{X}} \sim p_\theta(\mathbf{X}\mid m_K)
+\]
+    \item Otimização:
+      \begin{itemize}
+        \item Treino conjunto com Adam, mesma função de perda multi-tarefa.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+% =======================
+% Seção: Arquiteturas
+% =======================
+\section{Arquiteturas e Variações}
+
+\begin{frame}{Variações de treinamento - Otimização}
+    
+
+  \begin{itemize}
+    \item \textbf{BiLSTM (GRU Fuser) + Warmup \& Scheduler}
+      \begin{itemize}
+        \item Aumenta gradualmente a taxa de aprendizado no início do treino, 
+              evitando instabilidades e melhorando a convergência inicial.
+        \item \texttt{warmup\_steps = 50}, \texttt{min\_lr\_factor = 0.01}
+      \end{itemize}
+
+    \item \textbf{BiLSTM (GRU Fuser)+ RAdam}
+      \begin{itemize}
+        \item Reduz a variância adaptativa do Adam nos primeiros passos, 
+              tornando o treinamento mais estável.
+        \item \texttt{optimizer\_name = 'radam'}
+      \end{itemize}
+ 
+
+     \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Variações de treinamento — Regularização}
+ \begin{itemize}
+
+    \item \textbf{BiLSTM (GRU Fuser) + Variational Dropout}
+      \begin{itemize}
+        \item Regularização explícita no tempo,
+              reduzindo overfitting sem quebrar dependências temporais.
+        \item \texttt{variational\_dropout = 0.2}
+      \end{itemize}
+
+    \item \textbf{BiLSTM (GRU Fuser) + Difusão (missingness)}
+      \begin{itemize}
+        \item Regularização implícita via objetivos probabilísticos,
+              forçando robustez a dados ausentes.
+        \item \texttt{lam = [0., 0.0, 0.0, 0.05, 0.0, 0.95]}, \texttt{rebuild=True}
+      \end{itemize}
+
+       \item \textbf{BiLSTM (GRU Fuser) + LayerNorm}
+      \begin{itemize}
+        \item Estabiliza as ativações internas,
+              com efeito regularizante indireto.
+        \item \texttt{use\_layernorm = True}
+      \end{itemize}
+
+    \item \textbf{BiLSTM (GRU Fuser) + AdamW (Weight Decay)}
+      \begin{itemize}
+        \item Regularização explícita dos pesos,
+              melhorando generalização.
+        \item \texttt{optimizer\_name = 'adamw'}, \texttt{weight\_decay = 1e-4}
+      \end{itemize}
+
+  \end{itemize}
+\end{frame}
+
+
+
+
+% =======================
+% Seção: Configuração Experimental
+% =======================
+\section{Configuração Experimental}
+
+\begin{frame}{Configuração Experimental}
+  \begin{itemize}
+    \item Divisão treino/validação/teste: 60\% / 20\% / 20\%.
+    \item Treinamento por 500 épocas, batch size 256.
+    \item Paciênica de 50 épocas para early stopping.
+    \item Função de perda multi-tarefa conforme descrito.
+    \item Otimizador: Adam (exceto variações).
+    \item Taxa de aprendizado inicial: \(1 \times 10^{-3}\).
+    \item Early stopping baseado em MSE de validação.
+    \item Avaliação final no conjunto de teste.
+  \end{itemize}
+\end{frame}
+% =======================
+% Seção: Resultados
+% =======================
+\section{Resultados}
+
+\begin{frame}{Métricas utilizadas}
+  \begin{itemize}
+    \item \textbf{ELBO} (Evidence Lower Bound):
+      \begin{itemize}
+        \item Função objetivo otimizada no treinamento do modelo gerador;
+    \item Maximiza a verossimilhança das séries observadas;
+    \item Equilibra fidelidade das séries geradas (reconstrução)
+          e regularização do espaço latente (KL).
+      \end{itemize}
+
+    \item \textbf{MSE} (Mean Squared Error):
+      \begin{itemize}
+         \item Erro médio de reconstrução das séries;
+    \item Mede fidelidade gerativa.
+      \end{itemize}
+
+    \item \textbf{NLL} (Negative Log-Likelihood):
+      \begin{itemize}
+       \item Qualidade probabilística da geração;
+    \item Penaliza variância mal calibrada.
+      \end{itemize}
+
+    \item \textbf{Cobertura 90\%} (\texttt{cov\_90}):
+      \begin{itemize}
+        \item Mede se os intervalos gerados contêm os valores reais;
+    \item Avalia calibração do gerador.
+      \end{itemize}
+
+    \item \textbf{Largura do intervalo 90\%} (\texttt{width\_90}):
+      \begin{itemize}
+      \item Avalia sharpness do modelo;
+    \item Intervalos estreitos com boa cobertura são desejáveis.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Resultados quantitativos}
+  \begin{table}[h]
+    \centering
+    \small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Modelo} & \textbf{ELBO $\uparrow$} & \textbf{MSE $\downarrow$}
+ & \textbf{NLL $\downarrow$} & \textbf{Cov90 $\uparrow$} & \textbf{Width90 $\downarrow$} \\
+\midrule
+DEEP & 1.217 & 0.693 ± 0.209 & 1.164 & 0.916 & 2.785 \\
+BiLSTM (GRU Fuser) LayerNorm & 0.617 & 0.342 ± 0.140 & 0.514 & 0.907 & 2.281 \\
+BiLSTM & 0.609 & 0.337 ± 0.133 & 0.527 & 0.901 & 2.269 \\
+BiLSTM (GRU Fuser) AdamW & 0.601 & 0.341 ± 0.141 & 0.506 & 0.900 & 2.224 \\
+BiLSTM (GRU Fuser) Warmup/Sched. & 0.598 & 0.354 ± 0.146 & 0.504 & 0.903 & 2.251 \\
+BiLSTM (GRU Fuser) RAdam & 0.597 & 0.341 ± 0.139 & 0.511 & 0.898 & 2.234 \\
+BiLSTM (GRU Fuser) VarDrop 0.2 & 0.595 & 0.317 ± 0.119 & 0.506 & 0.898 & 2.240 \\
+BiGRU & 0.589 & 0.335 ± 0.136 & 0.499 & 0.909 & 2.267 \\
+LSTM & 0.588 & 0.332 ± 0.129 & 0.513 & 0.900 & 2.251 \\
+GRU & 0.558 & 0.300 ± 0.108 & 0.498 & 0.905 & 2.252 \\
+BiLSTM (GRU Fuser) Difusão & 0.518 & 0.243 ± 0.067 & 0.462 & 0.902 & 2.200 \\
+\bottomrule
+\end{tabular}
+    \caption{Comparação de desempenho entre modelos e variações.}
+  \end{table}
+  \scriptsize
+Embora o baseline DEEP apresente ELBO elevado,
+isso reflete um problema de reconstrução mais simples,
+sem modelagem explícita da dependência temporal.
+Modelos recorrentes exibem melhor qualidade gerativa,
+com menor erro, melhor calibração e séries mais realistas.
+\end{frame}
+
+
+
+\begin{frame}{Curva de treinamento — Modelo campeão}
+
+\begin{itemize}
+  \item Evolução do ELBO ao longo das épocas para o modelo
+        \textbf{BiLSTM (GRU Fuser + LayerNorm)}.
+  \item Observa-se:
+    \begin{itemize}
+      \item Convergência mais rápida;
+      \item Menor oscilação durante o treinamento;
+      \item Melhor estabilidade em comparação aos modelos sem normalização.
+    \end{itemize}
+\end{itemize}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.70\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/rodrigo/elbo.png}
+  \caption{Evolução do ELBO durante o treinamento do modelo
+  BiLSTM (GRU Fuser + LayerNorm).}
+\end{figure}
+
+\end{frame}
+
+% =======================
+% Seção: Discussão e Conclusões
+% =======================
+\section{Discussão e Conclusões}
+\begin{frame}{Discussão dos resultados (modo gerador)}
+  \begin{itemize}
+    \item \textbf{Qualidade gerativa e ajuste probabilístico}:
+      \begin{itemize}
+        \item Modelos variacionais recorrentes superam a arquitetura feedforward (DEEP);
+        \item \textbf{BiLSTM (GRU Fuser + LayerNorm)} apresenta o maior ELBO,
+              indicando melhor equilíbrio entre reconstrução e regularização;
+        \item Redução consistente de MSE e NLL em relação a LSTM/GRU unidirecionais.
+      \end{itemize}
+
+    \item \textbf{Trade-off sharpness vs. calibração}:
+      \begin{itemize}
+        \item Modelos com difusão e regularização variacional geram
+              intervalos preditivos mais estreitos (menor width\_90);
+        \item Cobertura próxima ao alvo de 90\% indica boa calibração probabilística;
+        \item O modelo com difusão apresenta o menor MSE,
+              ao custo de um ELBO inferior ao modelo campeão.
+      \end{itemize}
+
+    \item \textbf{Impacto arquitetural}:
+      \begin{itemize}
+        \item Bidirecionalidade melhora a qualidade das representações latentes;
+        \item O \textit{GRU fuser} permite capturar dependências entre janelas consecutivas;
+        \item A profundidade temporal é fundamental para geração realista de séries longas.
+      \end{itemize}
+
+    \item \textbf{Impacto do treinamento e regularização}:
+      \begin{itemize}
+        \item LayerNorm promove convergência mais estável e maior ELBO;
+        \item Variational dropout e difusão atuam como regularizadores probabilísticos;
+        \item AdamW e RAdam mostram ganhos marginais, dependentes do regime de treino.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusões (modo gerador)}
+  \begin{itemize}
+    \item O framework \textbf{TSDF} mostrou-se um modelo gerador eficaz
+          para séries temporais multivariadas industriais,
+          aprendendo distribuições realistas a partir de dados reais.
+
+    \item Arquiteturas recorrentes superam o baseline feedforward:
+      \begin{itemize}
+        \item Modelos bidirecionais (BiLSTM / BiGRU) aprendem representações latentes
+              mais ricas e consistentes;
+        \item A fusão temporal entre janelas (GRU fuser) melhora a coerência
+              de longo prazo das séries geradas.
+      \end{itemize}
+
+    \item A regularização probabilística é um fator chave:
+      \begin{itemize}
+        \item Difusão, variational dropout e LayerNorm
+              aumentam estabilidade, calibração e qualidade gerativa;
+        \item O modelo \textbf{BiLSTM (GRU Fuser + LayerNorm)}
+              apresentou o melhor equilíbrio entre ajuste probabilístico e estabilidade.
+      \end{itemize}
+
+    \item O modelo gerador permite:
+      \begin{itemize}
+        \item Geração de séries sintéticas \textbf{realistas e calibradas};
+        \item Simulação de regimes operacionais raros ou críticos;
+        \item Suporte ao desenvolvimento e validação de algoritmos de monitoramento.
+      \end{itemize}
+
+    \item Este trabalho abre caminho para aplicações avançadas:
+      \begin{itemize}
+        \item Integração com gêmeos digitais industriais;
+        \item Data augmentation para cenários de falha e degradação;
+        \item Estudos de confiabilidade, robustez e prognóstico.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+
+
+\end{document}

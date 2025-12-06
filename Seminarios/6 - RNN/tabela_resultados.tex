@@ -1,0 +1,18 @@
+\begin{tabular}{lccccc}
+\toprule
+ & ELBO & MSE & NLL & Cov90 & Width90 \\
+Modelo &  &  &  &  &  \\
+\midrule
+DEEP & 1.217 & 0.693 & 1.164 & 0.916 & 2.785 \\
+LSTM & 0.588 & 0.332 & 0.513 & 0.900 & 2.251 \\
+GRU & 0.558 & 0.300 & 0.498 & 0.905 & 2.252 \\
+BiLSTM & 0.609 & 0.337 & 0.527 & 0.901 & 2.269 \\
+BiGRU & 0.589 & 0.335 & 0.499 & 0.909 & 2.267 \\
+BiLSTM (GRU Fuser) Warmup/Sched. & 0.598 & 0.354 & 0.504 & 0.903 & 2.251 \\
+BiLSTM (GRU Fuser) RAdam & 0.597 & 0.341 & 0.511 & 0.898 & 2.234 \\
+BiLSTM (GRU Fuser) VarDrop 0.2 & 0.595 & 0.317 & 0.506 & 0.898 & 2.240 \\
+BiLSTM (GRU Fuser) Difusão & 0.518 & 0.243 & 0.462 & 0.902 & 2.200 \\
+BiLSTM (GRU Fuser) LayerNorm & 0.617 & 0.342 & 0.514 & 0.907 & 2.281 \\
+BiLSTM (GRU Fuser) AdamW & 0.601 & 0.341 & 0.506 & 0.900 & 2.224 \\
+\bottomrule
+\end{tabular}

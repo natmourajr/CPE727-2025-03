@@ -1,0 +1,582 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+
+% =======================
+% Pacotes básicos
+% =======================
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\title[Predição de Mudança de Estado]{Utilização de RNNs para Predição de mudança de estado em compressor industrial}
+\author{Fernanda Mickosz Villa Verde}
+\institute{CPE727 -- Deep Learning}
+\date{\today}
+
+\begin{document}
+
+% =======================
+% Capa
+% =======================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =======================
+% Sumário
+% =======================
+\begin{frame}{Sumário}
+  \tableofcontents
+\end{frame}
+
+% =======================
+% Seção: Motivação
+% =======================
+\section{Motivação e Objetivos}
+
+\begin{frame}{Motivação e Objetivos do trabalho}
+\noindent \textbf{Motivação:}
+    \begin{itemize}
+      \item Compressores industriais são ativos críticos (segurança, disponibilidade, custo).
+      \item Mudanças de regime operacional (estados) afetam: Desempenho energético; Risco de falha; Planejamento de manutenção.
+        \item Predizer \textbf{quando} ocorrerá a próxima mudança de estado é útil para:
+        \begin{itemize}
+          \item Detecção precoce de desvios;
+          \item Replanejamento operacional;
+          \item Suporte à decisão para operadores.
+        \end{itemize}
+    \end{itemize}
+
+\noindent \textbf{Objetivos do trabalho:}
+
+    \begin{itemize}
+    
+  \item Modelar séries temporais industriais (compressores) com amostragem irregular, dados faltantes e alta dimensionalidade utilizando arquiteturas recorrentes.
+
+      \item Predição dos \textbf{estados} em janelas futuras;
+    \item Predição do \textbf{tempo até a próxima mudança de estado}.
+        \end{itemize}
+   \noindent \textbf{Comparar arquiteturas:}
+        \begin{itemize}
+          \item Modelos DEEP, LSTM, GRU, BiLSTM e BiGRU com GRU fuser, todos com otimização Adam;
+          \item Variações de treinamento (warmup, scheduler, RAdam, AdamW, variational dropout, difusão, log-likelihood e layernorm).
+        \end{itemize}
+
+
+\end{frame}
+
+% =======================
+% Seção: Base de dados e pré-processamento
+% =======================
+\section{Base de dados e pré-processamento}
+
+
+\begin{frame}{Base de dados e pré-processamento}
+
+\begin{columns}[t]
+  
+  \begin{column}[t]{0.48\textwidth}
+    \textbf{Base de dados}
+
+    \vspace{0.2cm}
+    Cognite — sinais reais de sensores de um compressor industrial offshore.
+
+    \vspace{0.3cm}
+    \centering
+    \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/fernanda/12series.png}
+
+    \vspace{0.2cm}
+    \scriptsize
+    \textit{Exemplo de séries reais utilizadas no estudo (12 sinais simultâneos).}
+  \end{column}
+
+  \begin{column}[t]{0.48\textwidth}
+    \textbf{Pré-processamento}
+
+    \vspace{0.2cm}
+    \begin{itemize}
+      \item Estados operacionais:
+        \begin{itemize}
+          \item Estados originais: 6 (\(0\) a \(5\));
+          \item Estados finais: 3 (normal, alerta, falha).
+        \end{itemize}
+
+      \item Normalização robusta;
+      \item Amostragem a cada 5 minutos;
+      \item Janelas temporais:
+        \begin{itemize}
+          \item \(L = 40\) amostras (\(\approx 3\)h20min);
+          \item Deslocamento de 40 amostras (janelas não sobrepostas).
+        \end{itemize}
+    \end{itemize}
+  \end{column}
+
+\end{columns}
+\end{frame}
+
+
+% =======================
+% Seção: Formulação Teórica
+% =======================
+\section{Formulação do Problema}
+
+\begin{frame}{Definição do problema}
+  \begin{itemize}
+    \item Série multivariada: \(\mathbf{x}_t \in \mathbb{R}^{d}\), \(t = 1,\dots,T\), com \(d = 11\) sensores.
+    \item Estados discretos: \(s_t \in \{0,1,4\}\) (após fusão dos 6 estados iniciais).
+    \item Para cada janela \(\mathbf{X} = (x_{t-L+1}, \dots, x_t)\), queremos:
+      \begin{itemize}
+        \item Predizer a distribuição sobre estados futuros:
+          \[
+            p(s_{t+\Delta} \mid \mathbf{X})
+          \]
+        \item Predizer o tempo até a próxima mudança de estado:
+          \[
+            \hat{\tau} = f_{\theta}(\mathbf{X})
+          \]
+      \end{itemize}
+    \item Problema multi-tarefa:
+      \begin{itemize}
+        \item Classificação de estados (estado futuro) + regressão de tempo (tempo até a mudança).
+      \end{itemize}
+  \end{itemize}
+\vspace{0.3cm}
+  \noindent A partir de janelas de histórico de sensores, o modelo aprende simultaneamente a prever o próximo regime operacional e o tempo restante até a próxima mudança de estado.
+\end{frame}
+
+
+\begin{frame}{Função de custo}
+\small
+\begin{itemize}
+  \item Função de custo multi-tarefa:
+  \[
+  \mathcal{L} =
+  \lambda_1 \mathcal{L}_{\text{rec}}
+  + \lambda_2 \mathcal{L}_{\text{diff}}
+  + \lambda_3 \mathcal{L}_{\text{time}}
+  + \lambda_4 \mathcal{L}_{\text{mask}}
+  + \lambda_5 \mathcal{L}_{\text{VAE-}x}
+  + \boxed{\lambda_6 \mathcal{L}_{\text{VAE-}\tau}}
+  \]
+
+\scriptsize
+\begin{itemize}
+  \item \(\mathcal{L}_{\text{rec}}\): erro de reconstrução da série observada (ajuste aos sinais reais).
+  \item \(\mathcal{L}_{\text{diff}}\): perda de difusão, regularizando a predição de ruído (robustez a incerteza).
+  \item \(\mathcal{L}_{\text{time}}\): erro na predição do tempo até a próxima mudança de estado.
+  \item \(\mathcal{L}_{\text{mask}}\): aprendizado explícito do padrão de dados ausentes.
+  \item \(\mathcal{L}_{\text{VAE-}x}\): regularização variacional da reconstrução dos sinais.
+  \item \(\boxed{\mathcal{L}_{\text{VAE-}\tau}}\): \textbf{modelagem probabilística do tempo até falha}, penalizando mudanças próximas e calibrando incerteza.
+\end{itemize}
+  \vspace{0.4em}
+\small
+  \[
+  \mathcal{L}_{\text{VAE-}\tau}
+  =
+  \mathbb{E}_{q(z_\tau|\mathbf{X})}
+  \big[ - \log p(\tau \mid z_\tau) \big]
+  +
+  \beta\,\mathrm{KL}\big(q(z_\tau) \,\|\, \mathcal{N}(0,I)\big)
+  \]
+
+  \item Peso maior atribuído a instantes próximos à mudança de estado:
+  \[
+  \log p(\tau \mid z_\tau)
+  \;\propto\;
+  w_t \cdot \|\hat{\tau} - \tau\|^2,
+  \quad
+  w_t \gg 1
+  \]
+
+  \item Permite estimar \textbf{incerteza}, \textbf{intervalos de confiança} e
+  \textbf{cobertura probabilística}.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Arquiteturas avaliadas}
+  \begin{itemize}
+    \item \textbf{TSDF\_DEEP}:
+      \begin{itemize}
+        \item Modelo feedforward sobre janelas (baseline não-recorrente).
+      \end{itemize}
+    \item \textbf{TSDF\_LSTM}:
+      \begin{itemize}
+        \item RNN LSTM unidirecional;
+        \item Versão \textbf{BiLSTM} (\texttt{bi\_lstm=True}).
+      \end{itemize}
+    \item \textbf{TSDF\_GRU}:
+      \begin{itemize}
+        \item RNN GRU unidirecional;
+        \item Versão \textbf{BiGRU} (\texttt{bi\_gru=True}).
+      \end{itemize}
+  \end{itemize}
+  \vspace{0.2cm}
+  \noindent \textbf{Hiperparâmetros principais}
+    \begin{itemize}
+      \item \texttt{in\_channels = 11}
+      \item \texttt{hidden\_dim = 11 * 32}
+      \item \texttt{status\_dim = 3}
+      \item Janela: \texttt{window\_size = 40}, \texttt{window\_step = 40}
+    \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}{Arquitetura baseline: TSDF\_DEEP (feedforward)}
+  \begin{itemize}
+    \item Entrada: janela temporal \(\mathbf{X} = (x_1,\dots,x_L)\),
+          com \(x_t \in \mathbb{R}^{11}\) e máscara \(m_t \in \{0,1\}^{11}\).
+    \item Codificação inicial por MLP (por timestep):
+      \[
+        e_t = \phi\left( W_e [x_t \,\Vert\, m_t] + b_e \right),
+        \quad t = 1,\dots,L
+      \]
+      onde \(\phi(\cdot)\) é uma ativação não linear (ReLU/GELU).
+    \item Incorporação explícita do tempo:
+      \[
+        e'_t = \mathrm{MLP}\big([e_t \,\Vert\, t_t]\big)
+      \]
+      com \(t_t\) o timestamp normalizado do instante \(t\).
+    \item Representação latente da janela:
+      \begin{itemize}
+        \item Obtida independentemente por timestep (sem estados recorrentes);
+        \item Integra informação temporal apenas via timestamps explícitos.
+      \end{itemize}
+    \item Cabeças de saída (multi-tarefa):
+      \begin{align*}
+        \hat{x}_t &= f_{\theta}(e'_t) \quad \text{(reconstrução / difusão)} \\
+        \hat{\tau} &= g_{\theta}(e'_t) \quad \text{(tempo até mudança de estado)}
+      \end{align*}
+    \item Treinamento:
+      \begin{itemize}
+        \item Otimizador Adam;
+        \item Mesmas funções de perda usadas nos modelos recorrentes.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}{Arquitetura 1: LSTM}
+  \begin{itemize}
+    \item Entrada: janela temporal \(\mathbf{X} = (x_1,\dots,x_L)\), \(x_t \in \mathbb{R}^{11}\).
+    \item Codificação temporal com LSTM unidirecional:
+      \[
+        (h_t, c_t) = \mathrm{LSTM}(x_t, h_{t-1}, c_{t-1}), \quad t = 1,\dots,L
+      \]
+    \item Representação da janela:
+      \[
+        z = h_L \in \mathbb{R}^{H}
+      \]
+    \item Cabeças de saída (multi-tarefa):
+      \begin{align*}
+        \hat{y}_{\text{state}} &= \mathrm{softmax}(W_s z + b_s) \\
+        \hat{\tau} &= W_\tau z + b_\tau
+      \end{align*}
+    \item Otimização:
+      \begin{itemize}
+        \item Otimizador Adam, minimizando perda conjunta (classificação de estado + regressão de tempo).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura 2: GRU}
+  \begin{itemize}
+    \item Mesma entrada: \(\mathbf{X} = (x_1,\dots,x_L)\), \(x_t \in \mathbb{R}^{11}\).
+    \item Codificação temporal com GRU unidirecional:
+      \[
+        h_t = \mathrm{GRU}(x_t, h_{t-1}), \quad t = 1,\dots,L
+      \]
+    \item Representação da janela:
+      \[
+        z = h_L \in \mathbb{R}^{H}
+      \]
+    \item Cabeças de saída:
+      \begin{align*}
+        \hat{y}_{\text{state}} &= \mathrm{softmax}(W_s z + b_s) \\
+        \hat{\tau} &= W_\tau z + b_\tau
+      \end{align*}
+    \item Otimização:
+      \begin{itemize}
+        \item Otimizador Adam, com os mesmos hiperparâmetros do baseline Deep (learning rate, batch, etc.).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura 3: BiGRU + GRU fuser}
+  \begin{itemize}
+    \item Codificação da janela com BiGRU:
+      \[
+        h_t^{\rightarrow}, h_t^{\leftarrow} = \mathrm{BiGRU}(x_t, h_{t-1}^{\rightarrow}, h_{t+1}^{\leftarrow})
+      \]
+      \[
+        z_k = [h_L^{\rightarrow} \,\Vert\, h_1^{\leftarrow}] \in \mathbb{R}^{2H}
+      \]
+      onde \(z_k\) é o embedding da \(k\)-ésima janela.
+    \item Fusão temporal entre janelas com GRU fuser:
+      \[
+        m_k = \mathrm{GRU}_{\text{fuser}}(z_k, m_{k-1}), \quad k = 1,\dots,K
+      \]
+      \[
+        m_K \in \mathbb{R}^{H_f} \text{ resume a história recente de janelas.}
+      \]
+    \item Cabeças de saída a partir de \(m_K\):
+      \begin{align*}
+        \hat{y}_{\text{state}} &= \mathrm{softmax}(W_s m_K + b_s) \\
+        \hat{\tau} &= W_\tau m_K + b_\tau
+      \end{align*}
+    \item Otimização:
+      \begin{itemize}
+        \item Adam sobre todos os parâmetros (BiGRU + GRU fuser + cabeças).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura 4: BiLSTM + GRU fuser}
+  \begin{itemize}
+    \item Codificação da janela com BiLSTM:
+      \[
+        (h_t^{\rightarrow}, c_t^{\rightarrow}), (h_t^{\leftarrow}, c_t^{\leftarrow})
+          = \mathrm{BiLSTM}(x_t,\dots)
+      \]
+      \[
+        z_k = [h_L^{\rightarrow} \,\Vert\, h_1^{\leftarrow}] \in \mathbb{R}^{2H}
+      \]
+    \item Fusão temporal entre janelas com GRU fuser:
+      \[
+        m_k = \mathrm{GRU}_{\text{fuser}}(z_k, m_{k-1}), \quad k = 1,\dots,K
+      \]
+    \item Cabeças de saída:
+      \begin{align*}
+        \hat{y}_{\text{state}} &= \mathrm{softmax}(W_s m_K + b_s) \\
+        \hat{\tau} &= W_\tau m_K + b_\tau
+      \end{align*}
+    \item Otimização:
+      \begin{itemize}
+        \item Treino conjunto com Adam, mesma função de perda multi-tarefa.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+% =======================
+% Seção: Arquiteturas
+% =======================
+\section{Arquiteturas e Variações}
+
+\begin{frame}{Variações de treinamento - Otimização}
+    
+
+  \begin{itemize}
+    \item \textbf{BiLSTM (GRU Fuser) + Warmup \& Scheduler}
+      \begin{itemize}
+        \item Aumenta gradualmente a taxa de aprendizado no início do treino, 
+              evitando instabilidades e melhorando a convergência inicial.
+        \item \texttt{warmup\_steps = 50}, \texttt{min\_lr\_factor = 0.01}
+      \end{itemize}
+
+    \item \textbf{BiLSTM (GRU Fuser)+ RAdam}
+      \begin{itemize}
+        \item Reduz a variância adaptativa do Adam nos primeiros passos, 
+              tornando o treinamento mais estável.
+        \item \texttt{optimizer\_name = 'radam'}
+      \end{itemize}
+ 
+
+     \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Variações de treinamento — Regularização}
+ \begin{itemize}
+
+    \item \textbf{BiLSTM (GRU Fuser) + Variational Dropout}
+      \begin{itemize}
+        \item Regularização explícita no tempo,
+              reduzindo overfitting sem quebrar dependências temporais.
+        \item \texttt{variational\_dropout = 0.2}
+      \end{itemize}
+
+    \item \textbf{BiLSTM (GRU Fuser) + Difusão (missingness)}
+      \begin{itemize}
+        \item Regularização implícita via objetivos probabilísticos,
+              forçando robustez a dados ausentes.
+        \item \texttt{lam = [0., 0.0, 0.0, 0.05, 0.0, 0.95]}, \texttt{rebuild=True}
+      \end{itemize}
+
+  
+    \item \textbf{BiLSTM (GRU Fuser) + LayerNorm}
+      \begin{itemize}
+        \item Estabiliza as ativações internas,
+              com efeito regularizante indireto.
+        \item \texttt{use\_layernorm = True}
+      \end{itemize}
+
+    \item \textbf{BiLSTM (GRU Fuser) + AdamW (Weight Decay)}
+      \begin{itemize}
+        \item Regularização explícita dos pesos,
+              melhorando generalização.
+        \item \texttt{optimizer\_name = 'adamw'}, \texttt{weight\_decay = 1e-4}
+      \end{itemize}
+
+  \end{itemize}
+\end{frame}
+
+
+
+
+% =======================
+% Seção: Configuração Experimental
+% =======================
+\section{Configuração Experimental}
+
+\begin{frame}{Configuração Experimental}
+  \begin{itemize}
+    \item Divisão treino/validação/teste: 60\% / 20\% / 20\%.
+    \item Treinamento por 500 épocas, batch size 256.
+    \item Paciênica de 50 épocas para early stopping.
+    \item Função de perda multi-tarefa conforme descrito.
+    \item Otimizador: Adam (exceto variações).
+    \item Taxa de aprendizado inicial: \(1 \times 10^{-3}\).
+    \item Early stopping baseado em MSE de validação.
+    \item Avaliação final no conjunto de teste.
+  \end{itemize}
+\end{frame}
+% =======================
+% Seção: Resultados
+% =======================
+\section{Resultados}
+
+\begin{frame}{Métricas utilizadas}
+  \begin{itemize}
+    \item \textbf{ELBO} (Evidence Lower Bound):
+      \begin{itemize}
+        \item Função objetivo usada no treinamento de modelos variacionais;
+        \item Equilibra qualidade de reconstrução e regularização via divergência KL.
+      \end{itemize}
+
+    \item \textbf{MSE} (Mean Squared Error):
+      \begin{itemize}
+        \item Mede o erro médio quadrático na predição do tempo até a próxima mudança;
+        \item Avalia precisão pontual das estimativas.
+      \end{itemize}
+
+    \item \textbf{NLL} (Negative Log-Likelihood):
+      \begin{itemize}
+        \item Avalia a qualidade probabilística das previsões;
+        \item Penaliza incertezas mal calibradas (sub ou superestimação).
+      \end{itemize}
+
+    \item \textbf{Cobertura 90\%} (\texttt{cov\_90}):
+      \begin{itemize}
+        \item Fração de observações reais contidas no intervalo preditivo de 90\%;
+        \item Mede a calibração do modelo.
+      \end{itemize}
+
+    \item \textbf{Largura do intervalo 90\%} (\texttt{width\_90}):
+      \begin{itemize}
+        \item Largura média dos intervalos preditivos de 90\%;
+        \item Reflete o compromisso entre precisão e incerteza (sharpness).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Resultados quantitativos}
+  \begin{table}[h]
+    \centering
+    \small
+\begin{tabular}{lccccc}
+\toprule
+Modelo & ELBO $\uparrow$ & MSE $\downarrow$ & NLL $\downarrow$ & Cov90 $\uparrow$ & Width90 $\downarrow$ \\
+\midrule
+DEEP & 1.217 & 0.693 ± 0.209 & 1.164 & 0.916 & 2.785 \\
+BiLSTM (GRU Fuser) LayerNorm & 0.617 & 0.342 ± 0.140 & 0.514 & 0.907 & 2.281 \\
+BiLSTM & 0.609 & 0.337 ± 0.133 & 0.527 & 0.901 & 2.269 \\
+BiLSTM (GRU Fuser) AdamW & 0.601 & 0.341 ± 0.141 & 0.506 & 0.900 & 2.224 \\
+BiLSTM (GRU Fuser) Warmup/Sched. & 0.598 & 0.354 ± 0.146 & 0.504 & 0.903 & 2.251 \\
+BiLSTM (GRU Fuser) RAdam & 0.597 & 0.341 ± 0.139 & 0.511 & 0.898 & 2.234 \\
+BiLSTM (GRU Fuser) VarDrop 0.2 & 0.595 & 0.317 ± 0.119 & 0.506 & 0.898 & 2.240 \\
+BiGRU & 0.589 & 0.335 ± 0.136 & 0.499 & 0.909 & 2.267 \\
+LSTM & 0.588 & 0.332 ± 0.129 & 0.513 & 0.900 & 2.251 \\
+GRU & 0.558 & 0.300 ± 0.108 & 0.498 & 0.905 & 2.252 \\
+BiLSTM (GRU Fuser) Difusão & 0.518 & 0.243 ± 0.067 & 0.462 & 0.902 & 2.200 \\
+\bottomrule
+\end{tabular}
+    \caption{Comparação de desempenho entre modelos e variações.}
+  \end{table}
+\end{frame}
+
+\begin{frame}{Curva de treinamento — Modelo campeão}
+\begin{itemize}
+  \item Evolução do ELBO ao longo das épocas para o modelo
+        \textbf{BiLSTM (GRU Fuser + LayerNorm)}.
+  \item Observa-se:
+    \begin{itemize}
+      \item Convergência mais rápida;
+      \item Menor oscilação durante o treinamento;
+      \item Melhor estabilidade em comparação aos modelos sem normalização.
+    \end{itemize}
+\end{itemize}
+
+  \centering
+  \includegraphics[width=0.8\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/rodrigo/elbo.png}
+  \caption{Evolução do ELBO durante o treinamento do modelo
+  BiLSTM (GRU Fuser + LayerNorm).}
+\end{frame}
+% =======================
+% Seção: Discussão e Conclusões
+% =======================
+\section{Discussão e Conclusões}
+
+\begin{frame}{Discussão dos resultados}
+  \begin{itemize}
+    \item Comparar quais modelos:
+      \begin{itemize}
+        \item Obtiveram menor MSE e NLL;
+        \item Mantiveram boa cobertura com intervalos estreitos (trade-off).
+      \end{itemize}
+    \item Avaliar impacto de:
+      \begin{itemize}
+        \item Bidirecionalidade (BiLSTM/BiGRU);
+        \item Warmup + scheduler;
+        \item Otimizadores (Adam vs. RAdam vs. AdamW);
+        \item Variational dropout e difusão para missingness;
+        \item LayerNorm.
+      \end{itemize}
+    \item Conectar com a operação:
+      \begin{itemize}
+        \item O modelo é suficientemente responsivo antes de mudanças de estado?
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusões}
+  \begin{itemize}
+    \item Implementação de um pipeline completo:
+      \begin{itemize}
+        \item DataLoader, segmentação em estados, criação de janelas e labels.
+      \end{itemize}
+    \item RNNs (especialmente BiLSTM/BiGRU) capturam bem a dinâmica do compressor.
+    \item Técnicas de regularização e otimização (dropout, difusão, AdamW) influenciam precisão e calibração.
+    \item Abre caminho para:
+    \item 
+      \begin{itemize}
+        \item Integração com gêmeo digital;
+        \item Alarmes mais inteligentes de mudança de regime;
+        \item Estudos de degradação e manutenção preditiva.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+
+
+\end{document}
