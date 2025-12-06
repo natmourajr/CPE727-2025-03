@@ -364,6 +364,7 @@ class TSDiffusion(ODEJumpEncoder):
         noise,
         noise_hat,
         lambda1,
+        weight_tmax: float,
         vae_mu: torch.Tensor | None = None,
         vae_logvar: torch.Tensor | None = None,
         vae_x: torch.Tensor | None = None,
@@ -373,6 +374,7 @@ class TSDiffusion(ODEJumpEncoder):
         vae_logvar_obs: torch.Tensor | None = None,
         vae_tmax_logvar_obs: torch.Tensor | None = None,
         kl_scale: float = 1.0
+        
     ):
         if x_hat is not None:
             #L1
@@ -409,7 +411,7 @@ class TSDiffusion(ODEJumpEncoder):
             changing_state = ((offset_state_pred<1) & (offset_state_pred>0)).float()
             err = mask_tmax * (offset_tmax - offset_state_pred * changing_state)   # (B,T,S)
             err_no_change = err * (1-changing_state)
-            err_change = err * changing_state * 1000.
+            err_change = err * changing_state * weight_tmax
             if self.log_likelihood:
                 lam_t_tmax = F.softplus(self.lambda_tmax_head(state_tmax)).clamp(min=1/(2*math.pi), max=2*math.pi)  # (B,T,1)
                 lam2_tmax  = lam_t_tmax.squeeze(-1)                                            # (B,T)
@@ -574,7 +576,8 @@ class TSDiffusion(ODEJumpEncoder):
         kl_start: float = 0.001,
         kl_end: float = 1.0,
         kl_warmup_epochs: int = 50,
-        train_fraction: float = 0.6
+        train_fraction: float = 0.6,
+        weight_tmax: float = 1.0
     ):
         delta_pred_window = np.float32(status_pred_window / TS_SPAN)
         # exemplo para ODEJumpEncoder: ajuste nomes conforme sua classe
@@ -740,6 +743,7 @@ class TSDiffusion(ODEJumpEncoder):
                         noise, 
                         noise_hat,
                         lambda1,
+                        weight_tmax,
                         vae_mu,
                         vae_logvar,
                         vae_x if vae_x is not None else None,
@@ -748,7 +752,7 @@ class TSDiffusion(ODEJumpEncoder):
                         vae_tmax_logvar,
                         vae_logvar_obs if vae_logvar_obs is not None else None,
                         vae_tmax_logvar_obs,
-                        kl_scale=self._kl_scale(ep, kl_start, kl_end, kl_warmup_epochs)
+                        kl_scale=self._kl_scale(ep, kl_start, kl_end, kl_warmup_epochs),
                     )
 
                 scaler.scale(loss).backward()

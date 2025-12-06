@@ -348,12 +348,12 @@ class TSDF_LSTM(TSDiffusion):
                 nn.GELU(),
                 nn.Linear(hidden_dim // 2, in_channels),
             )
-            if log_likelihood:
+            '''if log_likelihood:
                 self.lambda_head = nn.Sequential(
-                    nn.Linear(self.state_dim, hidden_dim // 2),
+                    nn.Linear(hidden_dim , hidden_dim // 2),
                     nn.GELU(),
                     nn.Linear(hidden_dim // 2, 1)
-                )
+                )'''
         if self.lam[4] > 0:
             self.vae_latent = nn.Sequential(
                 nn.Linear(self.state_dim, hidden_dim * 2),
