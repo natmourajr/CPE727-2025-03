@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import time
 from torch.utils.data import DataLoader, Subset
+from sklearn.preprocessing import RobustScaler
 
 max_drop = 0.3
 
@@ -300,11 +301,30 @@ class TSDiffusion(ODEJumpEncoder):
         return_x_hat=kwargs.get('return_x_hat',True)
         t=torch.full((state.size(0),), 0, device=device, dtype=torch.long)
         mask_ts = mask.any(dim=2, keepdim=True).float()
-        z, _, _, x_hat_step, _, *_ = self.forward(
-                        state, t=t, timestamps=timestamps, static_feats=static_feats,
-                        already_latent=True, return_x_hat=True, mask_ts=mask_ts
-                    )
-        #x_hat_step = self.decoder(z)
+        (
+            z,
+            _,
+            _,
+            x_hat_step,
+            _,
+            _,
+            _,
+            vae_x,
+            *_,
+        ) = self.forward(
+            state,
+            t=t,
+            timestamps=timestamps,
+            static_feats=static_feats,
+            already_latent=True,
+            return_x_hat=True,
+            mask_ts=mask_ts,
+        )
+        # Se não há cabeça de reconstrução L1 (lam[0]==0) mas há VAE (lam[4]>0),
+        # use a saída do VAE como estimativa.
+        if x_hat_step is None and self.lam[4] > 0 and vae_x is not None:
+            x_hat_step = vae_x
+
         x_clamped  = torch.where(mask.bool(), x0, x_hat_step)
         if return_x_hat:
             return x_clamped
@@ -317,11 +337,29 @@ class TSDiffusion(ODEJumpEncoder):
         
         t=torch.full((state.size(0),), 0, device=device, dtype=torch.long)
         mask_ts = mask.any(dim=2, keepdim=True).float() 
-        z, _, _, x_hat_step, _, *_ = self.forward(
-                        state, t=t, timestamps=timestamps, static_feats=static_feats,
-                        already_latent=True, return_x_hat=True, mask_ts=mask_ts
-                    )
-        #x_hat_step = self.decoder(torch.cat([z,torch.zeros_like(z)], dim=-1))
+        (
+            z,
+            _,
+            _,
+            x_hat_step,
+            _,
+            _,
+            _,
+            vae_x,
+            *_,
+        ) = self.forward(
+            state,
+            t=t,
+            timestamps=timestamps,
+            static_feats=static_feats,
+            already_latent=True,
+            return_x_hat=True,
+            mask_ts=mask_ts,
+        )
+        # Se não há cabeça L1 mas há VAE, use vae_x como estimativa inicial
+        if x_hat_step is None and self.lam[4] > 0 and vae_x is not None:
+            x_hat_step = vae_x
+
         x_clamped  = torch.where(mask.bool(), x0, x_hat_step)
         z = self.encoder(torch.cat([x_clamped, torch.ones_like(x_clamped)], dim=-1))
         for i in reversed(range(steps)):
@@ -1813,19 +1851,34 @@ class TSDiffusion(ODEJumpEncoder):
 
         with torch.no_grad():
             h0 = self.encoder(torch.cat([seqs, mask_seqs], dim=-1))
-            n_steps = steps if steps is not None else getattr(self, "denoise_steps", self.num_steps)
-            x_r,z = self.denoise(
-                state=h0,
-                timestamps=ts_seqs,
-                static_feats=stat_seqs,
-                device=device,
-                steps=n_steps,
-                x0=seqs,                     # <- importante
-                mask=mask_seqs,              # <- importante
-                enforce_data_consistency=False
-            )
-            x_hat = self.decoder(z).detach().cpu().numpy()
-            x_r = x_r.detach().cpu().numpy()
+            if self.lam[1] == 0:
+                # sem termo de ruído (L2), não há estrutura de denoise treinada:
+                # usa apenas o reconstrutor/imputation de um passo (L1/L5).
+                x_r = self.impute(
+                    state=h0,
+                    device=device,
+                    timestamps=ts_seqs,
+                    static_feats=stat_seqs,
+                    mask=mask_seqs,
+                    x0=seqs,
+                    return_x_hat=True,
+                )
+                x_r = x_r.detach().cpu().numpy()
+                x_hat = None
+            else:
+                n_steps = steps if steps is not None else getattr(self, "denoise_steps", self.num_steps)
+                x_r, z = self.denoise(
+                    state=h0,
+                    timestamps=ts_seqs,
+                    static_feats=stat_seqs,
+                    device=device,
+                    steps=n_steps,
+                    x0=seqs,                     # <- importante
+                    mask=mask_seqs,              # <- importante
+                    enforce_data_consistency=False
+                )
+                x_hat = self.decoder(z).detach().cpu().numpy()
+                x_r = x_r.detach().cpu().numpy()
 
         n = len(df_sorted)
         C = len(feature_cols)
@@ -1839,52 +1892,202 @@ class TSDiffusion(ODEJumpEncoder):
         miss = ~np.isfinite(orig_vals)
 
         if window_size is None or window_size >= n:
-            pred = x_hat[0]
             pred_r = x_r[0]
+            if x_hat is not None:
+                pred = x_hat[0]
+                if replace_only_missing:
+                    out = np.where(miss, pred, orig_vals)
+                    cnt = np.where(miss, 1.0, 0.0).astype(np.float32)
+                else:
+                    out = pred
+                    cnt[:] = 1.0
+            # reconstrução (sempre disponível)
             if replace_only_missing:
-                out = np.where(miss, pred, orig_vals)
-                cnt = np.where(miss, 1.0, 0.0).astype(np.float32)
+                out_r = np.where(miss, pred_r, orig_vals)
+                cnt_r = np.where(miss, 1.0, 0.0).astype(np.float32)
             else:
-                out = pred
-                cnt[:] = 1.0
-            out_r = pred_r
-            cnt_r[:] = 1.0
+                out_r = pred_r
+                cnt_r[:] = 1.0
         else:
             starts = np.arange(0, n - window_size + 1, window_step, dtype=int)
             for k, s in enumerate(starts):
                 e = min(s + window_size, n)
-                pred = x_hat[k, :e - s, :]  # (L_k, C)
-                pred_r = x_r[k,:e - s, :]
+                pred_r = x_r[k, :e - s, :]
+                if x_hat is not None:
+                    pred = x_hat[k, :e - s, :]  # (L_k, C)
+                    if replace_only_missing:
+                        sel = miss[s:e, :]                  # só substitui onde falta
+                        # escreve pred onde falta; mantém original onde não falta
+                        blended = np.where(sel, pred, orig_vals[s:e, :])
+                        out[s:e, :] += blended
+                        cnt[s:e, :] += sel.astype(np.float32)
+                    else:
+                        out[s:e, :] += pred
+                        cnt[s:e, :] += 1.0
+                # sempre acumula reconstrução
                 if replace_only_missing:
-                    sel = miss[s:e, :]                  # só substitui onde falta
-                    # escreve pred onde falta; mantém original onde não falta
-                    blended = np.where(sel, pred, orig_vals[s:e, :])
-                    out[s:e, :] += blended
-                    cnt[s:e, :] += sel.astype(np.float32)
+                    sel_r = miss[s:e, :]
+                    blended_r = np.where(sel_r, pred_r, orig_vals[s:e, :])
+                    out_r[s:e, :] += blended_r
+                    cnt_r[s:e, :] += sel_r.astype(np.float32)
                 else:
-                    out[s:e, :] += pred
-                    cnt[s:e, :] += 1.0
-                out_r[s:e, :] += pred_r
-                cnt_r[s:e, :] += 1.0
+                    out_r[s:e, :] += pred_r
+                    cnt_r[s:e, :] += 1.0
 
             # posições não cobertas por nenhuma janela ou nunca substituídas
-            no_write = (cnt == 0.0)
-            out[no_write] = orig_vals[no_write]
+            if x_hat is not None:
+                no_write = (cnt == 0.0)
+                out[no_write] = orig_vals[no_write]
+                # média nas posições com múltiplas escritas
+                written = (cnt > 0.0)
+                out[written] = out[written] / cnt[written]
 
-            # média nas posições com múltiplas escritas
-            written = (cnt > 0.0)
-            out[written] = out[written] / cnt[written]
+            no_write_r = (cnt_r == 0.0)
+            out_r[no_write_r] = orig_vals[no_write_r]
+            written_r = (cnt_r > 0.0)
+            out_r[written_r] = out_r[written_r] / cnt_r[written_r]
 
         # monta DataFrame de saída
-        result = df_sorted.copy()
-        result[feature_cols] = out
         result_r = df_sorted.copy()
         result_r[feature_cols] = out_r
+        if x_hat is not None:
+            result = df_sorted.copy()
+            result[feature_cols] = out
+        else:
+            result = None
         # restaura ordem/índice original caso tenha ordenado por tempo
         if needs_sort:
-            result = result.set_index(idx_col_name).loc[orig_index]
-            result.index = orig_index  # garante exatamente o mesmo Index
             result_r = result_r.set_index(idx_col_name).loc[orig_index]
             result_r.index = orig_index  # garante exatamente o mesmo Index
+            if result is not None:
+                result = result.set_index(idx_col_name).loc[orig_index]
+                result.index = orig_index  # garante exatamente o mesmo Index
 
-        return result_r,result
+        return result_r, result
+    
+    def generate_samples(
+        self,
+        df: pd.DataFrame,
+        feature_cols: list[str],
+        timestamp_col: str,
+        slice: slice,
+        size: int,
+        static_features_cols: list[str] | None = None
+    ) -> pd.DataFrame:
+        """
+        Gera amostras passo a passo (autoregressivo):
+        - Cada novo passo gerado é alimentado de volta como parte do contexto,
+          mantendo o mesmo tamanho de janela definido por `slice`.
+        - Todas as colunas em feature_cols são robust‑escaladas internamente
+          e as amostras são devolvidas na escala robusta.
+        """
+        self.eval()
+        static_features_cols = static_features_cols or []
+
+        feature_cols = list(feature_cols)  # mantém duplicatas para casar com in_channels
+        if len(feature_cols) != self.in_channels:
+            raise ValueError(
+                f"generate_samples: len(feature_cols)={len(feature_cols)} difere do modelo (in_channels={self.in_channels}). "
+                "Use o mesmo conjunto de features usado no treino."
+            )
+        missing_features = [c for c in set(feature_cols) if c not in df.columns]
+        if missing_features:
+            raise ValueError(
+                f"generate_samples: feature_cols ausentes no DataFrame: {missing_features}"
+            )
+
+        # RobustScaler apenas nas feature_cols (escala interna do modelo)
+        df_scaled = df.copy()
+        scaler = RobustScaler()
+        df_scaled[feature_cols] = scaler.fit_transform(
+            df_scaled[feature_cols].to_numpy(dtype=float)
+        )
+
+        # contexto inicial na escala robusta
+        df_ctx = df_scaled.iloc[slice].copy()
+        if df_ctx.empty:
+            raise ValueError("generate_samples: slice vazio; selecione ao menos uma linha de contexto.")
+
+        # passo temporal (índice ou timestamp)
+        if timestamp_col == "index":
+            idx_full = df_scaled.index
+            if len(idx_full) >= 2:
+                try:
+                    step_idx = idx_full[1] - idx_full[0]
+                except Exception:
+                    step_idx = 1
+            else:
+                step_idx = 1
+        else:
+            ts_series = df_ctx[timestamp_col]
+            if len(ts_series) >= 2:
+                dt = ts_series.iloc[1] - ts_series.iloc[0]
+            else:
+                diffs = ts_series.diff().dropna()
+                dt = diffs.median() if not diffs.empty else 1
+
+        generated_indices: list = []
+        generated_rows: list[np.ndarray] = []
+
+        for k in range(size):
+            # índice / timestamp do próximo passo
+            if timestamp_col == "index":
+                next_idx = df_ctx.index[-1] + step_idx
+                new_row = pd.DataFrame(index=[next_idx], columns=df_scaled.columns, dtype=float)
+            else:
+                next_ts = df_ctx[timestamp_col].iloc[-1] + dt
+                new_row = pd.DataFrame(columns=df_scaled.columns, index=[len(df_scaled) + k], dtype=float)
+                new_row[timestamp_col] = next_ts
+
+            # copiar features estáticas da última linha do contexto
+            if static_features_cols:
+                last_static = df_ctx.iloc[-1][static_features_cols]
+                for col in static_features_cols:
+                    new_row[col] = last_static[col]
+
+            # colunas dinâmicas: todas as feature_cols = NaN; demais mantêm último valor
+            last_row = df_ctx.iloc[-1]
+            for col in df_scaled.columns:
+                if col in feature_cols:
+                    new_row[col] = np.nan
+                elif col not in static_features_cols and col != timestamp_col:
+                    new_row[col] = last_row[col]
+
+            # contexto + 1 futuro
+            df_ext = pd.concat([df_ctx, new_row], axis=0)
+
+            # imputação apenas onde há NaN, usando reconstrutor (result_r)
+            result_r, _ = self.denoise_dataframe(
+                df_ext,
+                feature_cols=feature_cols,
+                timestamp_col=timestamp_col,
+                static_features_cols=static_features_cols,
+                window_size=None,
+                window_step=1,
+                steps=None,
+                replace_only_missing=True,
+            )
+
+            pred_row = result_r.iloc[-1]
+
+            # armazena predição (ainda na escala robusta)
+            if timestamp_col == "index":
+                generated_indices.append(pred_row.name)
+            else:
+                generated_indices.append(pred_row[timestamp_col])
+            generated_rows.append(pred_row[feature_cols].to_numpy(dtype=float))
+
+            # atualiza contexto: descarta primeira linha e adiciona a linha preenchida
+            new_row_filled = new_row.copy()
+            pred_vals = pred_row[feature_cols].to_numpy(dtype=float).reshape(1, -1)
+            new_row_filled[feature_cols] = pred_vals
+            df_ctx = pd.concat([df_ctx.iloc[1:], new_row_filled], axis=0)
+
+        data = np.vstack(generated_rows) if generated_rows else np.empty((0, len(feature_cols)))
+        if timestamp_col == "index":
+            out_df = pd.DataFrame(data, index=generated_indices, columns=feature_cols)
+        else:
+            out_df = pd.DataFrame(data, columns=feature_cols)
+            out_df.insert(0, timestamp_col, generated_indices)
+
+        return out_df
