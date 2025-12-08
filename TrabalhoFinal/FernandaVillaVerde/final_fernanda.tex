@@ -77,7 +77,7 @@
 \end{tikzpicture}%
 }
 
-\title[Predição de Mudança de Estado]{Utilização de RNNs para Predição de mudança de estado em compressor industrial}
+\title[Predição Probabilística de Mudança de Estado]{Predição Probabilística de Mudança de Estado em Compressores Industriais com RNNs e VAEs}
 \author{Fernanda Mickosz Villa Verde}
 \institute{CPE727 -- Deep Learning}
 \date{\today}
@@ -119,11 +119,9 @@
 \noindent \textbf{Objetivos do trabalho:}
 
     \begin{itemize}
-    
-  \item Modelar séries temporais industriais (compressores) com amostragem irregular, dados faltantes e alta dimensionalidade utilizando arquiteturas recorrentes.
- \item Aprender uma \textbf{modelagem probabilística do tempo até a
+     \item Aprender uma \textbf{modelagem probabilística do tempo até a
         próxima mudança de estado}, estimando distribuições preditivas
-        condicionadas ao histórico observado.
+        condicionadas ao histórico observado, utilizando RNNs e VAEs;
         \end{itemize}
    \noindent \textbf{Comparar arquiteturas:}
         \begin{itemize}
@@ -486,7 +484,7 @@ DEEP & 8016.760 & 0.819 $\pm$ 0.011 & 33.711 & 0.250 & 0.270 \\
               desbalanceamento entre grupos e a raridade de mudanças de estado;
         \item Após as primeiras dezenas de épocas, o modelo passa a operar
               em um patamar de NELBO baixo, com mínimos recorrentes;
-        \item A melhor época (\textbf{epoch 54}) atinge o menor NELBO entre as
+        \item A melhor época (\textbf{epoch 126}) atinge o menor NELBO entre as
               épocas avaliadas, sendo o melhor compromisso entre ajuste e
               complexidade para a tarefa de mudança de estado.   
 \end{itemize}
@@ -529,29 +527,30 @@ probabilística e a assimilação de incerteza pelo modelo.}
   \begin{itemize}
     \item \textbf{Qualidade probabilística}:
       \begin{itemize}
-        \item O \textbf{BiLSTM RAdam} apresenta o menor NELBO,
-              indicando melhor ajuste probabilístico global;
-        \item Bons valores de NLL e MSE micro confirmam alta precisão
-              na predição de mudanças de estado raras.
+        \item O \textbf{LSTM RAdam} atinge o \textbf{menor NELBO} entre os modelos,
+              indicando melhor ajuste probabilístico para a tarefa de
+              mudança de estado;
+        \item Baixos valores de NLL e MSE micro confirmam alta precisão
+              na modelagem de eventos de transição raros.
       \end{itemize}
 
     \item \textbf{Calibração das incertezas}:
       \begin{itemize}
-        \item Cobertura próxima de 0.90 nos melhores modelos
-              indica boa calibração probabilística;
-        \item Width90 constante sugere intervalos estáveis e comparáveis
-              entre arquiteturas.
+        \item O \textbf{LSTM RAdam} apresenta \textbf{cobertura próxima de 1.0},
+              evidenciando excelente calibração probabilística;
+        \item Width90 constante sugere intervalos preditivos estáveis e
+              comparáveis entre arquiteturas.
       \end{itemize}
 
     \item \textbf{Impacto arquitetural}:
       \begin{itemize}
-        \item Modelos bidirecionais superam LSTM/GRU unidirecionais;
-      \item Em cenários fortemente desbalanceados, o principal desafio é a
-      \textbf{otimização sob gradientes raros}, e não o overfitting;
-\item Otimizadores adaptativos (RAdam, warmup) estabilizam o treinamento
-      e facilitam a captura de eventos de mudança raros, enquanto
-      regularização excessiva tende a diluir esses sinais.
-
+        \item Arquiteturas unidirecionais mostraram-se mais adequadas ao
+              caráter \textbf{causal} do problema de mudança de estado;
+        \item Em cenários fortemente desbalanceados, o principal desafio é a
+              \textbf{otimização sob gradientes raros}, e não o overfitting;
+        \item Otimizadores adaptativos (RAdam, warmup) estabilizam o treinamento
+              e facilitam a captura de eventos raros, enquanto arquiteturas
+              excessivamente complexas tendem a diluir esses sinais.
       \end{itemize}
   \end{itemize}
 \end{frame}
@@ -559,18 +558,21 @@ probabilística e a assimilação de incerteza pelo modelo.}
 \begin{frame}{Conclusões — Mudança de estado}
   \begin{itemize}
     \item A predição de mudanças de estado é um problema
-          fortemente desbalanceado e sensível à calibração probabilística.
+          fortemente desbalanceado e altamente sensível à
+          calibração probabilística.
 
     \item Arquiteturas recorrentes probabilísticas são essenciais:
       \begin{itemize}
-        \item Capturam dependências temporais longas;
-        \item Modelam explicitamente incertezas associadas ao evento de transição.
+        \item Capturam dependências temporais relevantes ao longo da janela;
+        \item Modelam explicitamente incertezas associadas à transição de estado.
       \end{itemize}
 
-    \item O \textbf{BiLSTM RAdam} é o modelo mais adequado:
+    \item O \textbf{LSTM RAdam} é o modelo mais adequado neste estudo:
       \begin{itemize}
-        \item Menor NELBO entre os modelos avaliados;
-        \item Boa calibração (Cov90 $\approx$ 0.95) e baixo erro micro.
+        \item Melhor NELBO global entre as arquiteturas avaliadas;
+        \item Excelente calibração (Cov90 $\approx$ 1.0) com largura
+              de intervalo controlada;
+        \item Melhor alinhamento com a natureza causal da tarefa.
       \end{itemize}
 
     \item Esses resultados indicam potencial para:
@@ -578,8 +580,19 @@ probabilística e a assimilação de incerteza pelo modelo.}
         \item Detecção antecipada de mudanças de regime;
         \item Suporte a sistemas de monitoramento e alerta industrial.
       \end{itemize}
+
+    \item Melhorias futuras:
+      \begin{itemize}
+        \item Utilizar modelos do tipo \textit{Mixture of Gaussians} para capturar
+              o próximo estado operacional;
+        \item Explorar técnicas de \textit{oversampling} para eventos raros
+              (em uma base de 269.800 registros, apenas 572 representam mudanças
+              de estado).
+      \end{itemize}
   \end{itemize}
 \end{frame}
+
+
 
 \begin{frame}{Referências}
 
