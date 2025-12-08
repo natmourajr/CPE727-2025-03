@@ -63,8 +63,9 @@ class Trainer:
             patience=5
         )
         
-        # TensorBoard
-        self.writer = SummaryWriter(log_dir=f'./runs/{datetime.now().strftime("%Y%m%d-%H%M%S")}')
+        # TensorBoard com nome do modelo
+        log_dir = f'./runs/{self.model_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}'
+        self.writer = SummaryWriter(log_dir=log_dir)
         
         # Histórico
         self.history = {
@@ -216,9 +217,11 @@ class Trainer:
         
         self.writer.close()
         
-        # Salvar histórico
-        with open(os.path.join(self.save_dir, 'history.json'), 'w') as f:
+        # Salvar histórico com nome do modelo
+        history_path = os.path.join(self.save_dir, f'{self.model_name}_history.json')
+        with open(history_path, 'w') as f:
             json.dump(self.history, f, indent=4)
+        print(f'Histórico salvo em: {history_path}')
         
         print('\nTreinamento concluído!')
         return self.history
@@ -264,6 +267,8 @@ def main():
                         help='Número de workers para DataLoader')
     parser.add_argument('--save-dir', type=str, default='./models',
                         help='Diretório para salvar modelos')
+    parser.add_argument('--no-freeze-backbone', action='store_true',
+                        help='Descongelar backbone para fine-tuning completo (não recomendado para datasets pequenos)')
     
     args = parser.parse_args()
     
@@ -296,6 +301,21 @@ def main():
         num_classes=2,
         dropout=0.5
     )
+    
+    # Congelar backbone por padrão (melhor para datasets pequenos)
+    if args.no_freeze_backbone:
+        print('⚠️  Backbone DESCONGELADO - fine-tuning completo')
+        print('    Isso pode causar overfitting em datasets pequenos!')
+    else:
+        model.freeze_backbone()
+        print('✓ Backbone CONGELADO - usando feature extraction (padrão)')
+        print('  Use --no-freeze-backbone para descongelar')
+    
+    # Contar parâmetros
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f'Parâmetros totais: {total_params:,}')
+    print(f'Parâmetros treináveis: {trainable_params:,} ({trainable_params/total_params*100:.1f}%)')
     
     # Criar trainer
     trainer = Trainer(
