@@ -10,9 +10,20 @@ import shutil
 
 # URLs do dataset
 SHENZHEN_URL = "https://lhncbc.nlm.nih.gov/LHC-downloads/downloads.html#tuberculosis-image-data-sets"
-# Nota: O download direto pode não funcionar devido a restrições do site NIH
-# Mantenha as instruções manuais como alternativa
-DATASET_ZIP_URL = "https://openi.nlm.nih.gov/imgs/collections/ChinaSet_AllFiles.zip"
+
+# Fontes de download (em ordem de prioridade)
+DATASET_SOURCES = [
+    {
+        'name': 'Google Drive (Rápido)',
+        'url': 'https://drive.google.com/uc?export=download&id=1vxPcD1HKrX3HMP2NbJiPmact2YBdwovm',
+        'type': 'gdrive'
+    },
+    {
+        'name': 'NIH OpenI (Original)',
+        'url': 'https://openi.nlm.nih.gov/imgs/collections/ChinaSet_AllFiles.zip',
+        'type': 'direct'
+    }
+]
 
 def download_file(url, destination, resume=True):
     """
@@ -116,24 +127,39 @@ def download_shenzhen_dataset(output_dir='./data'):
         print("📦 Pulando download e indo direto para extração...")
         success = True
     else:
-        print("\n📥 Tentando baixar dataset automaticamente...")
-        print(f"URL: {DATASET_ZIP_URL}")
-        print(f"Destino: {zip_path}")
+        print("\n📥 Tentando baixar dataset...")
         
         if zip_part.exists():
             part_size = zip_part.stat().st_size
             print(f"\n🔄 Download parcial encontrado: {part_size / (1024*1024):.1f} MB")
             print("Tentando retomar download...\n")
-        else:
-            print("\n⚠️  Nota: O download automático pode falhar devido a restrições do site NIH.")
-            print("Se falhar, siga as instruções de download manual abaixo.\n")
         
-        # Tentar download automático com suporte a resumo
-        success = download_file(DATASET_ZIP_URL, zip_path, resume=True)
+        # Tentar cada fonte em ordem de prioridade
+        success = False
+        for idx, source in enumerate(DATASET_SOURCES, 1):
+            print(f"\n{'='*70}")
+            print(f"📡 Tentativa {idx}/{len(DATASET_SOURCES)}: {source['name']}")
+            print(f"URL: {source['url']}")
+            print(f"{'='*70}\n")
+            
+            try:
+                success = download_file(source['url'], zip_path, resume=True)
+                
+                if success and zip_path.exists():
+                    print(f"\n✅ Download bem-sucedido de: {source['name']}")
+                    break
+                else:
+                    print(f"\n⚠️  Falha ao baixar de: {source['name']}")
+                    if idx < len(DATASET_SOURCES):
+                        print("🔄 Tentando próxima fonte...")
+            except Exception as e:
+                print(f"\n❌ Erro ao baixar de {source['name']}: {str(e)}")
+                if idx < len(DATASET_SOURCES):
+                    print("🔄 Tentando próxima fonte...")
     
     if not success or not zip_path.exists():
         print("\n" + "=" * 70)
-        print("❌ DOWNLOAD AUTOMÁTICO FALHOU")
+        print("❌ TODAS AS FONTES DE DOWNLOAD FALHARAM")
         print("=" * 70)
         print("\n📋 INSTRUÇÕES PARA DOWNLOAD MANUAL:\n")
         print("1. Acesse o site oficial:")
