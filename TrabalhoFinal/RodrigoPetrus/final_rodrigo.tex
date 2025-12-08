@@ -13,8 +13,11 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
 
-\title[Predição de Mudança de Estado]{Desenvolver um modelo gerador de séries temporais multivariadas
+
+\title[Modo gerador]{Desenvolver um modelo gerador de séries temporais multivariadas
           para um compressor industrial offshore baseado em RNN e VAEs.}
 \author{Rodrigo Petrus Domingues}
 \institute{CPE727 -- Deep Learning}
@@ -91,7 +94,7 @@
 
     \vspace{0.3cm}
     \centering
-    \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/rodrigo/12series.png}
+    \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/RodrigoPetrus/12series.png}
 
     \vspace{0.2cm}
     \scriptsize
@@ -164,28 +167,18 @@
 \small
 
 \begin{itemize}
-  \item O modelo original admite uma função de custo multi-termo:
+  \item O modelo admite uma função de custo multi-termo:
 \[
 \mathcal{L} =
-\lambda_1 \mathcal{L}_{\text{rec}}
-+ \lambda_2 \mathcal{L}_{\text{diff}}
-+ \lambda_3 \mathcal{L}_{\text{time}}
-+ \lambda_4 \mathcal{L}_{\text{mask}}
-+ \boxed{\lambda_5 \mathcal{L}_{\text{VAE-}x}}
-+ \lambda_6 \mathcal{L}_{\text{VAE-}\tau}
+\lambda_m \mathcal{L}_{\text{miss}}
++ \lambda_v \mathcal{L}_\text{vae}
 \]
 \end{itemize}
 
 \vspace{0.2cm}
 
 \begin{itemize}
-  \item \textbf{Neste experimento, o foco é exclusivamente gerador}:
-    \[
-      \lambda_5 = 1,
-      \qquad
-      \lambda_{1,2,3,4,6} = 0
-    \]
-  \item O treinamento é, portanto, \textbf{não supervisionado}, visando aprender:
+  \item O treinamento é \textbf{não supervisionado}, visando aprender:
     \[
       p_\theta(\mathbf{X}) \approx p_{\text{dados}}(\mathbf{X})
     \]
@@ -194,8 +187,16 @@
 \vspace{0.2cm}
 
 \small
+
 \[
-\mathcal{L}_{\text{VAE-}x}
+\mathcal{L}_{\text{miss}} = \mathrm{BCE}(m,\hat{m})
+\quad\text{com}\quad
+\hat{m} = \sigma(f_{\text{miss}}(h))
+\]
+
+
+\[
+\mathcal{L}_{\text{vae}}
 =
 \underbrace{
 \mathbb{E}_{q(z|\mathbf{X})}
@@ -213,6 +214,8 @@
 \vspace{0.2cm}
 
 \begin{itemize}
+   \item BCE entre a máscara verdadeira de observação e a máscara prevista,
+forçando o estado latente a codificar o padrão temporal de missing.
   \item O termo de reconstrução garante fidelidade aos sinais reais.
   \item O termo KL força um espaço latente contínuo e amostrável.
   \item Isso permite \textbf{gerar novas janelas sintéticas} de sensores
@@ -220,6 +223,10 @@
 \end{itemize}
 
 \end{frame}
+
+
+
+
 
 \begin{frame}{Arquiteturas avaliadas}
   \begin{itemize}
@@ -230,22 +237,14 @@
     \item \textbf{TSDF\_LSTM}:
       \begin{itemize}
         \item RNN LSTM unidirecional;
-        \item Versão \textbf{BiLSTM} (\texttt{bi\_lstm=True}).
+        \item Versão \textbf{BiLSTM}.
       \end{itemize}
     \item \textbf{TSDF\_GRU}:
       \begin{itemize}
         \item RNN GRU unidirecional;
-        \item Versão \textbf{BiGRU} (\texttt{bi\_gru=True}).
+        \item Versão \textbf{BiGRU}.
       \end{itemize}
   \end{itemize}
-  \vspace{0.2cm}
-  \noindent \textbf{Hiperparâmetros principais}
-    \begin{itemize}
-      \item \texttt{in\_channels = 11}
-      \item \texttt{hidden\_dim = 11 * 32}
-      \item \texttt{status\_dim = 3}
-      \item Janela: \texttt{window\_size = 10}, \texttt{window\_step = 10}
-    \end{itemize}
   
 \end{frame}
 
@@ -309,27 +308,37 @@
 \end{frame}
 
 \begin{frame}{Arquitetura 2: GRU}
+\begin{itemize}
+  \item Mesma entrada:
+  \[
+    \mathbf{X} = (x_1, \dots, x_L), \quad x_t \in \mathbb{R}^{11}
+  \]
+
+  \item Codificação temporal recorrente:
+  \[
+    \{h_t\}_{t=1}^L = \mathrm{GRU}(\mathbf{X})
+  \]
+
+  \item Representação latente da janela:
+  \[
+    z = h_L \in \mathbb{R}^{H}
+  \]
+
+  \item $z$ representa um resumo contínuo da dinâmica temporal da janela.
+
+  \item Reconstrução:
+  \[
+    \hat{\mathbf{X}} = p_\theta(\mathbf{X} \mid z)
+  \]
+
+  \item Treinamento:
   \begin{itemize}
-    \item Mesma entrada: \(\mathbf{X} = (x_1,\dots,x_L)\), \(x_t \in \mathbb{R}^{11}\).
-    \item Codificação temporal com GRU unidirecional:
-      \[
-        h_t = \mathrm{GRU}(x_t, h_{t-1}), \quad t = 1,\dots,L
-      \]
-    \item Representação latente da janela:
-\[
-  z = h_L \in \mathbb{R}^{H}
-\]
-\item $z$ representa um código latente contínuo da dinâmica temporal.
-    \item Decoder:
-\[
-  \hat{\mathbf{X}} = p_\theta(\mathbf{X}\mid z)
-\]
-    \item Otimização:
-      \begin{itemize}
-        \item Otimizador Adam, com os mesmos hiperparâmetros do baseline Deep (learning rate, batch, etc.).
-      \end{itemize}
+    \item Otimização por Adam, com os mesmos hiperparâmetros do baseline Deep.
   \end{itemize}
+\end{itemize}
 \end{frame}
+
+
 
 \begin{frame}{Arquitetura 3: BiGRU + GRU fuser}
   \begin{itemize}
@@ -391,6 +400,51 @@
 % =======================
 \section{Arquiteturas e Variações}
 
+\begin{frame}{Pipeline principal: Encoder Temporal + VAE Latente}
+\centering
+\scriptsize
+
+\begin{tikzpicture}[x=1cm, y=1cm]
+
+\tikzstyle{box}=[
+  draw, thick, rounded corners=3pt,
+  minimum width=2.0cm, minimum height=0.6cm,
+  align=center, fill=gray!10
+]
+\tikzstyle{latent}=[box, fill=blue!10]
+\tikzstyle{vae}=[box, fill=orange!15]
+\tikzstyle{head}=[box, fill=green!12]
+\tikzstyle{circ}=[draw, thick, circle, minimum size=0.6cm]
+\tikzstyle{arrow}=[->, thick]
+
+% ---- Pipeline principal ----
+\node[box]    (x)     at (0,0)  {Entradas\\$(\mathbf{x},\mathbf{m})_{1:T}$};
+\node[box]    (rnn)   at (2.5,0) {Encoder Temporal\\RNN ou BiRNN};
+\node[latent] (h)     at (5.0,0) {Estado Temporal\\$h$};
+
+\node[vae]    (muvar) at (7.7,0) {VAE Encoder\\$\mu_z,\log\sigma_z^2$};
+\node[circ]   (z)     at (10.0,0) {$z$};
+
+\node[vae]   (dec)   at (12.2,0) {Decoder\\$\mu_x,\log\sigma_x^2$};
+
+% ---- Setas ----
+\draw[arrow] (x) -- (rnn);
+\draw[arrow] (rnn) -- (h);
+\draw[arrow] (h) -- (muvar);
+\draw[arrow] (muvar) -- (z);
+\draw[arrow] (z) -- (dec);
+
+\end{tikzpicture}
+\vspace{0.5cm}
+
+  \begin{itemize}
+   \item Arquitetura base é composta de um encoder temporal uni ou bidirecional seguido de um espaço latente 
+variacional, responsável por capturar incerteza e permitir geração probabilística das séries.
+
+  \end{itemize}
+
+\end{frame}
+
 \begin{frame}{Variações de treinamento - Otimização}
     
 
@@ -399,15 +453,14 @@
       \begin{itemize}
         \item Aumenta gradualmente a taxa de aprendizado no início do treino, 
               evitando instabilidades e melhorando a convergência inicial.
-        \item \texttt{warmup\_steps = 50}, \texttt{min\_lr\_factor = 0.01}
+
       \end{itemize}
 
     \item \textbf{BiLSTM + RAdam}
       \begin{itemize}
         \item Reduz a variância adaptativa do Adam nos primeiros passos, 
               tornando o treinamento mais estável.
-        \item \texttt{optimizer\_name = 'radam'}
-      \end{itemize}
+             \end{itemize}
  
 
      \end{itemize}
@@ -421,28 +474,36 @@
       \begin{itemize}
         \item Regularização explícita no tempo,
               reduzindo overfitting sem quebrar dependências temporais.
-        \item \texttt{variational\_dropout = 0.2}
+        \item Variational\_dropout utilizado: 0.2
       \end{itemize}
 
     \item \textbf{BiLSTM + Difusão (missingness)}
-      \begin{itemize}
-        \item Regularização implícita via objetivos probabilísticos,
-              forçando robustez a dados ausentes.
-        \item \texttt{lam = [0., 0.0, 0.0, 0.05, 0.0, 0.95]}, \texttt{rebuild=True}
-      \end{itemize}
+\begin{itemize}
+  \item Regularização implícita via objetivos probabilísticos,
+        forçando robustez a dados ausentes.
+  \item
+  \(
+  \begin{aligned}
+  \mathcal{L} &=
+  \lambda_m\, \mathcal{L}_{\text{miss}}
+  + \lambda_v\, \mathcal{L}_{\text{vae}}
+  \end{aligned}
+  \)
+\end{itemize}
+
 
        \item \textbf{BiLSTM + LayerNorm}
       \begin{itemize}
         \item Estabiliza as ativações internas,
               com efeito regularizante indireto.
-        \item \texttt{use\_layernorm = True}
+      
       \end{itemize}
 
-    \item \textbf{BiLSTM + AdamW (Weight Decay)}
+    \item \textbf{BiLSTM + AdamW (L2/Weight Decay)}
       \begin{itemize}
         \item Regularização explícita dos pesos,
               melhorando generalização.
-        \item \texttt{optimizer\_name = 'adamw'}, \texttt{weight\_decay = 1e-4}
+        \item  L2/weight\_decay utilizado: 1e-4
       \end{itemize}
 
   \end{itemize}
@@ -458,16 +519,72 @@
 
 \begin{frame}{Configuração Experimental}
   \begin{itemize}
-    \item Divisão treino/validação/teste: 60\% / 20\% / 20\%.
+    \item Divisão treino/teste: 80\% / 20\%.
+    \item A quantidade de neurônios já foi validada anteriormente em outra disciplina
     \item Treinamento por 500 épocas, batch size 256.
     \item Paciênica de 50 épocas para early stopping.
     \item Função de perda multi-tarefa conforme descrito.
+    \item Otimização e Regularização tratadas como diferentes modelos.
     \item Otimizador: Adam (exceto variações).
-    \item Taxa de aprendizado inicial: \(1 \times 10^{-3}\).
-    \item Early stopping baseado em MSE de validação.
+    \item Taxa de aprendizado inicial: \(3 \times 10^{-4}\).
+    \item Early stopping baseado no NELBO do teste.
     \item Avaliação final no conjunto de teste.
   \end{itemize}
 \end{frame}
+
+
+
+
+
+
+\begin{frame}{Arquitetura vencedora — BiLSTM + Difusão Latente (Geração)}
+\centering
+\scriptsize
+
+\begin{tikzpicture}[x=1cm, y=1cm]
+
+\tikzstyle{box}=[
+  draw, thick, rounded corners=3pt,
+  minimum width=2.0cm, minimum height=0.6cm,
+  align=center, fill=gray!10
+]
+\tikzstyle{enc}=[box, fill=blue!10]
+\tikzstyle{diff}=[box, fill=green!12]
+\tikzstyle{vae}=[box, fill=orange!15]
+\tikzstyle{circ}=[draw, thick, circle, minimum size=0.55cm]
+\tikzstyle{arrow}=[->, thick]
+
+% ---- pipeline principal ----
+\node[box]  (x)    at (0,0)   {Entradas\\$(\mathbf{x},\mathbf{m})_{1:T}$};
+\node[box]  (rnn)  at (2.4,0) {Encoder Temporal\\BiLSTM};
+\node[enc]  (h)    at (4.8,0) {Estado Temporal\\$h$};
+
+\node[diff] (diffb)at (7.2,0) {Difusão Latente\\(ruído $\leftrightarrow z$)};
+\node[vae]  (muvar)at (9.7,0) {VAE Encoder\\$\mu_z,\log\sigma_z^2$};
+\node[circ] (z)    at (11.6,0) {$z$};
+
+\node[vae]  (dec)  at (13.6,0) {Decoder\\$\mu_x,\log\sigma_x^2$};
+
+% ---- setas ----
+\draw[arrow] (x)    -- (rnn);
+\draw[arrow] (rnn)  -- (h);
+\draw[arrow] (h)    -- (diffb);
+\draw[arrow] (diffb)-- (muvar);
+\draw[arrow] (muvar)-- (z);
+\draw[arrow] (z)    -- (dec);
+
+\end{tikzpicture}
+\vspace{0.5cm}
+
+  \begin{itemize}
+   \item No modo gerador, a difusão modela a incerteza no espaço latente, aumentando robustez, diversidade e estabilidade estatística das séries reconstruídas.
+  \end{itemize}
+\end{frame}
+
+
+
+
+
 % =======================
 % Seção: Resultados
 % =======================
@@ -480,33 +597,77 @@
   \item Loss probabilística minimizada no treinamento;
   \item Maximiza implicitamente a verossimilhança (ELBO);
   \item Balanceia reconstrução e regularização latente (KL).
+\item
+\(
+\begin{aligned}
+NELBO
+&=
+\mathbb{E}_{q(z\mid x)}
+\!\left[
+- \log p(x \mid z)
+\right]
++
+\mathrm{KL}\!\left(
+q(z\mid x)\,\|\,p(z)
+\right)
+\end{aligned}
+\)
+
+
 \end{itemize}
 
+\item \textbf{NLL} (Negative Log-Likelihood):
+  \begin{itemize}
+    \item Generaliza o MSE ao modelar explicitamente a variância
+          da distribuição predita;
+    \item Penaliza erros grandes \emph{e} variâncias mal calibradas
+          (super ou subestimação de incerteza).
+\item 
+\(
+\begin{aligned}
+\text{NLL}
+&=
+- \log p(x \mid \mu, \sigma^2)
+&=
+\frac{(x-\mu)^2}{2\sigma^2}
++ \frac{1}{2}\log\sigma^2
++ \text{cte}
+\end{aligned}
+\)
 
+
+
+  \end{itemize}
+    \end{itemize}
+\end{frame}
+
+
+  \begin{frame}{Figuras de Mérito utilizadas}
+     \begin{itemize}
     \item \textbf{MSE} (Mean Squared Error):
       \begin{itemize}
          \item Erro médio de reconstrução das séries;
     \item Mede fidelidade gerativa.
       \end{itemize}
 
-    \item \textbf{NLL} (Negative Log-Likelihood):
-      \begin{itemize}
-       \item Qualidade probabilística da geração;
-    \item Penaliza variância mal calibrada.
-      \end{itemize}
-
-    \item \textbf{Cobertura 90\%} (\texttt{cov\_90}):
-      \begin{itemize}
-        \item Mede se os intervalos gerados contêm os valores reais;
-    \item Avalia calibração do gerador.
-      \end{itemize}
-
-    \item \textbf{Largura do intervalo 90\%} (\texttt{width\_90}):
-      \begin{itemize}
-      \item Avalia sharpness do modelo;
-    \item Intervalos estreitos com boa cobertura são desejáveis.
-      \end{itemize}
+  \item \textbf{Cobertura 90\%} (\texttt{cov\_90}):
+  \begin{itemize}
+    \item Mede a fração de amostras reais que caem dentro do
+          intervalo preditivo teórico $[5\%,\,95\%]$;
+    \item Avalia se o desvio padrão estimado produz uma
+          \textbf{calibração probabilística consistente}
+          com a cobertura nominal de 90\%.
   \end{itemize}
+
+\item \textbf{Largura do intervalo 90\%} (\texttt{width\_90}):
+  \begin{itemize}
+    \item Corresponde à largura teórica do intervalo $[5\%,\,95\%]$
+          derivado da distribuição predita;
+    \item Quantifica a \textbf{sharpness} do modelo:
+          intervalos menores indicam maior confiança,
+          desde que a cobertura permaneça bem calibrada.
+  \end{itemize}
+    \end{itemize}
 \end{frame}
 
 \begin{frame}{Resultados quantitativos}
@@ -515,22 +676,92 @@
     \small
 \begin{tabular}{lccccc}
 \toprule
-\textbf{Modelo} & \textbf{NELBO $\downarrow$} & \textbf{MSE $\downarrow$}
- & \textbf{NLL $\downarrow$} & \textbf{Cov90 $\rightarrow$ 0.90} & \textbf{Width90 $\downarrow$} \\
+\textbf{Modelo} 
+& \textbf{NELBO $\downarrow$} 
+& \textbf{NLL $\downarrow$} 
+& \textbf{MSE $\downarrow$}
+& \textbf{Cov90 $\rightarrow$ 0.90} 
+& \textbf{Width90 $\downarrow$} \\
 \midrule
-\textbf{BiLSTM Difusão} & \textbf{0.518} & \textbf{0.243 $\pm$ 0.067} & \textbf{0.462} & \textbf{0.902} & \textbf{2.200} \\
-GRU & 0.558 & 0.300 $\pm$ 0.108 & 0.498 & 0.905 & 2.252 \\
-LSTM & 0.588 & 0.332 $\pm$ 0.129 & 0.513 & 0.900 & 2.251 \\
-BiGRU & 0.589 & 0.335 $\pm$ 0.136 & 0.499 & 0.909 & 2.267 \\
-BiLSTM VarDrop 0.2 & 0.595 & 0.317 $\pm$ 0.119 & 0.506 & 0.898 & 2.240 \\
-BiLSTM RAdam & 0.597 & 0.341 $\pm$ 0.139 & 0.511 & 0.898 & 2.234 \\
-BiLSTM Warmup/Sched. & 0.598 & 0.354 $\pm$ 0.146 & 0.504 & 0.903 & 2.251 \\
-BiLSTM AdamW & 0.601 & 0.341 $\pm$ 0.141 & 0.506 & 0.900 & 2.224 \\
-BiLSTM & 0.609 & 0.337 $\pm$ 0.133 & 0.527 & 0.901 & 2.269 \\
-BiLSTM LayerNorm & 0.617 & 0.342 $\pm$ 0.140 & 0.514 & 0.907 & 2.281 \\
-DEEP & 1.217 & 0.693 $\pm$ 0.209 & 1.164 & 0.916 & 2.785 \\
+\textbf{BiLSTM Difusão} 
+& \textbf{0.518} 
+& \textbf{0.462} 
+& \textbf{0.243 $\pm$ 0.067} 
+& \textbf{0.902} 
+& \textbf{2.200} \\
+
+GRU 
+& 0.558 
+& 0.498 
+& 0.300 $\pm$ 0.108 
+& 0.905 
+& 2.252 \\
+
+LSTM 
+& 0.588 
+& 0.513 
+& 0.332 $\pm$ 0.129 
+& 0.900 
+& 2.251 \\
+
+BiGRU 
+& 0.589 
+& 0.499 
+& 0.335 $\pm$ 0.136 
+& 0.909 
+& 2.267 \\
+
+BiLSTM VarDrop 0.2 
+& 0.595 
+& 0.506 
+& 0.317 $\pm$ 0.119 
+& 0.898 
+& 2.240 \\
+
+BiLSTM RAdam 
+& 0.597 
+& 0.511 
+& 0.341 $\pm$ 0.139 
+& 0.898 
+& 2.234 \\
+
+BiLSTM Warmup/Sched. 
+& 0.598 
+& 0.504 
+& 0.354 $\pm$ 0.146 
+& 0.903 
+& 2.251 \\
+
+BiLSTM AdamW 
+& 0.601 
+& 0.506 
+& 0.341 $\pm$ 0.141 
+& 0.900 
+& 2.224 \\
+
+BiLSTM 
+& 0.609 
+& 0.527 
+& 0.337 $\pm$ 0.133 
+& 0.901 
+& 2.269 \\
+
+BiLSTM LayerNorm 
+& 0.617 
+& 0.514 
+& 0.342 $\pm$ 0.140 
+& 0.907 
+& 2.281 \\
+
+DEEP 
+& 1.217 
+& 1.164 
+& 0.693 $\pm$ 0.209 
+& 0.916 
+& 2.785 \\
 \bottomrule
 \end{tabular}
+
 
   \caption{
 Comparação probabilística entre modelos.
@@ -547,25 +778,63 @@ entre modelos com cobertura adequadamente calibrada.
 
 \begin{frame}{Curva de treinamento — Modelo campeão}
 
-\begin{itemize}
-  \item Evolução do NELBO ao longo das épocas para o modelo
+
+ Evolução do NELBO ao longo das épocas para o modelo
         \textbf{BiLSTM Difusão}.
-  \item Observa-se:
-    \begin{itemize}
-      \item Convergência mais rápida;
-      \item Menor oscilação durante o treinamento;
-      \item Melhor estabilidade em comparação aos modelos sem normalização.
+ \begin{itemize}
+      \item Fase inicial instável, com forte variação do NELBO nas
+            primeiras épocas;
+      \item Convergência progressiva para um patamar de NELBO mais estável
+            após dezenas de épocas;
+      \item A melhor época (133) é definida por \textit{early stopping},
+            privilegiando estabilidade e capacidade de generalização,
+            e não o mínimo pontual da curva.
     \end{itemize}
-\end{itemize}
+
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.65\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/rodrigo/nelbo.png}
+  \includegraphics[width=0.65\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/RodrigoPetrus/nelbo.png}
   \caption{Evolução do NELBO durante o treinamento do modelo
   BiLSTM Difusão.}
 \end{figure}
 
 \end{frame}
+
+\begin{frame}{Geração de séries — Avaliação qualitativa}
+
+\begin{columns}[c]
+
+% -------- Figura --------
+\begin{column}{0.62\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/RodrigoPetrus/distribuicao.png}
+\end{column}
+
+% -------- Texto --------
+\begin{column}{0.38\textwidth}
+\scriptsize
+\textbf{Comparação qualitativa}
+
+\vspace{0.5em}
+
+Séries temporais reais versus séries geradas pelo modelo variacional,
+comparadas a ajustes ponto-a-ponto baseados em MSE.
+
+\vspace{0.5em}
+
+A abordagem probabilística captura melhor:
+\begin{itemize}
+  \item a distribuição marginal dos sinais;
+  \item a variabilidade temporal;
+  \item a incerteza intrínseca dos dados.
+\end{itemize}
+\end{column}
+
+\end{columns}
+
+\end{frame}
+
 
 % =======================
 % Seção: Discussão e Conclusões
@@ -634,6 +903,20 @@ entre modelos com cobertura adequadamente calibrada.
         \item Data augmentation orientada por incerteza.
       \end{itemize}
   \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}{Referências}
+
+\begin{itemize}
+  \item Kingma, D. P.; Welling, M. \textit{Auto-Encoding Variational Bayes}. ICLR, 2014.
+  \item Hochreiter, S.; Schmidhuber, J. \textit{Long Short-Term Memory}. Neural Computation, 1997.
+  \item Cho et al. \textit{Learning Phrase Representations using RNN Encoder–Decoder}. EMNLP, 2014.
+  \item Ho, J.; Jain, A.; Abbeel, P. \textit{Denoising Diffusion Probabilistic Models}. NeurIPS, 2020.
+  \item Che et al. \textit{Recurrent Neural Networks for Multivariate Time Series with Missing Values}. Sci Rep, 2018.
+\end{itemize}
+
 \end{frame}
 
 
