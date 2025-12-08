@@ -67,7 +67,7 @@
    \noindent \textbf{Comparar arquiteturas:}
         \begin{itemize}
           \item Modelos DEEP, LSTM, GRU, BiLSTM e BiGRU com GRU fuser, todos com otimização Adam;
-          \item Variações de treinamento (warmup, scheduler, RAdam, AdamW, variational dropout, difusão, log-likelihood e layernorm).
+          \item Variações de treinamento (warmup, scheduler, RAdam, AdamW, variational dropout, difusão e layernorm).
         \end{itemize}
 
 
@@ -395,14 +395,14 @@
     
 
   \begin{itemize}
-    \item \textbf{BiLSTM (GRU Fuser) + Warmup \& Scheduler}
+    \item \textbf{BiLSTM + Warmup \& Scheduler}
       \begin{itemize}
         \item Aumenta gradualmente a taxa de aprendizado no início do treino, 
               evitando instabilidades e melhorando a convergência inicial.
         \item \texttt{warmup\_steps = 50}, \texttt{min\_lr\_factor = 0.01}
       \end{itemize}
 
-    \item \textbf{BiLSTM (GRU Fuser)+ RAdam}
+    \item \textbf{BiLSTM + RAdam}
       \begin{itemize}
         \item Reduz a variância adaptativa do Adam nos primeiros passos, 
               tornando o treinamento mais estável.
@@ -417,28 +417,28 @@
 \begin{frame}{Variações de treinamento — Regularização}
  \begin{itemize}
 
-    \item \textbf{BiLSTM (GRU Fuser) + Variational Dropout}
+    \item \textbf{BiLSTM + Variational Dropout}
       \begin{itemize}
         \item Regularização explícita no tempo,
               reduzindo overfitting sem quebrar dependências temporais.
         \item \texttt{variational\_dropout = 0.2}
       \end{itemize}
 
-    \item \textbf{BiLSTM (GRU Fuser) + Difusão (missingness)}
+    \item \textbf{BiLSTM + Difusão (missingness)}
       \begin{itemize}
         \item Regularização implícita via objetivos probabilísticos,
               forçando robustez a dados ausentes.
         \item \texttt{lam = [0., 0.0, 0.0, 0.05, 0.0, 0.95]}, \texttt{rebuild=True}
       \end{itemize}
 
-       \item \textbf{BiLSTM (GRU Fuser) + LayerNorm}
+       \item \textbf{BiLSTM + LayerNorm}
       \begin{itemize}
         \item Estabiliza as ativações internas,
               com efeito regularizante indireto.
         \item \texttt{use\_layernorm = True}
       \end{itemize}
 
-    \item \textbf{BiLSTM (GRU Fuser) + AdamW (Weight Decay)}
+    \item \textbf{BiLSTM + AdamW (Weight Decay)}
       \begin{itemize}
         \item Regularização explícita dos pesos,
               melhorando generalização.
@@ -473,15 +473,15 @@
 % =======================
 \section{Resultados}
 
-\begin{frame}{Métricas utilizadas}
+\begin{frame}{Figuras de Mérito utilizadas}
   \begin{itemize}
-    \item \textbf{ELBO} (Evidence Lower Bound):
-      \begin{itemize}
-        \item Função objetivo otimizada no treinamento do modelo gerador;
-    \item Maximiza a verossimilhança das séries observadas;
-    \item Equilibra fidelidade das séries geradas (reconstrução)
-          e regularização do espaço latente (KL).
-      \end{itemize}
+   \item \textbf{NELBO} (Negative Evidence Lower Bound):
+\begin{itemize}
+  \item Loss probabilística minimizada no treinamento;
+  \item Maximiza implicitamente a verossimilhança (ELBO);
+  \item Balanceia reconstrução e regularização latente (KL).
+\end{itemize}
+
 
     \item \textbf{MSE} (Mean Squared Error):
       \begin{itemize}
@@ -515,30 +515,32 @@
     \small
 \begin{tabular}{lccccc}
 \toprule
-\textbf{Modelo} & \textbf{ELBO $\uparrow$} & \textbf{MSE $\downarrow$}
- & \textbf{NLL $\downarrow$} & \textbf{Cov90 $\uparrow$} & \textbf{Width90 $\downarrow$} \\
+\textbf{Modelo} & \textbf{NELBO $\downarrow$} & \textbf{MSE $\downarrow$}
+ & \textbf{NLL $\downarrow$} & \textbf{Cov90 $\rightarrow$ 0.90} & \textbf{Width90 $\downarrow$} \\
 \midrule
-DEEP & 1.217 & 0.693 ± 0.209 & 1.164 & 0.916 & 2.785 \\
-BiLSTM (GRU Fuser) LayerNorm & 0.617 & 0.342 ± 0.140 & 0.514 & 0.907 & 2.281 \\
-BiLSTM & 0.609 & 0.337 ± 0.133 & 0.527 & 0.901 & 2.269 \\
-BiLSTM (GRU Fuser) AdamW & 0.601 & 0.341 ± 0.141 & 0.506 & 0.900 & 2.224 \\
-BiLSTM (GRU Fuser) Warmup/Sched. & 0.598 & 0.354 ± 0.146 & 0.504 & 0.903 & 2.251 \\
-BiLSTM (GRU Fuser) RAdam & 0.597 & 0.341 ± 0.139 & 0.511 & 0.898 & 2.234 \\
-BiLSTM (GRU Fuser) VarDrop 0.2 & 0.595 & 0.317 ± 0.119 & 0.506 & 0.898 & 2.240 \\
-BiGRU & 0.589 & 0.335 ± 0.136 & 0.499 & 0.909 & 2.267 \\
-LSTM & 0.588 & 0.332 ± 0.129 & 0.513 & 0.900 & 2.251 \\
-GRU & 0.558 & 0.300 ± 0.108 & 0.498 & 0.905 & 2.252 \\
-BiLSTM (GRU Fuser) Difusão & 0.518 & 0.243 ± 0.067 & 0.462 & 0.902 & 2.200 \\
+\textbf{BiLSTM Difusão} & \textbf{0.518} & \textbf{0.243 $\pm$ 0.067} & \textbf{0.462} & \textbf{0.902} & \textbf{2.200} \\
+GRU & 0.558 & 0.300 $\pm$ 0.108 & 0.498 & 0.905 & 2.252 \\
+LSTM & 0.588 & 0.332 $\pm$ 0.129 & 0.513 & 0.900 & 2.251 \\
+BiGRU & 0.589 & 0.335 $\pm$ 0.136 & 0.499 & 0.909 & 2.267 \\
+BiLSTM VarDrop 0.2 & 0.595 & 0.317 $\pm$ 0.119 & 0.506 & 0.898 & 2.240 \\
+BiLSTM RAdam & 0.597 & 0.341 $\pm$ 0.139 & 0.511 & 0.898 & 2.234 \\
+BiLSTM Warmup/Sched. & 0.598 & 0.354 $\pm$ 0.146 & 0.504 & 0.903 & 2.251 \\
+BiLSTM AdamW & 0.601 & 0.341 $\pm$ 0.141 & 0.506 & 0.900 & 2.224 \\
+BiLSTM & 0.609 & 0.337 $\pm$ 0.133 & 0.527 & 0.901 & 2.269 \\
+BiLSTM LayerNorm & 0.617 & 0.342 $\pm$ 0.140 & 0.514 & 0.907 & 2.281 \\
+DEEP & 1.217 & 0.693 $\pm$ 0.209 & 1.164 & 0.916 & 2.785 \\
 \bottomrule
 \end{tabular}
-    \caption{Comparação de desempenho entre modelos e variações.}
+
+  \caption{
+Comparação probabilística entre modelos.
+O critério principal de seleção é a minimização do NELBO.
+A métrica Cov90 avalia calibração probabilística, cujo valor ideal é próximo de 0.90.
+A métrica Width90 mede a precisão dos intervalos de previsão e é comparada apenas
+entre modelos com cobertura adequadamente calibrada.
+}
   \end{table}
-  \scriptsize
-Embora o baseline DEEP apresente ELBO elevado,
-isso reflete um problema de reconstrução mais simples,
-sem modelagem explícita da dependência temporal.
-Modelos recorrentes exibem melhor qualidade gerativa,
-com menor erro, melhor calibração e séries mais realistas.
+
 \end{frame}
 
 
@@ -546,8 +548,8 @@ com menor erro, melhor calibração e séries mais realistas.
 \begin{frame}{Curva de treinamento — Modelo campeão}
 
 \begin{itemize}
-  \item Evolução do ELBO ao longo das épocas para o modelo
-        \textbf{BiLSTM (GRU Fuser + LayerNorm)}.
+  \item Evolução do NELBO ao longo das épocas para o modelo
+        \textbf{BiLSTM Difusão}.
   \item Observa-se:
     \begin{itemize}
       \item Convergência mais rápida;
@@ -558,9 +560,9 @@ com menor erro, melhor calibração e séries mais realistas.
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.70\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/rodrigo/elbo.png}
-  \caption{Evolução do ELBO durante o treinamento do modelo
-  BiLSTM (GRU Fuser + LayerNorm).}
+  \includegraphics[width=0.65\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/rodrigo/nelbo.png}
+  \caption{Evolução do NELBO durante o treinamento do modelo
+  BiLSTM Difusão.}
 \end{figure}
 
 \end{frame}
@@ -571,76 +573,69 @@ com menor erro, melhor calibração e séries mais realistas.
 \section{Discussão e Conclusões}
 \begin{frame}{Discussão dos resultados (modo gerador)}
   \begin{itemize}
-    \item \textbf{Qualidade gerativa e ajuste probabilístico}:
+    \item \textbf{Qualidade gerativa}:
       \begin{itemize}
-        \item Modelos variacionais recorrentes superam a arquitetura feedforward (DEEP);
-        \item \textbf{BiLSTM (GRU Fuser + LayerNorm)} apresenta o maior ELBO,
-              indicando melhor equilíbrio entre reconstrução e regularização;
-        \item Redução consistente de MSE e NLL em relação a LSTM/GRU unidirecionais.
+        \item Modelos variacionais recorrentes superam o baseline feedforward;
+        \item \textbf{BiLSTM  Difusão} apresenta o menor NELBO;
+        \item Redução consistente de NLL e MSE frente a LSTM/GRU unidirecionais.
       \end{itemize}
 
-    \item \textbf{Trade-off sharpness vs. calibração}:
+    \item \textbf{Calibração vs. sharpness}:
       \begin{itemize}
-        \item Modelos com difusão e regularização variacional geram
-              intervalos preditivos mais estreitos (menor width\_90);
-        \item Cobertura próxima ao alvo de 90\% indica boa calibração probabilística;
-        \item O modelo com difusão apresenta o menor MSE,
-              ao custo de um ELBO inferior ao modelo campeão.
+        \item Difusão gera intervalos mais estreitos (menor \textit{width\_90});
+        \item Cobertura próxima ao alvo de 90\%;
+        \item Trade-off equilibrado entre precisão e incerteza.
       \end{itemize}
 
     \item \textbf{Impacto arquitetural}:
       \begin{itemize}
-        \item Bidirecionalidade melhora a qualidade das representações latentes;
-        \item O \textit{GRU fuser} permite capturar dependências entre janelas consecutivas;
-        \item A profundidade temporal é fundamental para geração realista de séries longas.
+        \item Bidirecionalidade melhora as representações latentes;
+        \item \textit{GRU fuser} aumenta coerência entre janelas;
+        \item Maior profundidade temporal favorece geração estável.
       \end{itemize}
 
-    \item \textbf{Impacto do treinamento e regularização}:
+    \item \textbf{Treinamento e regularização}:
       \begin{itemize}
-        \item LayerNorm promove convergência mais estável e maior ELBO;
-        \item Variational dropout e difusão atuam como regularizadores probabilísticos;
-        \item AdamW e RAdam mostram ganhos marginais, dependentes do regime de treino.
+        \item Difusão atua como principal regularizador probabilístico;
+        \item Dropout e LayerNorm trazem ganhos secundários;
+        \item Otimizadores afetam marginalmente o desempenho.
       \end{itemize}
   \end{itemize}
 \end{frame}
+
+
 
 \begin{frame}{Conclusões (modo gerador)}
   \begin{itemize}
-    \item O framework \textbf{TSDF} mostrou-se um modelo gerador eficaz
-          para séries temporais multivariadas industriais,
-          aprendendo distribuições realistas a partir de dados reais.
+    \item O framework \textbf{TSDF} é eficaz como modelo gerador
+          probabilístico para séries temporais industriais.
 
-    \item Arquiteturas recorrentes superam o baseline feedforward:
+    \item Modelos recorrentes superam o baseline feedforward:
       \begin{itemize}
-        \item Modelos bidirecionais (BiLSTM / BiGRU) aprendem representações latentes
-              mais ricas e consistentes;
-        \item A fusão temporal entre janelas (GRU fuser) melhora a coerência
-              de longo prazo das séries geradas.
+        \item Arquiteturas bidirecionais aprendem latentes mais ricos;
+        \item Fusão temporal melhora coerência de longo prazo.
       \end{itemize}
 
-    \item A regularização probabilística é um fator chave:
+    \item \textbf{Difusão é decisiva}:
       \begin{itemize}
-        \item Difusão, variational dropout e LayerNorm
-              aumentam estabilidade, calibração e qualidade gerativa;
-        \item O modelo \textbf{BiLSTM (GRU Fuser + LayerNorm)}
-              apresentou o melhor equilíbrio entre ajuste probabilístico e estabilidade.
+        \item \textbf{BiLSTM Difusão} é o modelo campeão;
+        \item Menor NELBO, NLL e MSE, com calibração adequada.
       \end{itemize}
 
-    \item O modelo gerador permite:
+    \item O modelo permite:
       \begin{itemize}
-        \item Geração de séries sintéticas \textbf{realistas e calibradas};
-        \item Simulação de regimes operacionais raros ou críticos;
-        \item Suporte ao desenvolvimento e validação de algoritmos de monitoramento.
+        \item Geração de séries realistas e calibradas;
+        \item Simulação de cenários raros ou críticos.
       \end{itemize}
 
-    \item Este trabalho abre caminho para aplicações avançadas:
+    \item Aplicações futuras:
       \begin{itemize}
-        \item Integração com gêmeos digitais industriais;
-        \item Data augmentation para cenários de falha e degradação;
-        \item Estudos de confiabilidade, robustez e prognóstico.
+        \item Gêmeos digitais industriais;
+        \item Data augmentation orientada por incerteza.
       \end{itemize}
   \end{itemize}
 \end{frame}
+
 
 
 

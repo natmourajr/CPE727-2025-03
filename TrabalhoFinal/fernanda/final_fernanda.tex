@@ -375,14 +375,14 @@
     
 
   \begin{itemize}
-    \item \textbf{BiLSTM (GRU Fuser) + Warmup \& Scheduler}
+    \item \textbf{BiLSTM  + Warmup \& Scheduler}
       \begin{itemize}
         \item Aumenta gradualmente a taxa de aprendizado no início do treino, 
               evitando instabilidades e melhorando a convergência inicial.
         \item \texttt{warmup\_steps = 50}, \texttt{min\_lr\_factor = 0.01}
       \end{itemize}
 
-    \item \textbf{BiLSTM (GRU Fuser)+ RAdam}
+    \item \textbf{BiLSTM + RAdam}
       \begin{itemize}
         \item Reduz a variância adaptativa do Adam nos primeiros passos, 
               tornando o treinamento mais estável.
@@ -397,14 +397,14 @@
 \begin{frame}{Variações de treinamento — Regularização}
  \begin{itemize}
 
-    \item \textbf{BiLSTM (GRU Fuser) + Variational Dropout}
+    \item \textbf{BiLSTM + Variational Dropout}
       \begin{itemize}
         \item Regularização explícita no tempo,
               reduzindo overfitting sem quebrar dependências temporais.
         \item \texttt{variational\_dropout = 0.2}
       \end{itemize}
 
-    \item \textbf{BiLSTM (GRU Fuser) + Difusão (missingness)}
+    \item \textbf{BiLSTM + Difusão (missingness)}
       \begin{itemize}
         \item Regularização implícita via objetivos probabilísticos,
               forçando robustez a dados ausentes.
@@ -412,14 +412,14 @@
       \end{itemize}
 
   
-    \item \textbf{BiLSTM (GRU Fuser) + LayerNorm}
+    \item \textbf{BiLSTM + LayerNorm}
       \begin{itemize}
         \item Estabiliza as ativações internas,
               com efeito regularizante indireto.
         \item \texttt{use\_layernorm = True}
       \end{itemize}
 
-    \item \textbf{BiLSTM (GRU Fuser) + AdamW (Weight Decay)}
+    \item \textbf{BiLSTM + AdamW (Weight Decay)}
       \begin{itemize}
         \item Regularização explícita dos pesos,
               melhorando generalização.
@@ -454,13 +454,15 @@
 % =======================
 \section{Resultados}
 
-\begin{frame}{Métricas utilizadas}
+
+\begin{frame}{Figuras de Mérito utilizadas}
   \begin{itemize}
-    \item \textbf{ELBO} (Evidence Lower Bound):
-      \begin{itemize}
-        \item Função objetivo usada no treinamento de modelos variacionais;
-        \item Equilibra qualidade de reconstrução e regularização via divergência KL.
-      \end{itemize}
+   \item \textbf{NELBO} (Negative Evidence Lower Bound):
+\begin{itemize}
+  \item Loss probabilística minimizada no treinamento;
+  \item Maximiza implicitamente a verossimilhança (ELBO);
+  \item Balanceia reconstrução e regularização latente (KL).
+\end{itemize}
 
     \item \textbf{MSE} (Mean Squared Error):
       \begin{itemize}
@@ -495,83 +497,102 @@
     \small
 \begin{tabular}{lccccc}
 \toprule
-Modelo & ELBO $\uparrow$ & MSE $\downarrow$ & NLL $\downarrow$ & Cov90 $\uparrow$ & Width90 $\downarrow$ \\
+\textbf{Modelo} & \textbf{NELBO $\downarrow$} & \textbf{MSE (micro) $\downarrow$} 
+& \textbf{NLL $\downarrow$} & \textbf{Cov90 $\rightarrow$ 0.90} & \textbf{Width90 $\downarrow$} \\
 \midrule
-DEEP & 1.217 & 0.693 ± 0.209 & 1.164 & 0.916 & 2.785 \\
-BiLSTM (GRU Fuser) LayerNorm & 0.617 & 0.342 ± 0.140 & 0.514 & 0.907 & 2.281 \\
-BiLSTM & 0.609 & 0.337 ± 0.133 & 0.527 & 0.901 & 2.269 \\
-BiLSTM (GRU Fuser) AdamW & 0.601 & 0.341 ± 0.141 & 0.506 & 0.900 & 2.224 \\
-BiLSTM (GRU Fuser) Warmup/Sched. & 0.598 & 0.354 ± 0.146 & 0.504 & 0.903 & 2.251 \\
-BiLSTM (GRU Fuser) RAdam & 0.597 & 0.341 ± 0.139 & 0.511 & 0.898 & 2.234 \\
-BiLSTM (GRU Fuser) VarDrop 0.2 & 0.595 & 0.317 ± 0.119 & 0.506 & 0.898 & 2.240 \\
-BiGRU & 0.589 & 0.335 ± 0.136 & 0.499 & 0.909 & 2.267 \\
-LSTM & 0.588 & 0.332 ± 0.129 & 0.513 & 0.900 & 2.251 \\
-GRU & 0.558 & 0.300 ± 0.108 & 0.498 & 0.905 & 2.252 \\
-BiLSTM (GRU Fuser) Difusão & 0.518 & 0.243 ± 0.067 & 0.462 & 0.902 & 2.200 \\
+BiLSTM RAdam & \textbf{0.023} & 0.002 $\pm$ 0.000 & 0.023 & 0.946 & 0.270 \\
+BiLSTM Warmup/Sched. & 0.033 & 0.002 $\pm$ 0.000 & 0.033 & 0.946 & 0.270 \\
+LSTM & 0.064 & 0.002 $\pm$ 0.000 & 0.063 & 0.937 & 0.270 \\
+BiLSTM & 0.150 & 0.002 $\pm$ 0.000 & 0.150 & 0.920 & 0.270 \\
+BiGRU & 0.203 & 0.001 $\pm$ 0.000 & 0.202 & 0.875 & 0.270 \\
+BiLSTM AdamW & 0.230 & 0.001 $\pm$ 0.001 & 0.229 & 0.866 & 0.270 \\
+BiLSTM Difusão & 0.329 & 0.002 $\pm$ 0.001 & 0.328 & 0.839 & 0.270 \\
+BiLSTM LayerNorm & 0.383 & 0.054 $\pm$ 0.001 & 0.332 & 0.839 & 0.270 \\
+GRU & 0.464 & 0.003 $\pm$ 0.001 & 0.463 & 0.812 & 0.270 \\
+BiLSTM VarDrop 0.2 & 0.992 & 0.002 $\pm$ 0.001 & 0.991 & 0.705 & 0.270 \\
+DEEP & 8016.760 & 0.819 $\pm$ 0.011 & 33.711 & 0.250 & 0.270 \\
 \bottomrule
 \end{tabular}
-    \caption{Comparação de desempenho entre modelos e variações.}
+
+    \caption{Comparação de desempenho entre modelos e variações. }
   \end{table}
 \end{frame}
 
-\begin{frame}{Curva de treinamento — Modelo campeão}
+\begin{frame}{Curva de treinamento — Modelo \textbf{BiLSTM RAdam}}
 \begin{itemize}
-  \item Evolução do ELBO ao longo das épocas para o modelo
-        \textbf{BiLSTM (GRU Fuser + LayerNorm)}.
-  \item Observa-se:
-    \begin{itemize}
-      \item Convergência mais rápida;
-      \item Menor oscilação durante o treinamento;
-      \item Melhor estabilidade em comparação aos modelos sem normalização.
-    \end{itemize}
+      \item Curva de NELBO bastante oscilatória, refletindo o
+              desbalanceamento entre grupos e a raridade de mudanças de estado;
+        \item Após as primeiras dezenas de épocas, o modelo passa a operar
+              em um patamar de NELBO baixo, com mínimos recorrentes;
+        \item A melhor época (\textbf{epoch 54}) atinge o menor NELBO entre as
+              épocas avaliadas, sendo o melhor compromisso entre ajuste e
+              complexidade para a tarefa de mudança de estado.   
 \end{itemize}
 
   \centering
-  \includegraphics[width=0.8\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/rodrigo/elbo.png}
-  \caption{Evolução do ELBO durante o treinamento do modelo
-  BiLSTM (GRU Fuser + LayerNorm).}
+  \begin{figure}
+  \includegraphics[width=0.70\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/fernanda/nelbo.png}
+  \caption{Evolução do NELBO durante o treinamento do modelo
+  BiLSTM RAdam.}
+  \end{figure}
 \end{frame}
 % =======================
 % Seção: Discussão e Conclusões
 % =======================
 \section{Discussão e Conclusões}
 
-\begin{frame}{Discussão dos resultados}
+\begin{frame}{Discussão dos resultados — Mudança de estado}
   \begin{itemize}
-    \item Comparar quais modelos:
+    \item \textbf{Qualidade probabilística}:
       \begin{itemize}
-        \item Obtiveram menor MSE e NLL;
-        \item Mantiveram boa cobertura com intervalos estreitos (trade-off).
+        \item O \textbf{BiLSTM RAdam} apresenta o menor NELBO,
+              indicando melhor ajuste probabilístico global;
+        \item Bons valores de NLL e MSE micro confirmam alta precisão
+              na predição de mudanças de estado raras.
       \end{itemize}
-    \item Avaliar impacto de:
+
+    \item \textbf{Calibração das incertezas}:
       \begin{itemize}
-        \item Bidirecionalidade (BiLSTM/BiGRU);
-        \item Warmup + scheduler;
-        \item Otimizadores (Adam vs. RAdam vs. AdamW);
-        \item Variational dropout e difusão para missingness;
-        \item LayerNorm.
+        \item Cobertura próxima de 0.90 nos melhores modelos
+              indica boa calibração probabilística;
+        \item Width90 constante sugere intervalos estáveis e comparáveis
+              entre arquiteturas.
       \end{itemize}
-    \item Conectar com a operação:
+
+    \item \textbf{Impacto arquitetural}:
       \begin{itemize}
-        \item O modelo é suficientemente responsivo antes de mudanças de estado?
+        \item Modelos bidirecionais superam LSTM/GRU unidirecionais;
+      \item Em cenários fortemente desbalanceados, o principal desafio é a
+      \textbf{otimização sob gradientes raros}, e não o overfitting;
+\item Otimizadores adaptativos (RAdam, warmup) estabilizam o treinamento
+      e facilitam a captura de eventos de mudança raros, enquanto
+      regularização excessiva tende a diluir esses sinais.
+
       \end{itemize}
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Conclusões}
+\begin{frame}{Conclusões — Mudança de estado}
   \begin{itemize}
-    \item Implementação de um pipeline completo:
+    \item A predição de mudanças de estado é um problema
+          fortemente desbalanceado e sensível à calibração probabilística.
+
+    \item Arquiteturas recorrentes probabilísticas são essenciais:
       \begin{itemize}
-        \item DataLoader, segmentação em estados, criação de janelas e labels.
+        \item Capturam dependências temporais longas;
+        \item Modelam explicitamente incertezas associadas ao evento de transição.
       \end{itemize}
-    \item RNNs (especialmente BiLSTM/BiGRU) capturam bem a dinâmica do compressor.
-    \item Técnicas de regularização e otimização (dropout, difusão, AdamW) influenciam precisão e calibração.
-    \item Abre caminho para:
-    \item 
+
+    \item O \textbf{BiLSTM RAdam} é o modelo mais adequado:
       \begin{itemize}
-        \item Integração com gêmeo digital;
-        \item Alarmes mais inteligentes de mudança de regime;
-        \item Estudos de degradação e manutenção preditiva.
+        \item Menor NELBO entre os modelos avaliados;
+        \item Boa calibração (Cov90 $\approx$ 0.95) e baixo erro micro.
+      \end{itemize}
+
+    \item Esses resultados indicam potencial para:
+      \begin{itemize}
+        \item Detecção antecipada de mudanças de regime;
+        \item Suporte a sistemas de monitoramento e alerta industrial.
       \end{itemize}
   \end{itemize}
 \end{frame}

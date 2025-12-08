@@ -4,7 +4,7 @@ from pathlib import Path
 
 # --- Caminho do JSON do modelo campeão ---
 json_path = Path(
-    "/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/final_rebuild_bilstm_layernorm.json"
+    "/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/final_rebuild_bilstm_diffusion.json"
 )
 
 # --- Carregar dados ---
@@ -30,7 +30,7 @@ plt.axvline(
 
 plt.xlabel("Época")
 plt.ylabel("ELBO (validação)")
-plt.title("Evolução do ELBO — BiLSTM (GRU Fuser + LayerNorm)")
+plt.title("Evolução do NELBO — BiLSTM Difusão")
 plt.grid(alpha=0.3)
 plt.legend()
 plt.tight_layout()
