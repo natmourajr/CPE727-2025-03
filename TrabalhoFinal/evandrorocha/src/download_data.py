@@ -14,28 +14,84 @@ SHENZHEN_URL = "https://lhncbc.nlm.nih.gov/LHC-downloads/downloads.html#tubercul
 # Mantenha as instruções manuais como alternativa
 DATASET_ZIP_URL = "https://openi.nlm.nih.gov/imgs/collections/ChinaSet_AllFiles.zip"
 
-def download_file(url, destination):
+def download_file(url, destination, resume=True):
     """
-    Download de arquivo com barra de progresso
+    Download de arquivo com barra de progresso e suporte a resumo
+    
+    Args:
+        url: URL do arquivo
+        destination: Path de destino
+        resume: Se True, tenta continuar download parcial
     """
+    destination = Path(destination)
+    temp_file = destination.with_suffix(destination.suffix + '.part')
+    
+    # Verificar se há download parcial
+    downloaded_size = 0
+    if resume and temp_file.exists():
+        downloaded_size = temp_file.stat().st_size
+        print(f"📦 Download parcial encontrado: {downloaded_size / (1024*1024):.1f} MB")
+        print("🔄 Retomando download...")
+    
+    headers = {}
+    if downloaded_size > 0:
+        headers['Range'] = f'bytes={downloaded_size}-'
+    
     try:
-        response = requests.get(url, stream=True, timeout=30)
-        response.raise_for_status()
-        total_size = int(response.headers.get('content-length', 0))
+        response = requests.get(url, stream=True, timeout=30, headers=headers)
         
-        with open(destination, 'wb') as file, tqdm(
+        # Verificar se servidor suporta range requests
+        if downloaded_size > 0 and response.status_code not in [206, 200]:
+            print("⚠️  Servidor não suporta resumo, baixando do início...")
+            downloaded_size = 0
+            headers = {}
+            response = requests.get(url, stream=True, timeout=30, headers=headers)
+        
+        response.raise_for_status()
+        
+        # Tamanho total do arquivo
+        if 'content-length' in response.headers:
+            total_size = int(response.headers.get('content-length'))
+            if response.status_code == 206:  # Partial content
+                total_size = total_size + downloaded_size
+        else:
+            total_size = downloaded_size
+        
+        # Modo de abertura do arquivo
+        mode = 'ab' if downloaded_size > 0 else 'wb'
+        
+        with open(temp_file, mode) as file, tqdm(
             desc=destination.name,
             total=total_size,
+            initial=downloaded_size,
             unit='iB',
             unit_scale=True,
             unit_divisor=1024,
         ) as progress_bar:
-            for data in response.iter_content(chunk_size=1024):
+            for data in response.iter_content(chunk_size=8192):
                 size = file.write(data)
                 progress_bar.update(size)
+        
+        # Mover arquivo completo para destino final
+        temp_file.rename(destination)
+        
+        print("✅ Download concluído com sucesso!")
         return True
-    except Exception as e:
+        
+    except requests.exceptions.RequestException as e:
         print(f"❌ Erro no download: {str(e)}")
+        if temp_file.exists():
+            print(f"💾 Download parcial salvo em: {temp_file}")
+            print("🔄 Execute novamente para retomar o download")
+        return False
+    except KeyboardInterrupt:
+        print(f"\n⚠️  Download interrompido pelo usuário")
+        if temp_file.exists():
+            print(f"💾 Download parcial salvo em: {temp_file}")
+            print("🔄 Execute novamente para retomar o download")
+        return False
+    except Exception as e:
+        print(f"❌ Erro inesperado: {str(e)}")
         return False
 
 def download_shenzhen_dataset(output_dir='./data'):
@@ -52,15 +108,28 @@ def download_shenzhen_dataset(output_dir='./data'):
     
     # Arquivo zip temporário
     zip_path = output_path / "shenzhen_dataset.zip"
+    zip_part = output_path / "shenzhen_dataset.zip.part"
     
-    print("\n📥 Tentando baixar dataset automaticamente...")
-    print(f"URL: {DATASET_ZIP_URL}")
-    print(f"Destino: {zip_path}")
-    print("\n⚠️  Nota: O download automático pode falhar devido a restrições do site NIH.")
-    print("Se falhar, siga as instruções de download manual abaixo.\n")
-    
-    # Tentar download automático
-    success = download_file(DATASET_ZIP_URL, zip_path)
+    # Verificar se já existe download completo
+    if zip_path.exists():
+        print(f"\n✅ Arquivo já existe: {zip_path}")
+        print("📦 Pulando download e indo direto para extração...")
+        success = True
+    else:
+        print("\n📥 Tentando baixar dataset automaticamente...")
+        print(f"URL: {DATASET_ZIP_URL}")
+        print(f"Destino: {zip_path}")
+        
+        if zip_part.exists():
+            part_size = zip_part.stat().st_size
+            print(f"\n🔄 Download parcial encontrado: {part_size / (1024*1024):.1f} MB")
+            print("Tentando retomar download...\n")
+        else:
+            print("\n⚠️  Nota: O download automático pode falhar devido a restrições do site NIH.")
+            print("Se falhar, siga as instruções de download manual abaixo.\n")
+        
+        # Tentar download automático com suporte a resumo
+        success = download_file(DATASET_ZIP_URL, zip_path, resume=True)
     
     if not success or not zip_path.exists():
         print("\n" + "=" * 70)
@@ -323,8 +392,44 @@ Exemplos de uso:
         type=str,
         help='Diretório fonte para organização (usar com --organize-only)'
     )
+    parser.add_argument(
+        '--clean',
+        action='store_true',
+        help='Limpar downloads parciais e recomeçar do zero'
+    )
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Forçar re-download mesmo se arquivo já existir'
+    )
     
     args = parser.parse_args()
+    
+    # Limpar downloads parciais se solicitado
+    if args.clean:
+        output_path = Path(args.output_dir)
+        zip_path = output_path / "shenzhen_dataset.zip"
+        zip_part = output_path / "shenzhen_dataset.zip.part"
+        
+        print("🧹 Limpando downloads parciais...")
+        
+        if zip_part.exists():
+            zip_part.unlink()
+            print(f"✅ Removido: {zip_part}")
+        
+        if args.force and zip_path.exists():
+            zip_path.unlink()
+            print(f"✅ Removido: {zip_path}")
+        
+        if not zip_part.exists() and not (args.force and zip_path.exists()):
+            print("ℹ️  Nenhum arquivo para limpar")
+        
+        print("✨ Limpeza concluída!")
+        
+        # Se apenas limpar, sair
+        if not args.verify_only and not args.organize_only:
+            print("\n💡 Execute novamente sem --clean para baixar o dataset")
+            exit(0)
     
     if args.verify_only:
         verify_dataset(f"{args.output_dir}/shenzhen")
