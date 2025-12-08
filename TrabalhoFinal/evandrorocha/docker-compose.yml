@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Serviço para Mac M1/M2/M3 (Apple Silicon - ARM64)
+  # Serviço para Mac M1/M2/M3/... (Apple Silicon - ARM64)
   tuberculosis-detection-m1:
     build:
       context: .

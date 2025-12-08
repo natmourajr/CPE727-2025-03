@@ -11,27 +11,24 @@ WORKDIR /workspace
 # Variáveis de ambiente
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    TZ=America/Sao_Paulo
 
-# Instalar dependências do sistema em etapas separadas
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata \
     build-essential \
     wget \
-    git && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Instalar dependências para OpenCV
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    git \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
-    libgomp1 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    libgomp1 \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Atualizar pip
 RUN pip install --upgrade pip setuptools wheel

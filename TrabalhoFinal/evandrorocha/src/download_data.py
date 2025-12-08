@@ -248,24 +248,29 @@ def organize_from_metadata(image_dir, target_dir, metadata_file):
         # Procurar padrões como "normal", "abnormal", "tuberculosis"
         for img_file in image_dir.glob("*.png"):
             filename = img_file.name
+            filename_lower = filename.lower()
             
-            # Verificar se o arquivo está mencionado nos metadados
-            if filename in content:
-                # Extrair a linha relevante
-                for line in content.split('\n'):
-                    if filename in line:
-                        line_lower = line.lower()
-                        if 'normal' in line_lower and 'abnormal' not in line_lower:
-                            shutil.copy2(img_file, normal_dir / filename)
-                        else:
-                            # Assume tuberculose se não for normal
-                            shutil.copy2(img_file, tb_dir / filename)
-                        break
+            # CORREÇÃO: Usar padrão do nome do arquivo como método primário
+            # CHNCXR_xxxx_0.png = normal, CHNCXR_xxxx_1.png = TB
+            if filename_lower.endswith('_0.png') or 'normal' in filename_lower:
+                shutil.copy2(img_file, normal_dir / filename)
+            elif filename_lower.endswith('_1.png'):
+                shutil.copy2(img_file, tb_dir / filename)
             else:
-                # Se não encontrado nos metadados, usar nome do arquivo
-                if 'normal' in filename.lower():
-                    shutil.copy2(img_file, normal_dir / filename)
+                # Apenas se não houver padrão claro, usar metadados
+                if filename in content:
+                    # Extrair a linha relevante
+                    for line in content.split('\n'):
+                        if filename in line:
+                            line_lower = line.lower()
+                            if 'normal' in line_lower and 'abnormal' not in line_lower:
+                                shutil.copy2(img_file, normal_dir / filename)
+                            else:
+                                # Assume tuberculose se não for normal
+                                shutil.copy2(img_file, tb_dir / filename)
+                            break
                 else:
+                    # Se não encontrado nos metadados e sem padrão, assume TB
                     shutil.copy2(img_file, tb_dir / filename)
                     
     except Exception as e:

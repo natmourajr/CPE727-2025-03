@@ -192,18 +192,6 @@ docker-compose exec tuberculosis-detection-m1 \
 
 ---
 
-## 📈 Performance Esperada
-
-| Sistema | Profile | Batch Size | Tempo/Época |
-|---------|---------|------------|-------------|
-| Mac M1 | `m1` | 8 | ~10-12 min |
-| Mac M2 | `m1` | 8 | ~8-10 min |
-| Mac Intel | `cpu` | 8 | ~18-20 min |
-| RTX 3060 | `gpu` | 16 | ~4-5 min |
-| RTX 3080 | `gpu` | 32 | ~2-3 min |
-| A100 | `gpu` | 64 | ~1-2 min |
-
----
 
 ## 🐛 Troubleshooting
 

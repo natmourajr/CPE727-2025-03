@@ -98,16 +98,33 @@ class ShenzhenTBDataset(Dataset):
         img_path = self.image_paths[idx]
         label = self.labels[idx]
         
-        # Carregar imagem
-        image = Image.open(img_path).convert('RGB')
-        image = np.array(image)
-        
-        # Aplicar transformações
-        if self.transform:
-            transformed = self.transform(image=image)
-            image = transformed['image']
-        
-        return image, label
+        try:
+            # Carregar imagem
+            image = Image.open(img_path).convert('RGB')
+            image = np.array(image)
+            
+            # Aplicar transformações
+            if self.transform:
+                transformed = self.transform(image=image)
+                image = transformed['image']
+            
+            return image, label
+            
+        except (OSError, Exception) as e:
+            # Se a imagem estiver corrompida, retornar uma imagem preta
+            print(f"Warning: Erro ao carregar {img_path}: {e}")
+            print(f"Retornando imagem placeholder para índice {idx}")
+            
+            # Criar imagem preta como placeholder
+            black_image = np.zeros((self.image_size[0], self.image_size[1], 3), dtype=np.uint8)
+            
+            if self.transform:
+                transformed = self.transform(image=black_image)
+                image = transformed['image']
+            else:
+                image = torch.from_numpy(black_image).permute(2, 0, 1).float() / 255.0
+            
+            return image, label
     
     def get_class_distribution(self) -> dict:
         """Retorna a distribuição das classes"""

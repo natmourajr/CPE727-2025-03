@@ -56,8 +56,7 @@ class Trainer:
             self.optimizer,
             mode='max',
             factor=0.5,
-            patience=5,
-            verbose=True
+            patience=5
         )
         
         # TensorBoard
