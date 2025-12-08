@@ -1,3 +1,5 @@
+## MARINA
+The MARINA project is a collaborative initiative between Petrobras and LEAD aimed at improving microfossil selection.
 ## 🌱 What is the microfossil detection problem?
 
 Microfossils—tiny remains of ancient organisms—are essential for:
@@ -90,33 +92,30 @@ project/
 
 ## Usefull commands
 
-## 
-
 ## Generate dataset
 ```bash
 docker compose run marina python dataset.py --config configs/full_cross_validation
 ```
-## Run Cross Validation
+### Run Cross Validation
 ```bash
 docker compose run marina python dataset.py --config configs/dataset.yaml
 ```
 
-## Train RetinaNet
+### Train RetinaNet
 ```bash
 docker compose run marina python train.py --config configs/training/retinanet.yaml
 ```
 
-## Train Faster R-CNN
+### Train Faster R-CNN
 ```bash
 docker compose run marina python train.py --config configs/training/frcnn.yaml
 ```
 
 
-## Train SSD Lite
+### Train SSD Lite
 ```bash
 docker compose run marina python train.py --config configs/training/ssdlite.yaml
 ```
-docker compose run marina python train.py --config configs/training/retinanet.yaml
 
 ## The result will be save at:
 
