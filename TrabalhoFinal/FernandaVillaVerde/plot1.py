@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 json_path = Path(
-    "/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/final_state_bilstm_radam.json"
+    "/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/final_state_lstm_radam.json"
 )
 
 with open(json_path, "r") as f:
@@ -20,7 +20,7 @@ elbo = np.array([row["micro_elbo_vt"] for row in data])
 nelbo = np.abs(elbo)
 
 # Early stopping correto
-best_epoch = 54
+best_epoch = 126
 best_nelbo = nelbo[best_epoch - 1]
 
 plt.figure(figsize=(8, 4))
@@ -41,7 +41,7 @@ plt.scatter(
 
 plt.xlabel("Época")
 plt.ylabel("NELBO (teste)")
-plt.title("Evolução do NELBO — BiLSTM RAdam (mudança de estado)")
+plt.title("Evolução do NELBO — LSTM RAdam (mudança de estado)")
 plt.grid(alpha=0.3)
 plt.legend()
 plt.tight_layout()
