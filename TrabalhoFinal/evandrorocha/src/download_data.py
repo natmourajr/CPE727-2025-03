@@ -15,7 +15,7 @@ SHENZHEN_URL = "https://lhncbc.nlm.nih.gov/LHC-downloads/downloads.html#tubercul
 DATASET_SOURCES = [
     {
         'name': 'Google Drive (Rápido)',
-        'url': 'https://drive.google.com/uc?export=download&id=1vxPcD1HKrX3HMP2NbJiPmact2YBdwovm',
+        'url': 'https://drive.google.com/uc?export=download&id=1vxPcD1HKrX3HMP2NbJiPmact2YBdwovm&confirm=t',
         'type': 'gdrive'
     },
     {
