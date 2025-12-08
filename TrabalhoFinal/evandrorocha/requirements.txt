@@ -26,6 +26,7 @@ ipywidgets>=8.0.0
 
 # Processamento de Imagens
 Pillow>=10.0.0
+scikit-image>=0.20.0
 
 # Utilities
 requests>=2.31.0

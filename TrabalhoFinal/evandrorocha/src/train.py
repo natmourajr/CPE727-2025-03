@@ -2,6 +2,7 @@
 Script de treinamento para modelos de detecção de tuberculose
 """
 import os
+import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -23,6 +24,7 @@ class Trainer:
     def __init__(
         self,
         model: nn.Module,
+        model_name: str = 'model',
         device: str = 'cuda',
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-5,
@@ -31,12 +33,14 @@ class Trainer:
         """
         Args:
             model: Modelo PyTorch
+            model_name: Nome do modelo (para salvar arquivos)
             device: Dispositivo para treinamento ('cuda' ou 'cpu')
             learning_rate: Taxa de aprendizado
             weight_decay: Regularização L2
             save_dir: Diretório para salvar modelos
         """
         self.model = model.to(device)
+        self.model_name = model_name
         self.device = device
         self.save_dir = save_dir
         
@@ -223,6 +227,7 @@ class Trainer:
         """Salva checkpoint do modelo"""
         checkpoint = {
             'epoch': epoch,
+            'model_name': self.model_name,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'metrics': metrics,
@@ -230,35 +235,53 @@ class Trainer:
         }
         
         if is_best:
-            path = os.path.join(self.save_dir, 'best_model.pth')
+            path = os.path.join(self.save_dir, f'{self.model_name}_best.pth')
         else:
-            path = os.path.join(self.save_dir, f'checkpoint_epoch_{epoch}.pth')
+            path = os.path.join(self.save_dir, f'{self.model_name}_epoch_{epoch}.pth')
         
         torch.save(checkpoint, path)
+        print(f'Modelo salvo em: {path}')
 
 
 def main():
     """Função principal para treinar o modelo"""
     
-    # Configurações
-    DATA_DIR = './data/shenzhen'
-    BATCH_SIZE = 16
-    IMAGE_SIZE = (224, 224)
-    NUM_EPOCHS = 50
-    LEARNING_RATE = 1e-4
-    MODEL_NAME = 'resnet50'
+    # Parser de argumentos
+    parser = argparse.ArgumentParser(description='Treinar modelo de detecção de tuberculose')
+    parser.add_argument('--model', type=str, default='resnet50',
+                        help='Nome do modelo (resnet50, efficientnet_b0, densenet121, simplecnn)')
+    parser.add_argument('--epochs', type=int, default=50,
+                        help='Número de épocas de treinamento')
+    parser.add_argument('--batch-size', type=int, default=16,
+                        help='Tamanho do batch')
+    parser.add_argument('--lr', type=float, default=1e-4,
+                        help='Learning rate')
+    parser.add_argument('--data-dir', type=str, default='./data/shenzhen',
+                        help='Diretório dos dados')
+    parser.add_argument('--image-size', type=int, default=224,
+                        help='Tamanho da imagem (altura e largura)')
+    parser.add_argument('--num-workers', type=int, default=4,
+                        help='Número de workers para DataLoader')
+    parser.add_argument('--save-dir', type=str, default='./models',
+                        help='Diretório para salvar modelos')
+    
+    args = parser.parse_args()
     
     # Device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f'Usando device: {device}')
+    print(f'Modelo: {args.model}')
+    print(f'Épocas: {args.epochs}')
+    print(f'Batch size: {args.batch_size}')
+    print(f'Learning rate: {args.lr}')
     
     # Criar dataloaders
-    print('Carregando dados...')
+    print('\nCarregando dados...')
     train_loader, val_loader, test_loader = create_dataloaders(
-        data_dir=DATA_DIR,
-        batch_size=BATCH_SIZE,
-        image_size=IMAGE_SIZE,
-        num_workers=4
+        data_dir=args.data_dir,
+        batch_size=args.batch_size,
+        image_size=(args.image_size, args.image_size),
+        num_workers=args.num_workers
     )
     
     print(f'Train samples: {len(train_loader.dataset)}')
@@ -266,9 +289,9 @@ def main():
     print(f'Test samples: {len(test_loader.dataset)}')
     
     # Criar modelo
-    print(f'\nCriando modelo: {MODEL_NAME}')
+    print(f'\nCriando modelo: {args.model}')
     model = create_model(
-        model_name=MODEL_NAME,
+        model_name=args.model,
         pretrained=True,
         num_classes=2,
         dropout=0.5
@@ -277,9 +300,10 @@ def main():
     # Criar trainer
     trainer = Trainer(
         model=model,
+        model_name=args.model,
         device=device,
-        learning_rate=LEARNING_RATE,
-        save_dir='./models'
+        learning_rate=args.lr,
+        save_dir=args.save_dir
     )
     
     # Treinar
@@ -287,7 +311,7 @@ def main():
     history = trainer.train(
         train_loader=train_loader,
         val_loader=val_loader,
-        num_epochs=NUM_EPOCHS,
+        num_epochs=args.epochs,
         early_stopping_patience=10
     )
     
@@ -300,9 +324,11 @@ def main():
     print(f'Test F1: {test_metrics["f1_score"]:.4f}')
     print(f'Test AUC-ROC: {test_metrics["auc_roc"]:.4f}')
     
-    # Salvar métricas de teste
-    with open('./models/test_metrics.json', 'w') as f:
+    # Salvar métricas de teste com nome do modelo
+    test_metrics_path = os.path.join(args.save_dir, f'{args.model}_test_metrics.json')
+    with open(test_metrics_path, 'w') as f:
         json.dump(test_metrics, f, indent=4)
+    print(f'\nMétricas de teste salvas em: {test_metrics_path}')
 
 
 if __name__ == '__main__':
