@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 json_path = Path(
-    "/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/final_rebuild_bilstm_diffusion.json"
+    "/home/ferna/CPE727-2025-03/Seminarios/6 - RNN/final_rebuild_gru_diffusion.json"
 )
 
 with open(json_path, "r") as f:
@@ -13,11 +13,11 @@ with open(json_path, "r") as f:
 # Épocas
 epochs = np.arange(1, len(data) + 1)
 
-# micro_elbo_v já é o NELBO
+# ✅ micro_elbo_v já é o NELBO no experimento com difusão
 nelbo = np.array([row["micro_elbo_v"] for row in data])
 
-# Early stopping correto
-best_epoch = 133
+# ✅ Melhor época (early stopping definido por você)
+best_epoch = 260
 best_nelbo = nelbo[best_epoch - 1]
 
 plt.figure(figsize=(8, 4))
@@ -33,12 +33,13 @@ plt.axvline(
 
 plt.scatter(
     best_epoch, best_nelbo,
-    color="red", zorder=3
+    color="red",
+    zorder=3
 )
 
 plt.xlabel("Época")
 plt.ylabel("NELBO")
-plt.title("Evolução do NELBO — BiLSTM com Difusão")
+plt.title("Evolução do NELBO — GRU com Difusão")
 plt.grid(alpha=0.3)
 plt.legend()
 plt.tight_layout()

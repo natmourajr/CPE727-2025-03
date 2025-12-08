@@ -344,7 +344,7 @@ forçando o estado latente a codificar o padrão temporal de missing.
   \item \textbf{BiLSTM + Variational Dropout:}  
         Aplica \emph{variational dropout} ($p=0{,}2$) compartilhado no tempo,
         reduzindo overfitting sem quebrar dependências temporais.
-  \item \textbf{BiLSTM + Difusão (missingness):}  
+  \item \textbf{BiLSTM/GRU + Difusão (missingness):}  
         Acrescenta um objetivo probabilístico extra
         $\mathcal{L} = \lambda_m \mathcal{L}_{miss} + \lambda_v \mathcal{L}_{vae}$,
         forçando o modelo a ser robusto a \emph{missing data} e a calibrar melhor
@@ -484,12 +484,20 @@ q(z\mid x)\,\|\,p(z)
 & \textbf{Cov90 $\rightarrow$ 0.90} 
 & \textbf{Width90 $\downarrow$} \\
 \midrule
-\textbf{BiLSTM Difusão} 
-& \textbf{0.518} 
-& \textbf{0.462} 
-& \textbf{0.243 $\pm$ 0.067} 
-& \textbf{0.902} 
-& \textbf{2.200} \\
+
+\textbf{GRU Difusão}
+& \textbf{0.510}
+& \textbf{0.456}
+& \textbf{0.237 $\pm$ 0.064} 
+& \textbf{0.897}
+& \textbf{2.213} \\
+
+BiLSTM Difusão
+& 0.518
+& 0.462
+& 0.243 $\pm$ 0.067
+& 0.902 
+& 2.200 \\
 
 GRU 
 & 0.558 
@@ -581,13 +589,13 @@ entre modelos com cobertura adequadamente calibrada.
 
 
  Evolução do NELBO ao longo das épocas para o modelo
-        \textbf{BiLSTM Difusão}.
+        \textbf{GRU Difusão}.
  \begin{itemize}
       \item Fase inicial instável, com forte variação do NELBO nas
             primeiras épocas;
       \item Convergência progressiva para um patamar de NELBO mais estável
             após dezenas de épocas;
-      \item A melhor época (133) é definida por \textit{early stopping},
+      \item A melhor época (260) é definida por \textit{early stopping},
             privilegiando estabilidade e capacidade de generalização,
             e não o mínimo pontual da curva.
     \end{itemize}
@@ -646,9 +654,8 @@ A abordagem probabilística captura melhor:
     \item \textbf{Qualidade gerativa}:
       \begin{itemize}
         \item Modelos variacionais recorrentes superam o baseline feedforward;
-        \item \textbf{BiLSTM  Difusão} apresenta o menor NELBO;
-        \item Redução consistente de NLL e MSE frente a LSTM/GRU unidirecionais.
-      \end{itemize}
+        \item \textbf{GRU  Difusão} apresenta o menor NELBO;
+         \end{itemize}
 
     \item \textbf{Calibração vs. sharpness}:
       \begin{itemize}
@@ -659,10 +666,10 @@ A abordagem probabilística captura melhor:
 
     \item \textbf{Impacto arquitetural}:
       \begin{itemize}
-        \item Bidirecionalidade melhora as representações latentes;
-        \item \textit{GRU fuser} aumenta coerência entre janelas;
-        \item Maior profundidade temporal favorece geração estável.
-      \end{itemize}
+          \item A combinação \textbf{GRU + difusão} produz o melhor compromisso
+              entre NELBO, NLL e MSE, com boa calibração (Cov90) e intervalos
+              mais enxutos (Width90);
+       \end{itemize}
 
     \item \textbf{Treinamento e regularização}:
       \begin{itemize}
@@ -683,13 +690,12 @@ A abordagem probabilística captura melhor:
 
     \item Modelos recorrentes superam o baseline feedforward:
       \begin{itemize}
-        \item Arquiteturas bidirecionais aprendem latentes mais ricos;
-        \item Fusão temporal melhora coerência de longo prazo.
+           \item Fusão temporal melhora coerência de longo prazo.
       \end{itemize}
 
     \item \textbf{Difusão é decisiva}:
       \begin{itemize}
-        \item \textbf{GRU c/ Difusão} é o modelo campeão;
+        \item \textbf{GRU com Difusão} é o modelo campeão;
         \item Menor NELBO, NLL e MSE, com calibração adequada.
       \end{itemize}
 
