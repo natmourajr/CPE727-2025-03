@@ -10,14 +10,18 @@ json_path = Path(
 with open(json_path, "r") as f:
     data = json.load(f)
 
+# Épocas
 epochs = np.arange(1, len(data) + 1)
-nelbo = -np.array([row["micro_elbo_v"] for row in data])
 
-best_epoch = 133  # EARLY STOPPING
+# micro_elbo_v já é o NELBO
+nelbo = np.array([row["micro_elbo_v"] for row in data])
+
+# Early stopping correto
+best_epoch = 133
 best_nelbo = nelbo[best_epoch - 1]
 
 plt.figure(figsize=(8, 4))
-plt.plot(epochs, nelbo, lw=2)
+plt.plot(epochs, nelbo, lw=2, label="NELBO (teste)")
 
 plt.axvline(
     x=best_epoch,
@@ -33,8 +37,8 @@ plt.scatter(
 )
 
 plt.xlabel("Época")
-plt.ylabel("NELBO (teste)")
-plt.title("Evolução do NELBO — BiLSTM Difusão")
+plt.ylabel("NELBO")
+plt.title("Evolução do NELBO — BiLSTM com Difusão")
 plt.grid(alpha=0.3)
 plt.legend()
 plt.tight_layout()
