@@ -222,11 +222,13 @@
 \small
 \begin{itemize}
   \item Função de custo multi-tarefa:
-  \[
-  \mathcal{L} =
-  \lambda_m \mathcal{L}_{\text{miss}}
-  + \lambda_v \mathcal{L}_{\text{vae}}
-  \]
+\[
+\mathcal{L} =
+\mathcal{L}_\text{vae} \quad
+\mathcal{L_{\text{difusão}}} =
+\lambda_m \mathcal{L}_{\text{miss}} 
++ \lambda_v \mathcal{L}_\text{vae}
+\]
 
 
 \small
@@ -289,9 +291,10 @@
 
   \item \textbf{Arquiteturas avaliadas}:
   \begin{itemize}
-    \item \textbf{TSDF\_DEEP}: baseline feedforward (sem recorrência);
-    \item \textbf{TSDF\_LSTM}: LSTM unidirecional e \textbf{BiLSTM};
-    \item \textbf{TSDF\_GRU}: GRU unidirecional e \textbf{BiGRU}.
+    \item \textbf{Deep MLP}: baseline feedforward (sem recorrência);
+    \item \textbf{LSTM}: LSTM unidirecional e \textbf{BiLSTM};
+    \item \textbf{GRU}: GRU unidirecional e \textbf{BiGRU}.
+    \item \textbf{VAE}: Variational Autoencoder.
   \end{itemize}
 \end{itemize}
 
@@ -352,7 +355,7 @@
 \begin{frame}{Configuração Experimental}
   \begin{itemize}
     \item Divisão treino/teste: 80\% / 20\%.
-    \item A quantidade de neurônios já foi validada anteriormente em outra disciplina
+    \item Dimensões do espaço latente foram validadas com a divisão 60\% / 20\% / 20\%.
     \item Treinamento por 500 épocas, batch size 256.
     \item Paciênica de 50 épocas para early stopping.
     \item Função de perda multi-tarefa conforme descrito.
