@@ -2091,3 +2091,299 @@ class TSDiffusion(ODEJumpEncoder):
             out_df.insert(0, timestamp_col, generated_indices)
 
         return out_df
+
+    def extract_percentile_pdf_tmax(
+            self,
+            df: pd.DataFrame,
+            feature_cols: list[str],
+            timestamp_col: str,
+            predict_state_cols: list[str],
+            window_size: int,
+            window_step: int,
+            static_features_cols: list[str] | None = None,
+            percentile: float = 0.5,
+    ):
+        """
+        Calcula o percentil teórico de tmax (normal aproximada) por janela e devolve um novo
+        DataFrame com o valor inferido em cada timestamp da janela. Valores fora do
+        intervalo (0,1) são zerados.
+        """
+        if self.status_dim <= 0 or (self.lam[2] <= 0 and self.lam[5] <= 0):
+            raise RuntimeError("O modelo não possui cabeça de tmax/variância para gerar PDFs.")
+        if predict_state_cols is None or len(predict_state_cols) == 0:
+            raise ValueError("predict_state_cols é obrigatório para calcular a janela de previsão.")
+
+        static_features_cols = static_features_cols or []
+        device = next(self.parameters()).device
+        self.eval()
+
+        needs_sort = (timestamp_col != "index")
+        if needs_sort:
+            df_sorted = df.sort_values(timestamp_col).reset_index(drop=False)
+            idx_col_name = df_sorted.columns[0]  # índice original preservado
+        else:
+            df_sorted = df.copy()
+            idx_col_name = df_sorted.index.name
+        n = len(df_sorted)
+        if window_size is None or window_size >= n:
+            starts = np.array([0], dtype=int)
+            end_positions = np.array([n - 1], dtype=int)
+        else:
+            starts = np.arange(0, n - window_size + 1, window_step, dtype=int)
+            end_positions = starts + window_size - 1
+
+        ds = self._make_dataset(
+            df_sorted,
+            timestamp_col=timestamp_col,
+            window_size=window_size,
+            feature_cols=feature_cols,
+            static_features_cols=static_features_cols,
+            window_step=window_step,
+            predict_state_cols=predict_state_cols,
+        )
+        loader = DataLoader(ds, batch_size=32, shuffle=False, pin_memory=True)
+
+        percentile = float(np.clip(percentile, 1e-4, 1 - 1e-4))
+        values = np.zeros((n, self.status_dim), dtype=np.float32)
+        counts = np.zeros((n, self.status_dim), dtype=np.float32)
+        pos = 0
+        ts_values = df_sorted.index if timestamp_col == "index" else df_sorted[timestamp_col]
+
+        with torch.no_grad():
+            for batch in loader:
+                x, ts_batch, m = batch[0].to(device), batch[1].to(device), batch[2].to(device)
+                idx = 3
+                s = None
+                if self.static_dim > 0:
+                    s = batch[idx].to(device)
+                    idx += 1
+                    if self.cost_columns is not None:
+                        idx += 1  # pula custos; não usados aqui
+                else:
+                    if self.cost_columns is not None:
+                        idx += 1  # pula custos; não usados aqui
+
+                mask_ts = m.any(dim=2, keepdim=True).float()
+                (
+                    state,
+                    _,
+                    state_tmax,
+                    _,
+                    tmax_hat,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    vae_tmax,
+                    vae_tmax_mu,
+                    vae_tmax_logvar,
+                    vae_logvar_obs,
+                    vae_tmax_logvar_obs,
+                ) = self.forward(
+                    x * m,
+                    timestamps=ts_batch,
+                    static_feats=s,
+                    return_x_hat=False,
+                    mask=m,
+                    mask_ts=mask_ts,
+                    test=True,
+                )
+
+                # Média/variância em fração da janela (0-1) – usa VAE se disponível (média determinística em vae_mu)
+                if self.lam[5] > 0 and vae_tmax_mu is not None:
+                    mean_frac = self.vae_tmax_decoder(vae_tmax_mu)
+                    logvar_obs = self.vae_tmax_sigma_head(vae_tmax_mu)
+                    logvar_obs = (logvar_obs + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
+                    var_frac = torch.exp(logvar_obs)
+                elif self.status_dim > 0 and self.log_likelihood and hasattr(self, "lambda_tmax_head") and state_tmax is not None:
+                    lam_t_tmax = F.softplus(self.lambda_tmax_head(state_tmax)).clamp(min=1 / (2 * math.pi), max=2 * math.pi)
+                    var_frac = (1.0 / lam_t_tmax).clamp(min=1e-8)
+                    mean_frac = (tmax_hat if tmax_hat is not None else torch.zeros_like(lam_t_tmax)).clamp(0.0, 1.0)
+                else:
+                    mean_frac = (tmax_hat if tmax_hat is not None else torch.zeros_like(m[..., :1])).clamp(0.0, 1.0)
+                    var_frac = torch.full_like(mean_frac, 0.05)
+
+                # usa apenas o último passo da janela (onde tmax é avaliado)
+                mean_last = mean_frac[:, -1, :]
+                var_last = var_frac[:, -1, :]
+                std_last = torch.sqrt(var_last + 1e-8)
+
+                # quantil da normal (não truncada); se cair fora de (0,1), zera
+                q = torch.tensor(percentile, device=device, dtype=mean_last.dtype)
+                z_q = math.sqrt(2.0) * torch.special.erfinv(2 * q - 1)
+                quantile_frac = mean_last + std_last * z_q
+                quantile_frac = torch.where((quantile_frac > 0) & (quantile_frac < 1), quantile_frac, torch.zeros_like(quantile_frac))
+                quantile_np = quantile_frac.cpu().numpy()
+
+                bsz = x.size(0)
+                for b in range(bsz):
+                    anchor_idx = int(min(end_positions[pos + b], n - 1))
+                    s_idx_start = int(starts[pos + b])
+                    for s_idx in range(quantile_np.shape[1]):
+                        val = float(quantile_np[b, s_idx])
+                        values[s_idx_start : anchor_idx + 1, s_idx] += val
+                        counts[s_idx_start : anchor_idx + 1, s_idx] += 1.0
+                pos += bsz
+
+        # agrega e escreve no DataFrame
+        result = df_sorted.copy()
+        state_cols = (
+            predict_state_cols
+            if isinstance(predict_state_cols, (list, tuple))
+            else [predict_state_cols]
+        )
+        if len(state_cols) != self.status_dim:
+            state_cols = [f"tmax_state_{i}" for i in range(self.status_dim)]
+
+        for i, col in enumerate(state_cols):
+            col_name = f"{col}_pct{int(percentile * 100)}"
+            c = counts[:, i]
+            v = values[:, i]
+            filled = np.where(c > 0, v / c, 0.0)
+            result[col_name] = filled
+
+        if needs_sort:
+            result = result.set_index(idx_col_name).loc[df.index]
+            result.index = df.index
+        else:
+            result.index = df.index
+
+        return result
+
+    def generate_pdf_tmax(
+            self,
+            df: pd.DataFrame,
+            feature_cols: list[str],
+            timestamp_col: str,
+            predict_state_cols: list[str],
+            slice: slice,
+            static_features_cols: list[str] | None = None,
+            status_pred_window: int = 300,
+            grid_points: int = 200,
+    ) -> pd.DataFrame:
+        """
+        Extrai a PDF teórica (normal aproximada) de tmax para o ponto definido pelo slice
+        fornecido (mesmo estilo de generate_samples). Retorna um DataFrame com μ/σ (em segundos)
+        e a curva de densidade em uma grade de tempo.
+        """
+        if self.status_dim <= 0 or (self.lam[2] <= 0 and self.lam[5] <= 0):
+            raise RuntimeError("O modelo não possui cabeça de tmax/variância para gerar PDFs.")
+        if predict_state_cols is None or len(predict_state_cols) == 0:
+            raise ValueError("predict_state_cols é obrigatório para calcular a janela de previsão.")
+        if grid_points < 2:
+            raise ValueError("grid_points deve ser >= 2 para construir a PDF.")
+
+        static_features_cols = static_features_cols or []
+        device = next(self.parameters()).device
+        self.eval()
+
+        needs_sort = (timestamp_col != "index")
+        if needs_sort:
+            df_sorted = df.sort_values(timestamp_col).reset_index(drop=False)
+        else:
+            df_sorted = df.copy()
+
+        df_window = df_sorted.iloc[slice].copy()
+        if df_window.empty:
+            raise ValueError("slice vazio; selecione ao menos uma linha para avaliar a PDF.")
+
+        # dataset de uma única janela (toda a fatia)
+        ds = self._make_dataset(
+            df_window,
+            timestamp_col=timestamp_col,
+            window_size=None,
+            feature_cols=feature_cols,
+            static_features_cols=static_features_cols,
+            window_step=1,
+            predict_state_cols=predict_state_cols,
+        )
+        loader = DataLoader(ds, batch_size=1, shuffle=False, pin_memory=True)
+
+        grid_seconds = torch.linspace(0.0, float(status_pred_window), steps=grid_points, device=device)
+        grid_fraction = grid_seconds / max(float(status_pred_window), 1e-6)
+        rows = []
+
+        with torch.no_grad():
+            for batch in loader:
+                x, ts_batch, m = batch[0].to(device), batch[1].to(device), batch[2].to(device)
+                idx = 3
+                s = None
+                if self.static_dim > 0:
+                    s = batch[idx].to(device)
+                    idx += 1
+                    if self.cost_columns is not None:
+                        idx += 1  # pula custos; não usados aqui
+                else:
+                    if self.cost_columns is not None:
+                        idx += 1  # pula custos; não usados aqui
+
+                mask_ts = m.any(dim=2, keepdim=True).float()
+                (
+                    state,
+                    _,
+                    state_tmax,
+                    _,
+                    tmax_hat,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    vae_tmax,
+                    vae_tmax_mu,
+                    vae_tmax_logvar,
+                    vae_logvar_obs,
+                    vae_tmax_logvar_obs,
+                ) = self.forward(
+                    x * m,
+                    timestamps=ts_batch,
+                    static_feats=s,
+                    return_x_hat=False,
+                    mask=m,
+                    mask_ts=mask_ts,
+                    test=True,
+                )
+
+                # parâmetros da normal em fração da janela (0-1)
+                if self.lam[5] > 0 and vae_tmax_mu is not None:
+                    mean_frac = self.vae_tmax_decoder(vae_tmax_mu)
+                    logvar_obs = self.vae_tmax_sigma_head(vae_tmax_mu)
+                    logvar_obs = (logvar_obs + math.log(self.sigma_temp)).clamp(min=-5.0, max=5.0)
+                    var_frac = torch.exp(logvar_obs)
+                elif self.status_dim > 0 and self.log_likelihood and hasattr(self, "lambda_tmax_head") and state_tmax is not None:
+                    lam_t_tmax = F.softplus(self.lambda_tmax_head(state_tmax)).clamp(min=1 / (2 * math.pi), max=2 * math.pi)
+                    var_frac = (1.0 / lam_t_tmax).clamp(min=1e-8)
+                    mean_frac = tmax_hat if tmax_hat is not None else torch.zeros_like(lam_t_tmax)
+                else:
+                    mean_frac = tmax_hat if tmax_hat is not None else torch.zeros_like(m[..., :1])
+                    var_frac = torch.full_like(mean_frac, 0.05)
+
+                mean_last = mean_frac[:, -1, :]  # (1,S)
+                var_last = var_frac[:, -1, :]
+                std_last = torch.sqrt(var_last + 1e-8)
+
+                mean_sec = (mean_last * status_pred_window).cpu().numpy()
+                std_sec = (std_last * status_pred_window).cpu().numpy()
+
+                mean_b = mean_last.unsqueeze(1)
+                std_b = std_last.unsqueeze(1).clamp(min=1e-6)
+                pdf_norm = (1.0 / (std_b * math.sqrt(2 * math.pi))) * torch.exp(-0.5 * ((grid_fraction.view(1, -1, 1) - mean_b) / std_b) ** 2)
+                pdf_sec = (pdf_norm / max(float(status_pred_window), 1e-6)).cpu().numpy()
+
+                ts_anchor = (
+                    df_window.index[-1] if timestamp_col == "index" else df_window[timestamp_col].iloc[-1]
+                )
+                for s_idx in range(mean_sec.shape[1]):
+                    rows.append(
+                        {
+                            timestamp_col: ts_anchor,
+                            "state_dim": int(s_idx),
+                            "mu_seconds": float(mean_sec[0, s_idx]),
+                            "sigma_seconds": float(std_sec[0, s_idx]),
+                            "t_grid_seconds": grid_seconds.cpu().numpy().tolist(),
+                            "pdf": pdf_sec[0, :, s_idx].tolist(),
+                        }
+                    )
+
+        return pd.DataFrame(rows)
