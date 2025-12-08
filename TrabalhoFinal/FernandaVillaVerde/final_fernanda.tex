@@ -89,7 +89,7 @@
 
     \vspace{0.3cm}
     \centering
-    \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/fernanda/12series.png}
+    \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/FernandaVillaVerde/12series.png}
 
     \vspace{0.2cm}
     \scriptsize
@@ -157,27 +157,21 @@
   \item Função de custo multi-tarefa:
   \[
   \mathcal{L} =
-  \lambda_1 \mathcal{L}_{\text{rec}}
-  + \lambda_2 \mathcal{L}_{\text{diff}}
-  + \lambda_3 \mathcal{L}_{\text{time}}
-  + \lambda_4 \mathcal{L}_{\text{mask}}
-  + \lambda_5 \mathcal{L}_{\text{VAE-}x}
-  + \boxed{\lambda_6 \mathcal{L}_{\text{VAE-}\tau}}
+  \lambda_m \mathcal{L}_{\text{miss}}
+  + \lambda_v \mathcal{L}_{\text{vae}}
   \]
 
-\scriptsize
-\begin{itemize}
-  \item \(\mathcal{L}_{\text{rec}}\): erro de reconstrução da série observada (ajuste aos sinais reais).
-  \item \(\mathcal{L}_{\text{diff}}\): perda de difusão, regularizando a predição de ruído (robustez a incerteza).
-  \item \(\mathcal{L}_{\text{time}}\): erro na predição do tempo até a próxima mudança de estado.
-  \item \(\mathcal{L}_{\text{mask}}\): aprendizado explícito do padrão de dados ausentes.
-  \item \(\mathcal{L}_{\text{VAE-}x}\): regularização variacional da reconstrução dos sinais.
-  \item \(\boxed{\mathcal{L}_{\text{VAE-}\tau}}\): \textbf{modelagem probabilística do tempo até falha}, penalizando mudanças próximas e calibrando incerteza.
-\end{itemize}
-  \vspace{0.4em}
+
 \small
+\[
+\mathcal{L}_{\text{miss}} = \mathrm{BCE}(m,\hat{m})
+\quad\text{com}\quad
+\hat{m} = \sigma(f_{\text{miss}}(h))
+\]
+\(\mathcal{L}_{\text{miss}}\): aprendizado explícito do padrão de dados ausentes.
+
   \[
-  \mathcal{L}_{\text{VAE-}\tau}
+  \mathcal{L}_{\text{vae-}}
   =
   \mathbb{E}_{q(z_\tau|\mathbf{X})}
   \big[ - \log p(\tau \mid z_\tau) \big]
@@ -185,6 +179,8 @@
   \beta\,\mathrm{KL}\big(q(z_\tau) \,\|\, \mathcal{N}(0,I)\big)
   \]
 
+  \(\mathcal{L}_{\text{vae}}\): \textbf{modelagem probabilística do tempo até falha}, penalizando mudanças próximas e calibrando incerteza.
+   
   \item Peso maior atribuído a instantes próximos à mudança de estado:
   \[
   \log p(\tau \mid z_\tau)
@@ -209,22 +205,15 @@
     \item \textbf{TSDF\_LSTM}:
       \begin{itemize}
         \item RNN LSTM unidirecional;
-        \item Versão \textbf{BiLSTM} (\texttt{bi\_lstm=True}).
+        \item Versão \textbf{BiLSTM}.
       \end{itemize}
     \item \textbf{TSDF\_GRU}:
       \begin{itemize}
         \item RNN GRU unidirecional;
-        \item Versão \textbf{BiGRU} (\texttt{bi\_gru=True}).
+        \item Versão \textbf{BiGRU}.
       \end{itemize}
   \end{itemize}
-  \vspace{0.2cm}
-  \noindent \textbf{Hiperparâmetros principais}
-    \begin{itemize}
-      \item \texttt{in\_channels = 11}
-      \item \texttt{hidden\_dim = 11 * 32}
-      \item \texttt{status\_dim = 3}
-      \item Janela: \texttt{window\_size = 40}, \texttt{window\_step = 40}
-    \end{itemize}
+
   
 \end{frame}
 
@@ -280,6 +269,7 @@
         \hat{y}_{\text{state}} &= \mathrm{softmax}(W_s z + b_s) \\
         \hat{\tau} &= W_\tau z + b_\tau
       \end{align*}
+      
     \item Otimização:
       \begin{itemize}
         \item Otimizador Adam, minimizando perda conjunta (classificação de estado + regressão de tempo).
@@ -287,17 +277,24 @@
   \end{itemize}
 \end{frame}
 
+
+
 \begin{frame}{Arquitetura 2: GRU}
   \begin{itemize}
-    \item Mesma entrada: \(\mathbf{X} = (x_1,\dots,x_L)\), \(x_t \in \mathbb{R}^{11}\).
-    \item Codificação temporal com GRU unidirecional:
-      \[
-        h_t = \mathrm{GRU}(x_t, h_{t-1}), \quad t = 1,\dots,L
-      \]
-    \item Representação da janela:
-      \[
-        z = h_L \in \mathbb{R}^{H}
-      \]
+     \item Mesma entrada:
+  \[
+    \mathbf{X} = (x_1, \dots, x_L), \quad x_t \in \mathbb{R}^{11}
+  \]
+
+  \item Codificação temporal recorrente:
+  \[
+    \{h_t\}_{t=1}^L = \mathrm{GRU}(\mathbf{X})
+  \]
+
+  \item Representação latente da janela:
+  \[
+    z = h_L \in \mathbb{R}^{H}
+  \]
     \item Cabeças de saída:
       \begin{align*}
         \hat{y}_{\text{state}} &= \mathrm{softmax}(W_s z + b_s) \\
@@ -531,7 +528,7 @@ DEEP & 8016.760 & 0.819 $\pm$ 0.011 & 33.711 & 0.250 & 0.270 \\
 
   \centering
   \begin{figure}
-  \includegraphics[width=0.70\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/fernanda/nelbo.png}
+  \includegraphics[width=0.70\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/FernandaVillaVerde/nelbo.png}
   \caption{Evolução do NELBO durante o treinamento do modelo
   BiLSTM RAdam.}
   \end{figure}
@@ -597,7 +594,17 @@ DEEP & 8016.760 & 0.819 $\pm$ 0.011 & 33.711 & 0.250 & 0.270 \\
   \end{itemize}
 \end{frame}
 
+\begin{frame}{Referências}
 
+\begin{itemize}
+  \item Kingma, D. P.; Welling, M. \textit{Auto-Encoding Variational Bayes}. ICLR, 2014.
+  \item Hochreiter, S.; Schmidhuber, J. \textit{Long Short-Term Memory}. Neural Computation, 1997.
+  \item Cho et al. \textit{Learning Phrase Representations using RNN Encoder–Decoder}. EMNLP, 2014.
+  \item Ho, J.; Jain, A.; Abbeel, P. \textit{Denoising Diffusion Probabilistic Models}. NeurIPS, 2020.
+  \item Che et al. \textit{Recurrent Neural Networks for Multivariate Time Series with Missing Values}. Sci Rep, 2018.
+\end{itemize}
+
+\end{frame}
 
 
 \end{document}

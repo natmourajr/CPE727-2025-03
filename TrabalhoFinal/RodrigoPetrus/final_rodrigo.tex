@@ -15,6 +15,123 @@
 \usepackage{multirow}
 \usepackage{tikz}
 \usetikzlibrary{positioning}
+% -------- Pipeline base: Encoder + RNN + VAE (mesmo tamanho da variação) --------
+\newcommand{\pipelinebase}[1]{%
+\centering
+\scriptsize
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  node distance=1.6cm and 1.2cm,
+  every node/.style={transform shape},
+  scale=0.85
+]
+
+\tikzstyle{box}=[%
+  draw, thick, rounded corners=3pt,
+  minimum width=2.2cm, minimum height=0.75cm,
+  align=center, fill=gray!10
+];
+\tikzstyle{enc}=[box, fill=blue!12];
+\tikzstyle{dec}=[box, fill=orange!18];
+\tikzstyle{extra}=[box, fill=green!12];
+\tikzstyle{circ}=[draw, thick, circle, minimum size=0.6cm];
+\tikzstyle{arrow}=[->, thick];
+
+% ---- arquitetura base (IGUAL PARA TODOS) ----
+\node[box] (x) {
+  Entrada\\
+  $\mathbf{X}=(\mathbf{x},\mathbf{m})_{1:T}$
+};
+
+\node[enc, right=of x] (emb) {
+  Encoder\\
+  (MLP / Embedding)
+};
+
+\node[enc, right=of emb] (rnn) {
+  RNN Encoder\\
+  $\mu_z,\ \log\sigma_z^2$
+};
+
+\node[circ, right=of rnn] (z) {$z$};
+
+\node[dec, right=of z] (dec) {
+  Decoder\\
+  $\mu_x,\ \log\sigma_x^2$
+};
+
+% ---- variação (sempre extra) ----
+\node[extra, below=1.1cm of rnn, text width=4.2cm] (var) {#1};
+\draw[arrow, dashed] (var) -- (rnn);
+
+% ---- setas principais ----
+\draw[arrow] (x)   -- (emb);
+\draw[arrow] (emb) -- (rnn);
+\draw[arrow] (rnn) -- (z);
+\draw[arrow] (z)   -- (dec);
+
+\end{tikzpicture}%
+}
+
+% -------- Pipeline com variação --------
+\newcommand{\BiLSTMPipelineVar}[1]{%
+\centering
+\scriptsize
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  node distance=1.6cm and 1.2cm,
+  every node/.style={transform shape},
+  scale=0.85
+]
+
+\tikzstyle{box}=[%
+  draw, thick, rounded corners=3pt,
+  minimum width=2.2cm, minimum height=0.75cm,
+  align=center, fill=gray!10
+];
+\tikzstyle{enc}=[box, fill=blue!12];
+\tikzstyle{dec}=[box, fill=orange!18];
+\tikzstyle{extra}=[box, fill=green!12];
+\tikzstyle{circ}=[draw, thick, circle, minimum size=0.6cm];
+\tikzstyle{arrow}=[->, thick];
+
+% ---- arquitetura base (IGUAL PARA TODOS) ----
+\node[box] (x) {
+  Entrada\\
+  $\mathbf{X}=(\mathbf{x},\mathbf{m})_{1:T}$
+};
+
+\node[enc, right=of x] (emb) {
+  Encoder\\
+  (MLP / Embedding)
+};
+
+\node[enc, right=of emb] (rnn) {
+  RNN Encoder\\
+  \textbf{BiLSTM}\\
+  $\mu_z,\ \log\sigma_z^2$
+};
+
+\node[circ, right=of rnn] (z) {$z$};
+
+\node[dec, right=of z] (dec) {
+  Decoder\\
+  $\mu_x,\ \log\sigma_x^2$
+};
+
+% ---- variação (sempre extra) ----
+\node[extra, below=1.1cm of rnn, text width=4.2cm] (var) {#1};
+\draw[arrow, dashed] (var) -- (rnn);
+
+% ---- setas principais ----
+\draw[arrow] (x)   -- (emb);
+\draw[arrow] (emb) -- (rnn);
+\draw[arrow] (rnn) -- (z);
+\draw[arrow] (z)   -- (dec);
+
+\end{tikzpicture}%
+}
+
 
 
 \title[Modo gerador]{Desenvolver um modelo gerador de séries temporais multivariadas
@@ -225,259 +342,104 @@ forçando o estado latente a codificar o padrão temporal de missing.
 \end{frame}
 
 
+\begin{frame}{Arquitetura base e arquiteturas avaliadas}
 
-
-
-\begin{frame}{Arquiteturas avaliadas}
-  \begin{itemize}
-    \item \textbf{TSDF\_DEEP}:
-      \begin{itemize}
-        \item Modelo feedforward sobre janelas (baseline não-recorrente).
-      \end{itemize}
-    \item \textbf{TSDF\_LSTM}:
-      \begin{itemize}
-        \item RNN LSTM unidirecional;
-        \item Versão \textbf{BiLSTM}.
-      \end{itemize}
-    \item \textbf{TSDF\_GRU}:
-      \begin{itemize}
-        \item RNN GRU unidirecional;
-        \item Versão \textbf{BiGRU}.
-      \end{itemize}
-  \end{itemize}
-  
-\end{frame}
-
-
-\begin{frame}{Arquitetura baseline: TSDF\_DEEP (feedforward)}
-  \begin{itemize}
-    \item Entrada: janela temporal \(\mathbf{X} = (x_1,\dots,x_L)\),
-          com \(x_t \in \mathbb{R}^{11}\) e máscara \(m_t \in \{0,1\}^{11}\).
-    \item Codificação inicial por MLP (por timestep):
-      \[
-        e_t = \phi\left( W_e [x_t \,\Vert\, m_t] + b_e \right),
-        \quad t = 1,\dots,L
-      \]
-      onde \(\phi(\cdot)\) é uma ativação não linear (ReLU/GELU).
-    \item Incorporação explícita do tempo:
-      \[
-        e'_t = \mathrm{MLP}\big([e_t \,\Vert\, t_t]\big)
-      \]
-      com \(t_t\) o timestamp normalizado do instante \(t\).
-    \item Representação latente da janela:
-      \begin{itemize}
-        \item Obtida independentemente por timestep (sem estados recorrentes);
-        \item Integra informação temporal apenas via timestamps explícitos.
-      \end{itemize}
-    \item Cabeças de saída (modo gerador):
-      \begin{align*}
-  \hat{x}_t &= f_{\theta}(e'_t) \quad \text{(reconstrução / geração)} 
-\end{align*}
-    \item Treinamento:
-      \begin{itemize}
-        \item Otimizador Adam;
-        \item Mesmas funções de perda usadas nos modelos recorrentes.
-      \end{itemize}
-    
-  \end{itemize}
-\end{frame}
-
-
-
-\begin{frame}{Arquitetura 1: LSTM}
-  \begin{itemize}
-    \item Entrada: janela temporal \(\mathbf{X} = (x_1,\dots,x_L)\), \(x_t \in \mathbb{R}^{11}\).
-    \item Codificação temporal com LSTM unidirecional:
-      \[
-        (h_t, c_t) = \mathrm{LSTM}(x_t, h_{t-1}, c_{t-1}), \quad t = 1,\dots,L
-      \]
-   \item Representação latente da janela:
-\[
-  z = h_L \in \mathbb{R}^{H}
-\]
-\item $z$ representa um código latente contínuo da dinâmica temporal.
-    \item Decoder:
-\[
-  \hat{\mathbf{X}} = p_\theta(\mathbf{X}\mid z)
-\]
-    \item Otimização:
-      \begin{itemize}
-        \item Otimizador Adam, minimizando perda conjunta (classificação de estado + regressão de tempo).
-      \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Arquitetura 2: GRU}
+  \vspace{0.6cm}
+   \pipelinebase{
+    \textbf{Deep / LSTM / GRU / BiLSTM / BiGRU}
+  }
+  \vspace{0.35cm}
+ % ----------- TEXTO -----------
+\small
 \begin{itemize}
-  \item Mesma entrada:
-  \[
-    \mathbf{X} = (x_1, \dots, x_L), \quad x_t \in \mathbb{R}^{11}
-  \]
+  \item \textbf{Arquitetura base}: Encoder temporal recorrente acoplado a um VAE latente.
+    \item A entrada $\mathbf{X}$ é codificada e passada ao \textbf{RNN encoder},
+        que parametriza $(\mu_z,\log\sigma_z^2)$.
+  \item Amostramos $z$ e o \textbf{decoder} reconstrói $\hat{\mathbf{X}}$
+        com média e variância $(\mu_x,\log\sigma_x^2)$.
 
-  \item Codificação temporal recorrente:
-  \[
-    \{h_t\}_{t=1}^L = \mathrm{GRU}(\mathbf{X})
-  \]
-
-  \item Representação latente da janela:
-  \[
-    z = h_L \in \mathbb{R}^{H}
-  \]
-
-  \item $z$ representa um resumo contínuo da dinâmica temporal da janela.
-
-  \item Reconstrução:
-  \[
-    \hat{\mathbf{X}} = p_\theta(\mathbf{X} \mid z)
-  \]
-
-  \item Treinamento:
+  \item \textbf{Arquiteturas avaliadas}:
   \begin{itemize}
-    \item Otimização por Adam, com os mesmos hiperparâmetros do baseline Deep.
+    \item \textbf{TSDF\_DEEP}: baseline feedforward (sem recorrência);
+    \item \textbf{TSDF\_LSTM}: LSTM unidirecional e \textbf{BiLSTM};
+    \item \textbf{TSDF\_GRU}: GRU unidirecional e \textbf{BiGRU}.
   \end{itemize}
 \end{itemize}
+
 \end{frame}
-
-
-
-\begin{frame}{Arquitetura 3: BiGRU + GRU fuser}
-  \begin{itemize}
-    \item Codificação da janela com BiGRU:
-      \[
-        h_t^{\rightarrow}, h_t^{\leftarrow} = \mathrm{BiGRU}(x_t, h_{t-1}^{\rightarrow}, h_{t+1}^{\leftarrow})
-      \]
-      \[
-        z_k = [h_L^{\rightarrow} \,\Vert\, h_1^{\leftarrow}] \in \mathbb{R}^{2H}
-      \]
-      onde \(z_k\) é o embedding da \(k\)-ésima janela.
-    \item Fusão temporal entre janelas com GRU fuser:
-      \[
-        m_k = \mathrm{GRU}_{\text{fuser}}(z_k, m_{k-1}), \quad k = 1,\dots,K
-      \]
-      \item Fuser captura dependências de longo alcance entre janelas,
-      produzindo um latente $\mathbf{m}_K$ adequado à geração.
-    \item Cabeças de saída a partir de \(m_K\):
-     \[
-\hat{\mathbf{X}} \sim p_\theta(\mathbf{X}\mid m_K)
-\]
-    \item Otimização:
-      \begin{itemize}
-        \item Adam sobre todos os parâmetros (BiGRU + GRU fuser + cabeças).
-      \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Arquitetura 4: BiLSTM + GRU fuser}
-  \begin{itemize}
-    \item Codificação da janela com BiLSTM:
-      \[
-        (h_t^{\rightarrow}, c_t^{\rightarrow}), (h_t^{\leftarrow}, c_t^{\leftarrow})
-          = \mathrm{BiLSTM}(x_t,\dots)
-      \]
-      \[
-        z_k = [h_L^{\rightarrow} \,\Vert\, h_1^{\leftarrow}] \in \mathbb{R}^{2H}
-      \]
-    \item Fusão temporal entre janelas com GRU fuser:
-      \[
-        m_k = \mathrm{GRU}_{\text{fuser}}(z_k, m_{k-1}), \quad k = 1,\dots,K
-      \]
-        \item Fuser captura dependências de longo alcance entre janelas,
-      produzindo um latente $\mathbf{m}_K$ adequado à geração.
-    \item Cabeças de saída:
-      \[
-\hat{\mathbf{X}} \sim p_\theta(\mathbf{X}\mid m_K)
-\]
-    \item Otimização:
-      \begin{itemize}
-        \item Treino conjunto com Adam, mesma função de perda multi-tarefa.
-      \end{itemize}
-  \end{itemize}
-\end{frame}
-
 
 % =======================
 % Seção: Arquiteturas
 % =======================
 \section{Arquiteturas e Variações}
 
-\begin{frame}{Pipeline principal: Encoder Temporal + VAE Latente}
-\centering
-\scriptsize
+\begin{frame}{Variações de treinamento - Otimização}
+   \centering \textbf{BiLSTM + Warmup \& Scheduler}
+  
+  \vspace{0.6cm}
+  \BiLSTMPipelineVar{%
+    Adam com \textbf{warmup} da taxa de aprendizado\\
+    seguido de \textbf{scheduler} de decaimento
+  }
 
-\begin{tikzpicture}[x=1cm, y=1cm]
-
-\tikzstyle{box}=[
-  draw, thick, rounded corners=3pt,
-  minimum width=2.0cm, minimum height=0.6cm,
-  align=center, fill=gray!10
-]
-\tikzstyle{latent}=[box, fill=blue!10]
-\tikzstyle{vae}=[box, fill=orange!15]
-\tikzstyle{head}=[box, fill=green!12]
-\tikzstyle{circ}=[draw, thick, circle, minimum size=0.6cm]
-\tikzstyle{arrow}=[->, thick]
-
-% ---- Pipeline principal ----
-\node[box]    (x)     at (0,0)  {Entradas\\$(\mathbf{x},\mathbf{m})_{1:T}$};
-\node[box]    (rnn)   at (2.5,0) {Encoder Temporal\\RNN ou BiRNN};
-\node[latent] (h)     at (5.0,0) {Estado Temporal\\$h$};
-
-\node[vae]    (muvar) at (7.7,0) {VAE Encoder\\$\mu_z,\log\sigma_z^2$};
-\node[circ]   (z)     at (10.0,0) {$z$};
-
-\node[vae]   (dec)   at (12.2,0) {Decoder\\$\mu_x,\log\sigma_x^2$};
-
-% ---- Setas ----
-\draw[arrow] (x) -- (rnn);
-\draw[arrow] (rnn) -- (h);
-\draw[arrow] (h) -- (muvar);
-\draw[arrow] (muvar) -- (z);
-\draw[arrow] (z) -- (dec);
-
-\end{tikzpicture}
-\vspace{0.5cm}
-
+  \vspace{0.4cm}
   \begin{itemize}
-   \item Arquitetura base é composta de um encoder temporal uni ou bidirecional seguido de um espaço latente 
-variacional, responsável por capturar incerteza e permitir geração probabilística das séries.
+    \item Aumenta gradualmente a taxa de aprendizado no início do treino;
+    \item Evita instabilidades e melhora a convergência inicial.
 
   \end{itemize}
-
 \end{frame}
+
 
 \begin{frame}{Variações de treinamento - Otimização}
-    
+   \centering \textbf{BiLSTM + RAdam}
+  
+  \vspace{0.6cm}
+ \BiLSTMPipelineVar{
+  Otimizador \textbf{RAdam}\\
+  (retificação adaptativa da variância)
+}
 
+
+  \vspace{0.4cm}
   \begin{itemize}
-    \item \textbf{BiLSTM + Warmup \& Scheduler}
-      \begin{itemize}
-        \item Aumenta gradualmente a taxa de aprendizado no início do treino, 
-              evitando instabilidades e melhorando a convergência inicial.
-
-      \end{itemize}
-
-    \item \textbf{BiLSTM + RAdam}
-      \begin{itemize}
-        \item Reduz a variância adaptativa do Adam nos primeiros passos, 
-              tornando o treinamento mais estável.
-             \end{itemize}
- 
-
-     \end{itemize}
+    \item Reduz a variância adaptativa do Adam nos primeiros passos;
+    \item Torna o treinamento mais estável.
+  \end{itemize}
 \end{frame}
 
 
-\begin{frame}{Variações de treinamento — Regularização}
- \begin{itemize}
 
-    \item \textbf{BiLSTM + Variational Dropout}
-      \begin{itemize}
-        \item Regularização explícita no tempo,
+
+
+\begin{frame}{Variações de treinamento - Regularização}
+   \centering \textbf{BiLSTM + Variational Dropout}
+  
+  \vspace{0.6cm}
+\BiLSTMPipelineVar{
+  \textbf{Variational Dropout} na BiLSTM\\
+  (mask fixo no tempo, $p=0{,}2$)
+}
+
+  \vspace{0.4cm}
+  \begin{itemize}
+   \item Regularização explícita no tempo,
               reduzindo overfitting sem quebrar dependências temporais.
         \item Variational\_dropout utilizado: 0.2
-      \end{itemize}
+  \end{itemize}
+\end{frame}
 
-    \item \textbf{BiLSTM + Difusão (missingness)}
+
+\begin{frame}{Variações de treinamento - Regularização}
+   \centering \textbf{BiLSTM + Difusão (missingness)}
+  
+  \vspace{0.6cm}
+\BiLSTMPipelineVar{
+  Objetivo extra de \textbf{difusão / missingness}\\
+  $\mathcal{L}=\lambda_m\mathcal{L}_{miss}
+  +\lambda_v\mathcal{L}_{vae}$
+}
+  \vspace{0.4cm}
 \begin{itemize}
   \item Regularização implícita via objetivos probabilísticos,
         forçando robustez a dados ausentes.
@@ -490,22 +452,40 @@ variacional, responsável por capturar incerteza e permitir geração probabilí
   \end{aligned}
   \)
 \end{itemize}
+\end{frame}
 
 
-       \item \textbf{BiLSTM + LayerNorm}
-      \begin{itemize}
-        \item Estabiliza as ativações internas,
+
+\begin{frame}{Variações de treinamento - Regularização}
+   \centering \textbf{BiLSTM + LayerNorm}
+  
+  \vspace{0.6cm}
+\BiLSTMPipelineVar{
+  \textbf{LayerNorm} aplicada\\
+  às saídas da BiLSTM
+}
+
+  \vspace{0.4cm}
+\begin{itemize}
+      \item Estabiliza as ativações internas,
               com efeito regularizante indireto.
-      
-      \end{itemize}
+\end{itemize}
+\end{frame}
 
-    \item \textbf{BiLSTM + AdamW (L2/Weight Decay)}
-      \begin{itemize}
-        \item Regularização explícita dos pesos,
-              melhorando generalização.
-        \item  L2/weight\_decay utilizado: 1e-4
-      \end{itemize}
+\begin{frame}{Variações de treinamento - Regularização}
+     \centering \textbf{BiLSTM + AdamW (L2/Weight Decay)}
 
+       \vspace{0.6cm}
+  \BiLSTMPipelineVar{%
+    Otimizador \textbf{AdamW}\\
+    (Adam com \textit{weight decay} desacoplado)
+  }
+
+  \vspace{0.4cm}
+  \begin{itemize}
+    \item Usa AdamW em vez de Adam clássico;
+    \item \textit{Weight decay} $= 1\times 10^{-4}$ para regularizar os pesos
+          e melhorar generalização.
   \end{itemize}
 \end{frame}
 
@@ -533,53 +513,6 @@ variacional, responsável por capturar incerteza e permitir geração probabilí
 \end{frame}
 
 
-
-
-
-
-\begin{frame}{Arquitetura vencedora — BiLSTM + Difusão Latente (Geração)}
-\centering
-\scriptsize
-
-\begin{tikzpicture}[x=1cm, y=1cm]
-
-\tikzstyle{box}=[
-  draw, thick, rounded corners=3pt,
-  minimum width=2.0cm, minimum height=0.6cm,
-  align=center, fill=gray!10
-]
-\tikzstyle{enc}=[box, fill=blue!10]
-\tikzstyle{diff}=[box, fill=green!12]
-\tikzstyle{vae}=[box, fill=orange!15]
-\tikzstyle{circ}=[draw, thick, circle, minimum size=0.55cm]
-\tikzstyle{arrow}=[->, thick]
-
-% ---- pipeline principal ----
-\node[box]  (x)    at (0,0)   {Entradas\\$(\mathbf{x},\mathbf{m})_{1:T}$};
-\node[box]  (rnn)  at (2.4,0) {Encoder Temporal\\BiLSTM};
-\node[enc]  (h)    at (4.8,0) {Estado Temporal\\$h$};
-
-\node[diff] (diffb)at (7.2,0) {Difusão Latente\\(ruído $\leftrightarrow z$)};
-\node[vae]  (muvar)at (9.7,0) {VAE Encoder\\$\mu_z,\log\sigma_z^2$};
-\node[circ] (z)    at (11.6,0) {$z$};
-
-\node[vae]  (dec)  at (13.6,0) {Decoder\\$\mu_x,\log\sigma_x^2$};
-
-% ---- setas ----
-\draw[arrow] (x)    -- (rnn);
-\draw[arrow] (rnn)  -- (h);
-\draw[arrow] (h)    -- (diffb);
-\draw[arrow] (diffb)-- (muvar);
-\draw[arrow] (muvar)-- (z);
-\draw[arrow] (z)    -- (dec);
-
-\end{tikzpicture}
-\vspace{0.5cm}
-
-  \begin{itemize}
-   \item No modo gerador, a difusão modela a incerteza no espaço latente, aumentando robustez, diversidade e estabilidade estatística das séries reconstruídas.
-  \end{itemize}
-\end{frame}
 
 
 
