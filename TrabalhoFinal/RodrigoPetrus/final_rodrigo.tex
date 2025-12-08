@@ -151,7 +151,7 @@
 
     \vspace{0.3cm}
     \centering
-    \includegraphics[width=\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/RodrigoPetrus/12series.png}
+    \includegraphics[width=\linewidth]{12series.png}
 
     \vspace{0.2cm}
     \scriptsize
@@ -227,7 +227,9 @@
   \item O modelo admite uma função de custo multi-termo:
 \[
 \mathcal{L} =
-\lambda_m \mathcal{L}_{\text{miss}}
+\mathcal{L}_\text{vae} \quad
+\mathcal{L_{\text{difusão}}} =
+\lambda_m \mathcal{L}_{\text{miss}} 
 + \lambda_v \mathcal{L}_\text{vae}
 \]
 \end{itemize}
@@ -301,9 +303,10 @@ forçando o estado latente a codificar o padrão temporal de missing.
 
   \item \textbf{Arquiteturas avaliadas}:
   \begin{itemize}
-    \item \textbf{TSDF\_DEEP}: baseline feedforward (sem recorrência);
-    \item \textbf{TSDF\_LSTM}: LSTM unidirecional e \textbf{BiLSTM};
-    \item \textbf{TSDF\_GRU}: GRU unidirecional e \textbf{BiGRU}.
+    \item \textbf{Deep MLP}: baseline feedforward (sem recorrência);
+    \item \textbf{LSTM}: LSTM unidirecional e \textbf{BiLSTM};
+    \item \textbf{GRU}: GRU unidirecional e \textbf{BiGRU}.
+    \item \textbf{VAE}: Variational Autoencoder.
   \end{itemize}
 \end{itemize}
 
@@ -365,7 +368,7 @@ forçando o estado latente a codificar o padrão temporal de missing.
 \begin{frame}{Configuração Experimental}
   \begin{itemize}
     \item Divisão treino/teste: 80\% / 20\%.
-    \item A quantidade de neurônios já foi validada anteriormente em outra disciplina
+    \item Dimensões do espaço latente foram validadas com a divisão 60\% / 20\% / 20\%.
     \item Treinamento por 500 épocas, batch size 256.
     \item Paciênica de 50 épocas para early stopping.
     \item Função de perda multi-tarefa conforme descrito.
@@ -592,7 +595,7 @@ entre modelos com cobertura adequadamente calibrada.
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.65\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/RodrigoPetrus/nelbo.png}
+  \includegraphics[width=0.65\linewidth]{nelbo.png}
   \caption{Evolução do NELBO durante o treinamento do modelo
   BiLSTM Difusão.}
 \end{figure}
@@ -606,7 +609,7 @@ entre modelos com cobertura adequadamente calibrada.
 % -------- Figura --------
 \begin{column}{0.62\textwidth}
   \centering
-  \includegraphics[width=0.9\linewidth]{/home/ferna/CPE727-2025-03/TrabalhoFinal/RodrigoPetrus/distribuicao.png}
+  \includegraphics[width=0.9\linewidth]{distribuicao.png}
 \end{column}
 
 % -------- Texto --------
