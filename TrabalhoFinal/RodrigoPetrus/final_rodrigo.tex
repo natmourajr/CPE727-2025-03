@@ -667,7 +667,8 @@ A abordagem probabilística captura melhor:
     \item \textbf{Treinamento e regularização}:
       \begin{itemize}
         \item Difusão teve melhor resultado como principal regularizador probabilístico;
-        \item Dropout e LayerNorm trazem ganhos secundários;
+        \item Dropout trouxe ganhos secundários;
+        \item LayerNorm piorou o resultado, por destruir escalas absolutas necessárias ao VAE;
         \item Otimizadores afetam marginalmente o desempenho.
       \end{itemize}
   \end{itemize}
