@@ -373,6 +373,50 @@ forçando o estado latente a codificar o padrão temporal de missing.
 % =======================
 \section{Arquiteturas e Variações}
 
+
+\begin{frame}{Variações de treinamento em relação à arquitetura base}
+\small
+
+\textbf{Arquitetura base fixa:} Encoder temporal \textbf{BiLSTM} + VAE latente  
+(mesmo pipeline do slide anterior).
+
+\vspace{0.3cm}
+
+\textbf{1. Variações de otimização}
+\begin{itemize}
+  \item \textbf{BiLSTM + Warmup \& Scheduler}  
+        Aumenta gradualmente a taxa de aprendizado no início e depois aplica
+        um \emph{scheduler} de decaimento, reduzindo instabilidades nas
+        primeiras épocas e melhorando a convergência inicial.
+  \item \textbf{BiLSTM + RAdam}  
+        Substitui o Adam por \textbf{RAdam}, que corrige a variância adaptativa
+        nos primeiros passos, tornando o treinamento mais estável.
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{2. Variações de regularização}
+\begin{itemize}
+  \item \textbf{BiLSTM + Variational Dropout}  
+        Aplica \emph{variational dropout} ($p=0{,}2$) compartilhado no tempo,
+        reduzindo overfitting sem quebrar dependências temporais.
+  \item \textbf{BiLSTM + Difusão (missingness)}  
+        Acrescenta um objetivo probabilístico extra
+        $\mathcal{L} = \lambda_m \mathcal{L}_{miss} + \lambda_v \mathcal{L}_{vae}$,
+        forçando o modelo a ser robusto a \emph{missing data} e a calibrar melhor
+        incerteza.
+  \item \textbf{BiLSTM + LayerNorm}  
+        Aplica \textbf{LayerNorm} às ativações da BiLSTM, estabilizando as
+        distribuições internas com efeito regularizante indireto.
+ \item \textbf{BiLSTM + AdamW (l2/Weight Decay)}  
+        Usa \textbf{AdamW} com \emph{weight decay} desacoplado
+        ($\lambda = 10^{-4}$), acrescentando regularização L2 explícita
+        nos pesos e melhorando generalização.
+      \end{itemize}
+
+\end{frame}
+
+
 \begin{frame}{Variações de treinamento - Otimização}
    \centering \textbf{BiLSTM + Warmup \& Scheduler}
   
