@@ -1,0 +1,31 @@
+model: "ssd"
+
+dataset:
+  canonical_json: "data/canonical/canonical_dataset_grouped.json"
+
+model_cfg:
+  pretrained: true
+  img_dir: "data/canonical/images/canonical"
+  num_classes: 2
+
+training:
+  batch_size: 16
+  num_epochs: 100
+  learning_rate: 0.01
+  scheduler_gamma: 0.97
+  warmup_epochs: 3
+  weight_decay: 0.0005
+  momentum: 0.9
+
+  early_stop:
+    patience: 20
+
+  score_threshold: 0.05
+  nms_iou: 0.5
+  max_dets: 200
+  num_workers: 4
+
+cross_validation:
+  num_folds: 5
+
+seed: 42
