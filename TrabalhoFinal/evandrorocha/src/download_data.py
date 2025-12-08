@@ -49,7 +49,45 @@ def download_file(url, destination, resume=True):
         headers['Range'] = f'bytes={downloaded_size}-'
     
     try:
-        response = requests.get(url, stream=True, timeout=30, headers=headers)
+        # Verificar se é Google Drive
+        if 'drive.google.com' in url:
+            print("🔍 Detectado Google Drive - processando confirmação...")
+            response = requests.get(url, stream=True, timeout=30)
+            
+            # Verificar se há página de confirmação
+            if 'text/html' in response.headers.get('content-type', ''):
+                # Extrair token de confirmação
+                import re
+                content = response.text
+                
+                # Procurar por diferentes padrões de token
+                patterns = [
+                    r'confirm=([^&"]+)',
+                    r'id="download-form"[^>]*action="([^"]+)"',
+                    r'href="(/uc\?export=download[^"]+)"'
+                ]
+                
+                token = None
+                for pattern in patterns:
+                    match = re.search(pattern, content)
+                    if match:
+                        token = match.group(1)
+                        break
+                
+                if token:
+                    # Construir URL com token
+                    if token.startswith('/uc'):
+                        url = f"https://drive.google.com{token}"
+                    elif '&id=' in url:
+                        file_id = url.split('id=')[1].split('&')[0]
+                        url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={token}"
+                    
+                    print(f"✅ Token de confirmação obtido")
+                    response = requests.get(url, stream=True, timeout=30, headers=headers)
+                else:
+                    print("⚠️  Não foi possível extrair token - tentando download direto...")
+        else:
+            response = requests.get(url, stream=True, timeout=30, headers=headers)
         
         # Verificar se servidor suporta range requests
         if downloaded_size > 0 and response.status_code not in [206, 200]:
