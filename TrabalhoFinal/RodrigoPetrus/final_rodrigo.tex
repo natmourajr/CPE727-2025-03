@@ -57,8 +57,9 @@
 
 \node[dec, right=of z] (dec) {
   Decoder\\
-  $\mu_x,\ \log\sigma_x^2$
+  $\hat{\mathbf{X}}_{\text{recon}},\ \log\sigma_x^2$
 };
+
 
 % ---- variação (sempre extra) ----
 \node[extra, below=1.1cm of rnn, text width=4.2cm] (var) {#1};
@@ -72,67 +73,6 @@
 
 \end{tikzpicture}%
 }
-
-% -------- Pipeline com variação --------
-\newcommand{\BiLSTMPipelineVar}[1]{%
-\centering
-\scriptsize
-\begin{tikzpicture}[
-  x=1cm, y=1cm,
-  node distance=1.6cm and 1.2cm,
-  every node/.style={transform shape},
-  scale=0.85
-]
-
-\tikzstyle{box}=[%
-  draw, thick, rounded corners=3pt,
-  minimum width=2.2cm, minimum height=0.75cm,
-  align=center, fill=gray!10
-];
-\tikzstyle{enc}=[box, fill=blue!12];
-\tikzstyle{dec}=[box, fill=orange!18];
-\tikzstyle{extra}=[box, fill=green!12];
-\tikzstyle{circ}=[draw, thick, circle, minimum size=0.6cm];
-\tikzstyle{arrow}=[->, thick];
-
-% ---- arquitetura base (IGUAL PARA TODOS) ----
-\node[box] (x) {
-  Entrada\\
-  $\mathbf{X}=(\mathbf{x},\mathbf{m})_{1:T}$
-};
-
-\node[enc, right=of x] (emb) {
-  Encoder\\
-  (MLP / Embedding)
-};
-
-\node[enc, right=of emb] (rnn) {
-  RNN Encoder\\
-  \textbf{BiLSTM}\\
-  $\mu_z,\ \log\sigma_z^2$
-};
-
-\node[circ, right=of rnn] (z) {$z$};
-
-\node[dec, right=of z] (dec) {
-  Decoder\\
-  $\mu_x,\ \log\sigma_x^2$
-};
-
-% ---- variação (sempre extra) ----
-\node[extra, below=1.1cm of rnn, text width=4.2cm] (var) {#1};
-\draw[arrow, dashed] (var) -- (rnn);
-
-% ---- setas principais ----
-\draw[arrow] (x)   -- (emb);
-\draw[arrow] (emb) -- (rnn);
-\draw[arrow] (rnn) -- (z);
-\draw[arrow] (z)   -- (dec);
-
-\end{tikzpicture}%
-}
-
-
 
 \title[Modo gerador]{Desenvolver um modelo gerador de séries temporais multivariadas
           para um compressor industrial offshore baseado em RNN e VAEs.}
@@ -346,7 +286,7 @@ forçando o estado latente a codificar o padrão temporal de missing.
 
   \vspace{0.6cm}
    \pipelinebase{
-    \textbf{Deep / LSTM / GRU / BiLSTM / BiGRU}
+    \textbf{LSTM / GRU / BiLSTM / BiGRU}
   }
   \vspace{0.35cm}
  % ----------- TEXTO -----------
@@ -355,8 +295,9 @@ forçando o estado latente a codificar o padrão temporal de missing.
   \item \textbf{Arquitetura base}: Encoder temporal recorrente acoplado a um VAE latente.
     \item A entrada $\mathbf{X}$ é codificada e passada ao \textbf{RNN encoder},
         que parametriza $(\mu_z,\log\sigma_z^2)$.
-  \item Amostramos $z$ e o \textbf{decoder} reconstrói $\hat{\mathbf{X}}$
-        com média e variância $(\mu_x,\log\sigma_x^2)$.
+ \item Amostramos $z$ e o \textbf{decoder} reconstrói $\hat{\mathbf{X}}$
+      e estima a log-variância $\log\sigma_x^2$ para cada tempo/variável.
+
 
   \item \textbf{Arquiteturas avaliadas}:
   \begin{itemize}
@@ -384,11 +325,11 @@ forçando o estado latente a codificar o padrão temporal de missing.
 
 \textbf{1. Variações de otimização}
 \begin{itemize}
-  \item \textbf{BiLSTM + Warmup \& Scheduler}  
+  \item \textbf{BiLSTM + Warmup \& Scheduler:}  
         Aumenta gradualmente a taxa de aprendizado no início e depois aplica
         um \emph{scheduler} de decaimento, reduzindo instabilidades nas
         primeiras épocas e melhorando a convergência inicial.
-  \item \textbf{BiLSTM + RAdam}  
+  \item \textbf{BiLSTM + RAdam:}  
         Substitui o Adam por \textbf{RAdam}, que corrige a variância adaptativa
         nos primeiros passos, tornando o treinamento mais estável.
 \end{itemize}
@@ -397,144 +338,24 @@ forçando o estado latente a codificar o padrão temporal de missing.
 
 \textbf{2. Variações de regularização}
 \begin{itemize}
-  \item \textbf{BiLSTM + Variational Dropout}  
+  \item \textbf{BiLSTM + Variational Dropout:}  
         Aplica \emph{variational dropout} ($p=0{,}2$) compartilhado no tempo,
         reduzindo overfitting sem quebrar dependências temporais.
-  \item \textbf{BiLSTM + Difusão (missingness)}  
+  \item \textbf{BiLSTM + Difusão (missingness):}  
         Acrescenta um objetivo probabilístico extra
         $\mathcal{L} = \lambda_m \mathcal{L}_{miss} + \lambda_v \mathcal{L}_{vae}$,
         forçando o modelo a ser robusto a \emph{missing data} e a calibrar melhor
         incerteza.
-  \item \textbf{BiLSTM + LayerNorm}  
+  \item \textbf{BiLSTM + LayerNorm:}  
         Aplica \textbf{LayerNorm} às ativações da BiLSTM, estabilizando as
         distribuições internas com efeito regularizante indireto.
- \item \textbf{BiLSTM + AdamW (l2/Weight Decay)}  
+ \item \textbf{BiLSTM + AdamW (L2/Weight Decay):}  
         Usa \textbf{AdamW} com \emph{weight decay} desacoplado
         ($\lambda = 10^{-4}$), acrescentando regularização L2 explícita
         nos pesos e melhorando generalização.
       \end{itemize}
 
 \end{frame}
-
-
-\begin{frame}{Variações de treinamento - Otimização}
-   \centering \textbf{BiLSTM + Warmup \& Scheduler}
-  
-  \vspace{0.6cm}
-  \BiLSTMPipelineVar{%
-    Adam com \textbf{warmup} da taxa de aprendizado\\
-    seguido de \textbf{scheduler} de decaimento
-  }
-
-  \vspace{0.4cm}
-  \begin{itemize}
-    \item Aumenta gradualmente a taxa de aprendizado no início do treino;
-    \item Evita instabilidades e melhora a convergência inicial.
-
-  \end{itemize}
-\end{frame}
-
-
-\begin{frame}{Variações de treinamento - Otimização}
-   \centering \textbf{BiLSTM + RAdam}
-  
-  \vspace{0.6cm}
- \BiLSTMPipelineVar{
-  Otimizador \textbf{RAdam}\\
-  (retificação adaptativa da variância)
-}
-
-
-  \vspace{0.4cm}
-  \begin{itemize}
-    \item Reduz a variância adaptativa do Adam nos primeiros passos;
-    \item Torna o treinamento mais estável.
-  \end{itemize}
-\end{frame}
-
-
-
-
-
-\begin{frame}{Variações de treinamento - Regularização}
-   \centering \textbf{BiLSTM + Variational Dropout}
-  
-  \vspace{0.6cm}
-\BiLSTMPipelineVar{
-  \textbf{Variational Dropout} na BiLSTM\\
-  (mask fixo no tempo, $p=0{,}2$)
-}
-
-  \vspace{0.4cm}
-  \begin{itemize}
-   \item Regularização explícita no tempo,
-              reduzindo overfitting sem quebrar dependências temporais.
-        \item Variational\_dropout utilizado: 0.2
-  \end{itemize}
-\end{frame}
-
-
-\begin{frame}{Variações de treinamento - Regularização}
-   \centering \textbf{BiLSTM + Difusão (missingness)}
-  
-  \vspace{0.6cm}
-\BiLSTMPipelineVar{
-  Objetivo extra de \textbf{difusão / missingness}\\
-  $\mathcal{L}=\lambda_m\mathcal{L}_{miss}
-  +\lambda_v\mathcal{L}_{vae}$
-}
-  \vspace{0.4cm}
-\begin{itemize}
-  \item Regularização implícita via objetivos probabilísticos,
-        forçando robustez a dados ausentes.
-  \item
-  \(
-  \begin{aligned}
-  \mathcal{L} &=
-  \lambda_m\, \mathcal{L}_{\text{miss}}
-  + \lambda_v\, \mathcal{L}_{\text{vae}}
-  \end{aligned}
-  \)
-\end{itemize}
-\end{frame}
-
-
-
-\begin{frame}{Variações de treinamento - Regularização}
-   \centering \textbf{BiLSTM + LayerNorm}
-  
-  \vspace{0.6cm}
-\BiLSTMPipelineVar{
-  \textbf{LayerNorm} aplicada\\
-  às saídas da BiLSTM
-}
-
-  \vspace{0.4cm}
-\begin{itemize}
-      \item Estabiliza as ativações internas,
-              com efeito regularizante indireto.
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Variações de treinamento - Regularização}
-     \centering \textbf{BiLSTM + AdamW (L2/Weight Decay)}
-
-       \vspace{0.6cm}
-  \BiLSTMPipelineVar{%
-    Otimizador \textbf{AdamW}\\
-    (Adam com \textit{weight decay} desacoplado)
-  }
-
-  \vspace{0.4cm}
-  \begin{itemize}
-    \item Usa AdamW em vez de Adam clássico;
-    \item \textit{Weight decay} $= 1\times 10^{-4}$ para regularizar os pesos
-          e melhorar generalização.
-  \end{itemize}
-\end{frame}
-
-
-
 
 % =======================
 % Seção: Configuração Experimental
