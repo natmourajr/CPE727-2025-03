@@ -10,21 +10,21 @@ json_path = Path(
 with open(json_path, "r") as f:
     data = json.load(f)
 
-# Épocas (1, 2, ..., N)
+# Épocas
 epochs = np.arange(1, len(data) + 1)
 
-# ELBO por época (validação) -> campo correto é micro_elbo_vt
+# ELBO salvo no JSON (negativo)
 elbo = np.array([row["micro_elbo_vt"] for row in data])
 
-# NELBO = - ELBO
-nelbo = -elbo
+# ✅ NELBO = |ELBO|  → sempre positivo
+nelbo = np.abs(elbo)
 
-# Melhor época (fixa, vinda do seu early stopping)
+# Early stopping correto
 best_epoch = 54
 best_nelbo = nelbo[best_epoch - 1]
 
 plt.figure(figsize=(8, 4))
-plt.plot(epochs, nelbo, lw=2, label="NELBO (validação)")
+plt.plot(epochs, nelbo, lw=2, label="NELBO (teste)")
 
 plt.axvline(
     x=best_epoch,
@@ -36,13 +36,12 @@ plt.axvline(
 
 plt.scatter(
     best_epoch, best_nelbo,
-    color="red",
-    zorder=3
+    color="red", zorder=3
 )
 
 plt.xlabel("Época")
 plt.ylabel("NELBO (teste)")
-plt.title("Evolução do NELBO — BiLSTM RAdam")
+plt.title("Evolução do NELBO — BiLSTM RAdam (mudança de estado)")
 plt.grid(alpha=0.3)
 plt.legend()
 plt.tight_layout()

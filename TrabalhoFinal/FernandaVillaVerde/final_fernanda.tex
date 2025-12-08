@@ -167,7 +167,7 @@
       \item Estados operacionais:
         \begin{itemize}
           \item Estados originais: 6 (\(0\) a \(5\));
-          \item Estados finais: 3 (normal, alerta, falha).
+          \item Estados finais: 3 (normal (0), falha (1), anômalo (2)).
         \end{itemize}
 
       \item Normalização robusta;
@@ -195,7 +195,7 @@
     \item Série temporal multivariada:
       \(\mathbf{x}_t \in \mathbb{R}^{d}\), \(t = 1,\dots,T\), com \(d = 11\) sensores.
     \item Estados discretos:
-      \(s_t \in \{0,1,4\}\) (após fusão dos 6 estados iniciais).
+      \(s_t \in \{0,1,2\}\) (após fusão dos 6 estados iniciais).
     \item Definimos o \textbf{tempo até a próxima mudança de estado}:
       \[
         \tau_t = \min\{\Delta > 0 \;:\; s_{t+\Delta} \neq s_t\}.
@@ -207,7 +207,7 @@
       \[
         p(\tau \mid \mathbf{X}, s_t).
       \]
-    \item Na prática, o modelo produz, para cada estado \(s \in \{0,1,4\}\),
+    \item Na prática, o modelo produz, para cada estado \(s \in \{0,1,2\}\),
       parâmetros \(\mu_s(\mathbf{X})\) e \(\sigma_s^2(\mathbf{X})\) que
       definem as \textbf{PDFs do tempo até mudança de estado}.
   \end{itemize}
@@ -458,7 +458,7 @@ q(z\mid x)\,\|\,p(z)
 \textbf{Modelo} & \textbf{NELBO $\downarrow$} & \textbf{MSE (micro) $\downarrow$} 
 & \textbf{NLL $\downarrow$} & \textbf{Cov90 $\rightarrow$ 0.90} & \textbf{Width90 $\downarrow$} \\
 \midrule
-BiLSTM RAdam & \textbf{0.023} & 0.002 $\pm$ 0.000 & 0.023 & 0.946 & 0.270 \\
+\textbf{BiLSTM RAdam} & \textbf{0.023} & 0.002 $\pm$ 0.000 & \textbf{0.023} & 0.946 & 0.270 \\
 BiLSTM Warmup/Sched. & 0.033 & 0.002 $\pm$ 0.000 & 0.033 & 0.946 & 0.270 \\
 LSTM & 0.064 & 0.002 $\pm$ 0.000 & 0.063 & 0.937 & 0.270 \\
 BiLSTM & 0.150 & 0.002 $\pm$ 0.000 & 0.150 & 0.920 & 0.270 \\
