@@ -15,6 +15,8 @@
 \usepackage{multirow}
 \usepackage{tikz}
 \usetikzlibrary{positioning}
+\usepackage[numbers]{natbib}  % citações numéricas tipo [1], [2], ...
+
 % -------- Pipeline base: Encoder + RNN + VAE (mesmo tamanho da variação) --------
 \newcommand{\pipelinebase}[1]{%
 \centering
@@ -188,7 +190,7 @@
 % =======================
 \section{Formulação do Problema}
 
-\begin{frame}{Definição do problema (modo gerador)}
+\begin{frame}{Definição do problema - Modo Gerador}
 
   \begin{itemize}
     \item Série multivariada: \(\mathbf{x}_t \in \mathbb{R}^{d}\), \(t = 1,\dots,T\), com \(d = 11\) sensores.
@@ -220,7 +222,39 @@
 \end{frame}
 
 
-\begin{frame}{Função de custo (modo gerador)}
+\section{Revisão Bibliográfica}
+
+\begin{frame}{Revisão Bibliográfica — Modo Gerador}
+\small
+
+\textbf{Trabalhos relacionados}:
+\begin{itemize}
+  \item \textbf{VAEs} amplamente usados para geração de dados sintéticos
+        e aprendizado não supervisionado \cite{kingma2014vae};
+  \item RNNs combinadas com VAEs para modelagem temporal de séries
+        multivariadas industriais \cite{chung2015vrnn};
+  \item Métodos para séries com \textbf{missing data} que incorporam
+        máscaras no estado recorrente \cite{che2018grud};
+  \item \textbf{Modelos de difusão} para geração probabilística de dados
+        complexos \cite{ho2020ddpm}.
+\end{itemize}
+
+\vspace{0.2cm}
+
+\textbf{Lacuna abordada neste trabalho}:
+\begin{itemize}
+  \item Poucos estudos exploram a \textbf{geração probabilística de séries
+        temporais industriais multivariadas} \cite{esteban2019timegan};
+  \item Não encontramos aplicações em \textbf{compressores industriais}
+        combinando RNNs, VAEs e difusão;
+  \item Avaliamos geração via NELBO, calibração e \textit{sharpness}.
+\end{itemize}
+
+\end{frame}
+
+
+
+\begin{frame}{Função de custo — Modo Gerador}
 \small
 
 \begin{itemize}
@@ -228,7 +262,7 @@
 \[
 \mathcal{L} =
 \mathcal{L}_\text{vae} \quad
-\mathcal{L_{\text{difusão}}} =
+\mathcal{L}_{\text{difusão}} =
 \lambda_m \mathcal{L}_{\text{miss}} 
 + \lambda_v \mathcal{L}_\text{vae}
 \]
@@ -398,7 +432,8 @@ forçando o estado latente a codificar o padrão temporal de missing.
   \item Loss probabilística minimizada no treinamento;
   \item Maximiza implicitamente a verossimilhança (ELBO);
   \item Balanceia reconstrução e regularização latente (KL).
-\item
+  \vspace{0.6em}
+
 \(
 \begin{aligned}
 NELBO
@@ -417,13 +452,15 @@ q(z\mid x)\,\|\,p(z)
 
 \end{itemize}
 
+\vspace{0.8em}
+
 \item \textbf{NLL} (Negative Log-Likelihood):
   \begin{itemize}
     \item Generaliza o MSE ao modelar explicitamente a variância
           da distribuição predita;
     \item Penaliza erros grandes \emph{e} variâncias mal calibradas
           (super ou subestimação de incerteza).
-\item 
+    \vspace{0.6em}
 \(
 \begin{aligned}
 \text{NLL}
@@ -450,7 +487,7 @@ q(z\mid x)\,\|\,p(z)
          \item Erro médio de reconstrução das séries;
     \item Mede fidelidade gerativa.
       \end{itemize}
-
+    \vspace{0.6em}
   \item \textbf{Cobertura 90\%} (\texttt{cov\_90}):
   \begin{itemize}
     \item Mede a fração de amostras reais que caem dentro do
@@ -459,7 +496,7 @@ q(z\mid x)\,\|\,p(z)
           \textbf{calibração probabilística consistente}
           com a cobertura nominal de 90\%.
   \end{itemize}
-
+    \vspace{0.6em}
 \item \textbf{Largura do intervalo 90\%} (\texttt{width\_90}):
   \begin{itemize}
     \item Corresponde à largura teórica do intervalo $[5\%,\,95\%]$
@@ -622,7 +659,7 @@ entre modelos com cobertura adequadamente calibrada.
 
 % -------- Texto --------
 \begin{column}{0.38\textwidth}
-\scriptsize
+\small
 \textbf{Comparação qualitativa}
 
 \vspace{0.5em}
@@ -649,7 +686,7 @@ A abordagem probabilística captura melhor:
 % Seção: Discussão e Conclusões
 % =======================
 \section{Discussão e Conclusões}
-\begin{frame}{Discussão dos resultados (modo gerador)}
+\begin{frame}{Discussão dos resultados — Modo Gerador}
   \begin{itemize}
     \item \textbf{Qualidade gerativa}:
       \begin{itemize}
@@ -683,7 +720,7 @@ A abordagem probabilística captura melhor:
 
 
 
-\begin{frame}{Conclusões (modo gerador)}
+\begin{frame}{Conclusões — Modo Gerador}
   \begin{itemize}
     \item O uso de \textbf{RNNs com difusão} se mostrou superior como modelo gerador
           probabilístico para séries temporais industriais.
@@ -714,20 +751,11 @@ A abordagem probabilística captura melhor:
 \end{frame}
 
 
-
-\begin{frame}{Referências}
-
-\begin{itemize}
-  \item Kingma, D. P.; Welling, M. \textit{Auto-Encoding Variational Bayes}. ICLR, 2014.
-  \item Hochreiter, S.; Schmidhuber, J. \textit{Long Short-Term Memory}. Neural Computation, 1997.
-  \item Cho et al. \textit{Learning Phrase Representations using RNN Encoder–Decoder}. EMNLP, 2014.
-  \item Ho, J.; Jain, A.; Abbeel, P. \textit{Denoising Diffusion Probabilistic Models}. NeurIPS, 2020.
-  \item Che et al. \textit{Recurrent Neural Networks for Multivariate Time Series with Missing Values}. Sci Rep, 2018.
-\end{itemize}
-
+\begin{frame}[allowframebreaks]{Referências}
+  \tiny
+  \bibliographystyle{ieeetr}   % estilo numérico
+  \bibliography{refs}          % usa o arquivo refs.bib
 \end{frame}
-
-
 
 
 

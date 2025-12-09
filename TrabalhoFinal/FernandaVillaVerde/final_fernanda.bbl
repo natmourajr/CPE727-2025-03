@@ -1,0 +1,21 @@
+\begin{thebibliography}{1}
+
+\bibitem{wa2025dlrul}
+L.~Wang {\em et~al.}, ``Deep learning approaches for remaining useful life prediction: A comprehensive review,'' in {\em IEEE International Conference on Prognostics and Health Management (ICPHM)}, 2025.
+
+\bibitem{che2018grud}
+Z.~Che {\em et~al.}, ``Recurrent neural networks for multivariate time series with missing values,'' {\em Scientific Reports}, vol.~8, no.~1, p.~6085, 2018.
+
+\bibitem{rivas2022rul}
+J.~Rivas {\em et~al.}, ``Remaining useful life estimation with uncertainty quantification using bayesian neural networks,'' {\em IEEE Transactions on Industrial Informatics}, vol.~18, no.~5, pp.~3255--3264, 2022.
+
+\bibitem{shchur2021tpp}
+O.~Shchur, M.~Bilo{\v{s}}, and S.~G{\"u}nnemann, ``Neural temporal point processes: A review,'' {\em IEEE Transactions on Pattern Analysis and Machine Intelligence}, 2021.
+
+\bibitem{zheng2017rul}
+S.~Zheng, K.~Ristovski, A.~Farahat, and C.~Gupta, ``Long short-term memory network for remaining useful life estimation,'' in {\em Annual Conference of the PHM Society}, 2017.
+
+\bibitem{rivas2022bnnrul}
+A.~Rivas, P.~Santos, D.~Peres, and S.~Vinga, ``Predictions of component remaining useful lifetime and its uncertainty using bayesian neural networks,'' {\em Reliability Engineering \& System Safety}, vol.~222, p.~108469, 2022.
+
+\end{thebibliography}
