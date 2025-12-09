@@ -7,8 +7,7 @@ Este repositório contém o código e os experimentos para comparar modelos de a
 
 ## Requisitos
 
-- Python 3.10+  
-- Bibliotecas principais: `pytorch`, `numpy`, `pandas`, `scikit-learn`, `matplotlib` (ver `requirements.txt`).
+- Docker
 
 ## Como executar
 

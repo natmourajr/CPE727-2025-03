@@ -22,7 +22,6 @@ RUN pip install --upgrade pip && \
       tqdm \
       jinja2 \
       pywavelets \
-      "torch==2.3.1" --index-url https://download.pytorch.org/whl/cpu \
       jupyter
 
 # Instala o 3WToolkit

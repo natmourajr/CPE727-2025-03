@@ -1,4 +1,4 @@
 from ThreeWToolkit.dataset import ParquetDataset, ParquetDatasetConfig
 
-config = ParquetDatasetConfig(path="./dataset")  # folder where it will be stored
+config = ParquetDatasetConfig(path="./dataset")
 dataset = ParquetDataset(config)
