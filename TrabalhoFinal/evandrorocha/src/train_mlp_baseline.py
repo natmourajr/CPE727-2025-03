@@ -144,14 +144,18 @@ def extract_manual_features(image_path):
         np.max(low_freq)
     ])
     
-    # Média frequência
-    mid_freq = magnitude_spectrum[crow-60:crow+60, ccol-60:ccol+60]
-    mid_freq = mid_freq[~np.isin(np.arange(mid_freq.size), 
-                                  np.arange(low_freq.size))]
+    # Média frequência (anel ao redor do centro)
+    mid_freq_outer = magnitude_spectrum[crow-60:crow+60, ccol-60:ccol+60]
+    mid_freq_inner = magnitude_spectrum[crow-30:crow+30, ccol-30:ccol+30]
+    # Calcular média da região do anel (outer - inner)
+    mid_freq_mean = (np.sum(mid_freq_outer) - np.sum(mid_freq_inner)) / (mid_freq_outer.size - mid_freq_inner.size + 1e-10)
+    mid_freq_std = np.std(mid_freq_outer)
+    mid_freq_max = np.max(mid_freq_outer)
+    
     features.extend([
-        np.mean(mid_freq),
-        np.std(mid_freq),
-        np.max(mid_freq)
+        mid_freq_mean,
+        mid_freq_std,
+        mid_freq_max
     ])
     
     # Alta frequência
@@ -159,7 +163,7 @@ def extract_manual_features(image_path):
         np.mean(magnitude_spectrum),
         np.std(magnitude_spectrum),
         np.max(magnitude_spectrum),
-        np.sum(magnitude_spectrum > np.percentile(magnitude_spectrum, 95))
+        float(np.sum(magnitude_spectrum > np.percentile(magnitude_spectrum, 95)))
     ])
     
     return np.array(features, dtype=np.float32)
@@ -284,6 +288,13 @@ def main():
     scaler = StandardScaler()
     train_features = scaler.fit_transform(train_features)
     val_features = scaler.transform(val_features)
+    
+    # Salvar scaler para usar na avaliação
+    import pickle
+    scaler_path = os.path.join(save_dir, 'scaler.pkl')
+    with open(scaler_path, 'wb') as f:
+        pickle.dump(scaler, f)
+    print(f"Scaler salvo em: {scaler_path}")
     
     # DataLoaders
     train_loader = DataLoader(
