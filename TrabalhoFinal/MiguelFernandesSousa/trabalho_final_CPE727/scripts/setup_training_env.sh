@@ -32,17 +32,17 @@ echo ""
 
 # Step 4: Clone repository
 echo "Step 4: Setting up repository..."
-echo "Please enter your repository URL:"
-read REPO_URL
-
-if [ -z "$REPO_URL" ]; then
-    echo "Using default example..."
-    REPO_URL="https://github.com/yourusername/trabalho_final_CPE727.git"
-fi
+REPO_URL="https://github.com/natmourajr/CPE727-2025-03"
 
 cd ~
-git clone $REPO_URL training || echo "Repository already cloned"
-cd training/trabalho_final_CPE727 || cd trabalho_final_CPE727
+if [ ! -d "CPE727-2025-03" ]; then
+    git clone $REPO_URL
+    echo "✓ Repository cloned"
+else
+    echo "✓ Repository already exists"
+fi
+
+cd CPE727-2025-03/TrabalhoFinal/MiguelFernandesSousa/trabalho_final_CPE727
 
 echo "✓ Repository ready"
 echo ""
@@ -104,7 +104,7 @@ echo "   # Then access from browser: http://INSTANCE_IP:5000"
 echo ""
 echo "6. Download results when done:"
 echo "   # On your local machine:"
-echo "   gcloud compute scp --recurse INSTANCE:~/training/trabalho_final_CPE727/experiments ."
+echo "   gcloud compute scp --recurse iara-training-gpu:~/CPE727-2025-03/TrabalhoFinal/MiguelFernandesSousa/trabalho_final_CPE727/experiments . --zone=us-central1-a"
 echo ""
 echo "=========================================="
 echo "Important Reminders"
