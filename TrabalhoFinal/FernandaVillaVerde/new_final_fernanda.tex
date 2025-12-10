@@ -128,7 +128,7 @@
 % \end{itemize}
 % \end{chapter}
 
-\section{Introdução}
+\section{Motivação e Objetivos}
 
 \begin{frame}{Motivação e Objetivos do trabalho}
 
@@ -397,9 +397,9 @@ q(z\mid\tau)\,\|\,\mathcal{N}(0,I)
 
 
 % =======================
-% Seção: Resultados
+% Seção: Figuras de Mérito
 % =======================
-\section{Resultados}
+\section{Figuras de Mérito}
 
 
 
@@ -486,40 +486,46 @@ q(z\mid x)\,\|\,p(z)
   \end{itemize}
     \end{itemize}
 \end{frame}
-
-
+% =======================
+% Seção: Resultados
+% =======================
+\section{Resultados}
 \begin{frame}{Resultados quantitativos}
-  \begin{table}[h]
-    \centering
-    \small
-\begin{tabular}{lccccc}
+
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+
+\begin{tabular}{lcccccc}
 \toprule
 \textbf{Modelo} 
-& \textbf{NELBO $\downarrow$} 
-& \textbf{NLL $\downarrow$} 
-& \textbf{MSE (micro) $\downarrow$} 
-& \textbf{Cov90 $\rightarrow$ 0.90} 
-& \textbf{Width90 $\downarrow$} \\
+& \textbf{NELBO$\downarrow$} 
+& \textbf{NLL$\downarrow$} 
+& \textbf{MSE$\downarrow$} 
+& \textbf{Cov90$\rightarrow$} 
+& \textbf{W90$\downarrow$}
+& \textbf{Tempo (min)} \\
 \midrule
-\textbf{LSTM RAdam}              & \textbf{0.010} & \textbf{0.000} & \textbf{$0.001 \pm 0.000$} & \textbf{1.000} & \textbf{0.270} \\
-BiLSTM RAdam            & 0.023 & 0.023 & $0.002 \pm 0.000$ & 0.946 & 0.270 \\
-BiLSTM Warmup/Sched.    & 0.033 & 0.033 & $0.002 \pm 0.000$ & 0.946 & 0.270 \\
-LSTM                    & 0.064 & 0.063 & $0.002 \pm 0.000$ & 0.937 & 0.270 \\
-BiLSTM                  & 0.150 & 0.150 & $0.002 \pm 0.000$ & 0.920 & 0.270 \\
-BiGRU                   & 0.203 & 0.202 & $0.001 \pm 0.000$ & 0.875 & 0.270 \\
-BiLSTM AdamW            & 0.230 & 0.229 & $0.001 \pm 0.001$ & 0.866 & 0.270 \\
-BiLSTM Difusão          & 0.329 & 0.328 & $0.002 \pm 0.001$ & 0.839 & 0.270 \\
-BiLSTM LayerNorm        & 0.383 & 0.332 & $0.054 \pm 0.001$ & 0.839 & 0.270 \\
-GRU                     & 0.464 & 0.463 & $0.003 \pm 0.001$ & 0.812 & 0.270 \\
-BiLSTM VarDrop 0.2      & 0.992 & 0.991 & $0.002 \pm 0.001$ & 0.705 & 0.270 \\
-DEEP                    & 8016.760 & 33.711 & $0.819 \pm 0.011$ & 0.250 & 0.270 \\
+\textbf{LSTM RAdam}   & \textbf{0.010} & \textbf{0.000} & \textbf{$0.001\!\pm\!0.000$} & \textbf{1.000} & \textbf{0.270} & \textbf{5.32} \\
+BiLSTM RAdam         & 0.023 & 0.023 & $0.002\!\pm\!0.000$ & 0.946 & 0.270 & 23.06 \\
+BiLSTM Warmup        & 0.033 & 0.033 & $0.002\!\pm\!0.000$ & 0.946 & 0.270 & 15.00 \\
+LSTM                 & 0.064 & 0.063 & $0.002\!\pm\!0.000$ & 0.937 & 0.270 & 8.01 \\
+BiLSTM               & 0.150 & 0.150 & $0.002\!\pm\!0.000$ & 0.920 & 0.270 & 34.21 \\
+BiGRU                & 0.203 & 0.202 & $0.001\!\pm\!0.000$ & 0.875 & 0.270 & 27.09 \\
+BiLSTM AdamW         & 0.230 & 0.229 & $0.001\!\pm\!0.001$ & 0.866 & 0.270 & 11.44 \\
+BiLSTM Difusão       & 0.329 & 0.328 & $0.002\!\pm\!0.001$ & 0.839 & 0.270 & 10.11 \\
+BiLSTM LayerNorm     & 0.383 & 0.332 & $0.054\!\pm\!0.001$ & 0.839 & 0.270 & 13.00 \\
+GRU                  & 0.464 & 0.463 & $0.003\!\pm\!0.001$ & 0.812 & 0.270 & 16.20 \\
+BiLSTM VarDrop       & 0.992 & 0.991 & $0.002\!\pm\!0.001$ & 0.705 & 0.270 & 11.59 \\
+DEEP                 & 8016.76 & 33.71 & $0.819\!\pm\!0.011$ & 0.250 & 0.270 & 2.06 \\
 \bottomrule
 \end{tabular}
 
-  \caption{
-Comparação probabilística entre modelos.}
-\end{table}
+\vspace{0.3em}
+{\tiny Comparação probabilística entre modelos.}
+
 \end{frame}
+
 
 \begin{frame}{Curva de treinamento — Modelo \textbf{LSTM RAdam}}
   \centering

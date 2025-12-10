@@ -1,172 +1,179 @@
-# Cognite Time Series Toolkit
-O pacote `tsdiffusion_transformed` reúne ferramentas de segmentação, modelagem neuro-simbólica e difusão para séries temporais industriais. Os módulos foram desenhados para funcionar em sequência, mas cada componente permanece independente para uso em pipelines Python próprios.
+# TS Diffusion (Jump-ODE + Difusão)
+Implementação em PyTorch de um modelo de difusão para séries temporais com encoder Jump-ODE, self-attention e embeddings temporais híbridos. Inclui pipelines de treino, imputação e previsão recursiva usando DataFrames (ex.: exportados da Cognite) com colunas de séries, atributos estáticos e janelas de predição de estado.
 
 ## Dependências
-- Python 3.10 ou superior
-- PyTorch (com suporte opcional a CUDA)
-- NumPy, pandas e SciPy
-- scikit-learn
+- Python 3.10+
+- PyTorch (GPU opcional)
+- torchdiffeq
+- pandas, numpy, scikit-learn, scipy
+- cognite-sdk (para ingestão direta)
+- matplotlib/seaborn (apenas para gráficos de métricas)
 
 Instale as bibliotecas com `pip install -r requirements.txt` na raiz do projeto ou instale manualmente os pacotes listados acima.
 
+
 ## Estrutura do pacote
-| Arquivo | Finalidade |
-| --- | --- |
-| `segmenter.py` | Segmentação não supervisionada de estados operacionais com HMM Gaussiano e extração automática de atributos multivariados. |
-| `ode_jump.py` | Implementação base do encoder Jump-ODE com rotinas de treino, avaliação e utilidades para séries mascaradas. |
-| `ode_jump_encoder.py` | Extensão transformer do Jump-ODE com blocos de self-attention, agendamentos de aprendizado e testes auxiliares. |
+|`ts_diffusion_transformed.py` | modelo TSDiffusion (encoder linear + JumpODEEncoder + cabeças de perda, scheduler de difusão e decoder), métodos de treino, imputação e forecast.| 
 | `tsdiffusion.py` | Modelo de difusão latente que reutiliza o encoder Jump-ODE para denoising e imputação consistentes. |
-| `lstm.py` | Baseline recorrente usada como comparação simples. |
-| `ode_jump_encoder_test.py` | Testes unitários que exercitam cenários de treino e inferência. |
+|`ode_jump.py`, `ode_jump_encoder.py`, `ode_jump_encoder_diffusion.py`| variantes do encoder Jump-ODE com/sem transformer.| 
+| `segmenter.py` |  segmentação não supervisionada (HMM) e extração de atributos.| 
+|`dataloader.py` | busca dados no Cognite Data Fusion, normaliza e adiciona colunas de estado/anomalia.| 
+| `gru.py`, `lstm.py`  | Baselines| 
+| `deep.py`, `train.py`, `ode_jump_encoder_test.py`| Utilidades/treino|
 
-## Pré-processamento dos dados
-As rotinas utilizam objetos `pandas.DataFrame` com:
-- colunas numéricas a serem modeladas (`feature_cols`);
-- colunas opcionais de atributos estáticos disponíveis em todos os instantes (`static_features_cols`);
-- uma coluna temporal (`timestamp_col`) ou uso do índice como carimbo de tempo (`"index"`);
-- um identificador de estado (`states_col`) para dividir janelas estratificadas durante o treino do Jump-ODE ou para validar segmentações.
 
-Os métodos lidam com valores ausentes por meio de máscaras binárias; os dados podem conter `NaN`, `inf` ou gaps que serão preenchidos/ignorados conforme o fluxo.
+## Dados (Cognite)
+-  O DataLoader usa OAuth (Azure AD) para o projeto publicdata.
+- COGNITE_CLIENT_SECRET deve estar no ambiente.
+- CLIENT_ID/TENANT/PROJECT/BASE_URL já estão configurados no código.
+- Por padrão busca o asset 23-KA-9101 e todas as séries associadas.
+- Colunas vazias são removidas; NaN são preenchidos (ffill/bfill) e escalonados com RobustScaler.
+- Métodos auxiliares:
+    - add_segments(k_states, window, step, ...): roda UnsupervisedStateSegmenter, adiciona states ao DataFrame.
+    - add_time_to_change_state_timestamp(): cria colunas state-<id> com timestamp da próxima mudança de estado.
+    - add_next_anomaly_timestamp(column, value, boundary): cria coluna anomaly com timestamp do próximo evento acima/abaixo do limite.
 
-## Fluxo sugerido
-1. Gerar segmentos de estados com `UnsupervisedStateSegmenter`.
-2. Treinar um encoder Jump-ODE (`ODEJump` ou `ODEJumpEncoder`) usando as janelas rotuladas.
-3. Ajustar `TSDiffusion` para denoising/imputação e reutilizar as séries reconstruídas em loops adicionais.
-4. Opcionalmente salvar e carregar cada componente com os utilitários de persistência embutidos.
+## Formato esperado (DataFrame)
 
-### Segmentação de estados (`segmenter.py`)
-O segmentador gera janelas, extrai atributos estatísticos/espectrais por canal, treina um HMM diagonal via EM e identifica automaticamente um estado anômalo.
+- feature_cols: colunas numéricas a modelar (in_channels no construtor).
+- static_features_cols (opcional): atributos estáticos (static_dim).
+- predict_state_cols: colunas de horizonte/estado futuro para a perda L3.
+- timestamp_col: coluna temporal; use "index" para trabalhar pelo índice.
+- Timestamps são normalizados por janela: (ts - t0) / TS_SPAN (TS_SPAN = 1 ano em segundos).
+- Máscara de observação é derivada de NaN; os valores são zerados no forward e a máscara controla a perda.
+- Perdas (lam = [L1, L2, L3, L4])
+    - L1: recon com log-likelihood Gaussiano ponderado por λ(t).
+    - L2: MSE do ruído previsto.
+    - L3: erro no horizonte/estado previsto (predict_state_cols).
+    - L4: Bernoulli para presença de observação (máscara).
 
-#### Exemplo: ajustar e usar o segmentador
+
+## Exemplo mínimo (dados Cognite já em DataFrame)
 ```python
-import pandas as pd
-from tsdiffusion_transformed.segmenter import UnsupervisedStateSegmenter, FeatureConfig
+import torch
+from tsdiffusion_transformed.ts_diffusion_transformed import TSDiffusion
+from tsdiffusion_transformed.dataloader import DataLoader
 
-df = pd.read_csv("dados.csv").sort_values("timestamp")
-feature_cols = [c for c in df.columns if c.startswith("sensor_")]
-series = df[feature_cols].to_numpy()
+# 1) Carrega dados do Cognite
+dl = DataLoader(start=..., end=..., granularity="2s", asset_name="23-KA-9101")
+dl.add_segments(segments=6, window=30, step=10)  # opcional
+dl.add_time_to_change_state_timestamp()          # opcional
+df = dl.df
 
-seg = UnsupervisedStateSegmenter(
-    k_states=6,
-    window=30,
-    step=10,
-    device="cuda",
-    feature_conf=FeatureConfig(acf_lags=15, bands=[(0.0, 0.1), (0.1, 0.3), (0.3, 0.5)])
-)
-seg.fit(series)
+# 2) Define colunas
+feature_cols = [...]          # suas colunas de série
+static_cols = [...]           # se existir
+predict_state_cols = [...]    # colunas de horizonte/estado
+timestamp_col = "timestamp"   # ou "index" se usar o índice
 
-summary = seg.predict(series)
-print(summary["states_per_window"])     # sequência discreta por janela
-print(summary["anomaly_mask"])          # 1 onde o estado anômalo foi identificado
-print(summary["slices"])                # blocos [inicio, fim, estado]
-```
-
-#### Exemplo: salvar e reaplicar um modelo treinado
-```python
-seg.save("segmenter.pkl")
-
-# Em outra sessão
-from tsdiffusion_transformed.segmenter import UnsupervisedStateSegmenter
-loaded = UnsupervisedStateSegmenter.load("segmenter.pkl", map_location="cpu")
-new_states = loaded.predict(novos_dados)["states"]
-```
-
-### Encoder Jump-ODE (`ode_jump.py` e `ode_jump_encoder.py`)
-`ODEJump` combina máscaras de observação, integração contínua por ODE com saltos e uma cabeça de observabilidade. `ODEJumpEncoder` adiciona blocos transformer e duas taxas de aprendizado, tornando o modelo mais expressivo para tensões multivariadas.
-
-#### Exemplo: treino supervisionado por janelas
-```python
-from tsdiffusion_transformed.ode_jump_encoder import ODEJumpEncoder
-
-feature_cols = ["sensor_ax", "sensor_ay", "sensor_az"]
-static_cols = ["compressor_id", "potencia_nominal"]
-model = ODEJumpEncoder(
+# 3) Instancia o modelo
+model = TSDiffusion(
     in_channels=len(feature_cols),
+    status_dim=len(predict_state_cols),
+    static_dim=len(static_cols),
     hidden_dim=256,
-    static_dim=len(static_cols),
-    n_layers=8,
-    n_heads=8,
-    lam=[0.5, 0.4, 0.1],      # pesos das perdas L1, difusão e máscara
+    num_steps=1000,
+    n_heads=4,
+    n_layers=4,
 )
 
-metrics_stream = model.train_cognite(
-    df=df,
+# 4) Treino simples
+train_loss, val_loss = model.train_model(
+    df_train=df_train,
+    df_val=df_val,                  # ou None
     feature_cols=feature_cols,
     static_features_cols=static_cols,
-    timestamp_col="timestamp",
-    states_col="estado_segmentado",
-    window_size=30,
-    window_step=15,
-    batch_size=128,
-    epochs=60,
-    validate=True,
-    early_stopping=True,
+    predict_state_cols=predict_state_cols,
+    timestamp_col=timestamp_col,
+    status_pred_window=600 / (60*60*24*365),  # horizonte (segundos -> normalizado)
+    batch_size=32,
+    lr=1e-3,
+    window_size=600,                # passos por janela
+    device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 )
 
-for epoch, metrics in enumerate(metrics_stream, start=1):
-    macro = metrics["macro_mse"]
-    micro = metrics["micro_mse"]
-    print(f"Época {epoch}: macro={macro:.6f} | micro={micro:.6f}")
+# 5) Imputação
+x_hat = model.impute(
+    x_obs=tensor_X,     # (B, T, C) já normalizado
+    mask=tensor_mask,   # (B, T, C) 1 observado / 0 ausente
+    timestamps=tensor_ts,          # (B, T) 0-1
+    static_feats=tensor_static,    # (B, D) ou None
+    sampling_steps=200,
+)
+
+```
+## Observações
+- Ajuste status_pred_window ao horizonte real em segundos (o código normaliza por TS_SPAN).
+- O DataLoader exige COGNITE_CLIENT_SECRET no ambiente; revise permissões/escopos antes de executar.
+- GPUs são opcionais, mas recomendadas para janelas longas e num_steps altos na difusão.
+
+
+
+
+## Fluxo atual (ts_diffusion_transformed.py)
+1. (Opcional) Segmentar estados com `segmenter.py` e adicionar colunas ao DataFrame.
+2. Treinar `TSDiffusion` com `train_model`.
+3. Avaliar com `test_model` ou `evaluate_datasets`.
+4. Imputar com `impute` (ou `test_impute` para avaliação controlada).
+5. Prever/continuar séries com `forecast_recursive` ou `sample_continue`.
+
+### Exemplo: treino + avaliação
+```python
+train_loss, val_loss = model.train_model(
+    df_train=df_train,
+    df_val=df_val,                  # ou None
+    feature_cols=feature_cols,
+    static_features_cols=static_cols,
+    predict_state_cols=predict_state_cols,
+    timestamp_col=timestamp_col,
+    status_pred_window=600 / (60*60*24*365),
+    batch_size=32,
+    lr=1e-3,
+    window_size=600,
+    device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+ )
+
+test_loss = model.test_model(
+    df_test=df_test,
+    feature_cols=feature_cols,
+    predict_state_cols=predict_state_cols,
+    static_features_cols=static_cols,
+    timestamp_col=timestamp_col,
+    status_pred_window=600 / (60*60*24*365),
+    window_size=600,
+    device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+ )
 ```
 
-#### Exemplo: avaliar e reutilizar checkpoints
+#### Imputação e métricas
 ```python
-import numpy as np
-from torch.utils.data import DataLoader
-
-model.save("encoder_final.pt")
-
-reloaded = ODEJumpEncoder.load(
-    "encoder_final.pt",
-    in_channels=len(feature_cols),
-    hidden_dim=256,
-    static_dim=len(static_cols),
-    n_layers=8,
-    n_heads=8,
-    lam=[0.5, 0.4, 0.1],
+# Imputação direta (tensors já normalizados e mascarados)
+x_hat = model.impute(
+    x_obs=tensor_X,    # (B, T, C) z-score
+    mask=tensor_mask,  # (B, T, C) 1 observado / 0 ausente
+    timestamps=tensor_ts,  # (B, T) 0-1
+    static_feats=tensor_static,
+    sampling_steps=200,
 )
-
-### Difusão para denoising/imputação (`tsdiffusion.py`)
-`TSDiffusion` reutiliza o encoder Jump-ODE para rodar passos DDPM no espaço latente, estimar ruído e reconstruir séries mascaradas com consistência em relação aos dados observados.
-
-#### Exemplo: treino com difusão
-```python
-from tsdiffusion_transformed.tsdiffusion import TSDiffusion
-
-diff = TSDiffusion(
-    in_channels=len(feature_cols),
-    hidden_dim=384,
-    static_dim=len(static_cols),
-    n_layers=12,
-    n_heads=8,
-    num_steps=500,
-    lam=[0.3, 0.6, 0.1],
+# Avaliação automática de imputação (MAE/RMSE por feature)
+metrics = model.evaluate_datasets(
+    window_size=600,
+    batch_size=256,
+    missing_frac=0.2,
+    sampling_steps=40,
 )
-
-for epoch, metrics in enumerate(diff.train_cognite(
-    df=df,
-    feature_cols=feature_cols,
-    static_features_cols=static_cols,
-    timestamp_col="timestamp",
-    states_col="estado_segmentado",
-    window_size=30,
-    window_step=15,
-    batch_size=64,
-    epochs=80,
-    validate=False,
-)):
-    print(f"Época {epoch+1}: micro MSE = {metrics['micro_mse']:.6f}")
 ```
 
-#### Exemplo: reconstruir DataFrames e imputar valores
+### Forecast / continuação
 ```python
-# Gera duas versões: sequência completa do processo reverso e blend com dados originais
-reconstructed_df, denoised_df = diff.denoise_dataframe(
-    df=df,
-    feature_cols=feature_cols,
-    timestamp_col="timestamp",
-    static_features_cols=static_cols,
-    window_size=30,
-    window_step=15,
-    replace_only_missing=True,
+ts_full, x_full = model.forecast_recursive(
+    x_hist=x_tensor,   # (B, L0, C) z-score
+    t_hist=t_tensor,   # (B, L0) 0-1
+    window_size=48,
+    n_future=24,
+    delta_t=1.0,       # mesmo passo temporal usado no treino
+    static_feats=static_tensor,
+    sampling_steps=200,
 )
+
+```

@@ -399,7 +399,7 @@
 % =======================
 % Seção: Resultados
 % =======================
-\section{Resultados}
+\section{Figuras de Mérito}
 
 
 \begin{frame}{Figuras de Mérito utilizadas}
@@ -486,111 +486,130 @@ q(z\mid x)\,\|\,p(z)
     \end{itemize}
 \end{frame}
 
+% =======================
+% Seção: Resultados
+% =======================
+\section{Resultados}
 
 \begin{frame}{Resultados quantitativos}
-  \begin{table}[h]
-    \centering
-    \small
-\begin{tabular}{lccccc}
+
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccc}
 \toprule
 \textbf{Modelo} 
-& \textbf{NELBO $\downarrow$} 
-& \textbf{NLL $\downarrow$} 
-& \textbf{MSE $\downarrow$}
-& \textbf{Cov90 $\rightarrow$ 0.90} 
-& \textbf{Width90 $\downarrow$} \\
+& \textbf{NELBO$\downarrow$} 
+& \textbf{NLL$\downarrow$} 
+& \textbf{MSE$\downarrow$}
+& \textbf{Cov90$\rightarrow$} 
+& \textbf{W90$\downarrow$}
+& \textbf{Tempo (min)} \\
 \midrule
 
 \textbf{GRU Difusão}
 & \textbf{0.510}
 & \textbf{0.456}
-& \textbf{0.237 $\pm$ 0.064} 
+& \textbf{$0.237 \pm 0.064$} 
 & \textbf{0.897}
-& \textbf{2.213} \\
+& \textbf{2.213}
+& \textbf{10.1} \\
 
 BiLSTM Difusão
 & 0.518
 & 0.462
-& 0.243 $\pm$ 0.067
+& $0.243 \pm 0.067$
 & 0.902 
-& 2.200 \\
+& 2.200
+& 11.2 \\
 
 GRU 
 & 0.558 
 & 0.498 
-& 0.300 $\pm$ 0.108 
+& $0.300 \pm 0.108$ 
 & 0.905 
-& 2.252 \\
+& 2.252
+& 7.7 \\
 
 LSTM 
 & 0.588 
 & 0.513 
-& 0.332 $\pm$ 0.129 
+& $0.332 \pm 0.129$ 
 & 0.900 
-& 2.251 \\
+& 2.251
+& 7.4 \\
 
 BiGRU 
 & 0.589 
 & 0.499 
-& 0.335 $\pm$ 0.136 
+& $0.335 \pm 0.136$ 
 & 0.909 
-& 2.267 \\
+& 2.267
+& 7.7 \\
 
 BiLSTM VarDrop 0.2 
 & 0.595 
 & 0.506 
-& 0.317 $\pm$ 0.119 
+& $0.317 \pm 0.119$ 
 & 0.898 
-& 2.240 \\
+& 2.240
+& 7.5 \\
 
 BiLSTM RAdam 
 & 0.597 
 & 0.511 
-& 0.341 $\pm$ 0.139 
+& $0.341 \pm 0.139$ 
 & 0.898 
-& 2.234 \\
+& 2.234
+& 15.1 \\
 
 BiLSTM Warmup/Sched. 
 & 0.598 
 & 0.504 
-& 0.354 $\pm$ 0.146 
+& $0.354 \pm 0.146$ 
 & 0.903 
-& 2.251 \\
+& 2.251
+& 6.5 \\
 
 BiLSTM AdamW 
 & 0.601 
 & 0.506 
-& 0.341 $\pm$ 0.141 
+& $0.341 \pm 0.141$ 
 & 0.900 
-& 2.224 \\
+& 2.224
+& 7.0 \\
 
 BiLSTM 
 & 0.609 
 & 0.527 
-& 0.337 $\pm$ 0.133 
+& $0.337 \pm 0.133$ 
 & 0.901 
-& 2.269 \\
+& 2.269
+& 7.4 \\
 
 BiLSTM LayerNorm 
 & 0.617 
 & 0.514 
-& 0.342 $\pm$ 0.140 
+& $0.342 \pm 0.140$ 
 & 0.907 
-& 2.281 \\
+& 2.281
+& 5.9 \\
 
 DEEP 
 & 1.217 
 & 1.164 
-& 0.693 $\pm$ 0.209 
+& $0.693 \pm 0.209$ 
 & 0.916 
-& 2.785 \\
+& 2.785
+& 8.9 \\
+
 \bottomrule
 \end{tabular}
 
 
-  \caption{
-Comparação probabilística entre modelos.}
-  \end{table}
+
+\vspace{0.3em}
+{\tiny Comparação probabilística entre modelos.}
 
 \end{frame}
 
@@ -683,8 +702,7 @@ A abordagem probabilística captura melhor:
   \item \textbf{Modelo campeão}: \textbf{GRU + Difusão},
         com desempenho muito próximo do BiLSTM + Difusão.
 
-  \item O modelo gera séries realistas, calibradas
-        e capazes de representar eventos raros.
+  \item O modelo gerou séries próximas a realidade e com calibração da distribuição probabilística adequada.
 
   \item Potencial de aplicação:
         gêmeos digitais e simulação de cenários críticos.
