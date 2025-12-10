@@ -212,6 +212,7 @@ def main():
     
     # Modelos para avaliar
     models_to_evaluate = {
+        'Simple CNN': ('simple_cnn', './models/simple_cnn_best.pth'),
         'ResNet50': ('resnet50', './models/resnet50_best.pth'),
         'DenseNet121': ('densenet121', './models/densenet121_best.pth'),
         'EfficientNet-B0': ('efficientnet_b0', './models/efficientnet_best.pth'),

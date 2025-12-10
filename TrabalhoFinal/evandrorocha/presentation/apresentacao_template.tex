@@ -10,6 +10,7 @@
 \usepackage{multirow}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{amssymb}
 
 \setbeamertemplate{footline}[frame number]
 \setbeamertemplate{frametitle}[default][center]
@@ -193,7 +194,7 @@
 %===========================================
 \section{Método Proposto}
 
-\begin{frame}{Pipeline de Processamento}
+\begin{frame}{Pipeline de Processamento (CNNs Pré-treinadas)}
     \begin{enumerate}
         \item \textbf{Pré-processamento}
         \begin{itemize}
@@ -216,6 +217,12 @@
             \item Reduz overfitting em datasets pequenos
         \end{itemize}
     \end{enumerate}
+    
+    \vspace{0.2cm}
+    
+    \begin{alertblock}{Nota}
+        CNN Baseline usa mesmo pré-processamento, mas \textbf{sem transfer learning} (treinada do zero)
+    \end{alertblock}
 \end{frame}
 
 \begin{frame}{Transfer Learning: Feature Extraction}
@@ -223,7 +230,7 @@
         \begin{itemize}
             \item \textbf{Backbone:} Pesos pré-treinados no ImageNet (congelados)
             \item \textbf{Classificador:} Treinado do zero para TB vs Normal
-            \item \textbf{Parâmetros treináveis:} $\sim$1M (vs 25M total)
+            \item \textbf{Parâmetros treináveis:} 527K--1.05M (ResNet: 1.05M, DenseNet: 527K, EfficientNet: 658K)
         \end{itemize}
     \end{block}
     
@@ -250,33 +257,46 @@
     \end{columns}
 \end{frame}
 
-\begin{frame}{Modelos Avaliados}
-    \begin{table}
-        \small
-        \begin{tabular}{lccc}
-            \toprule
-            \textbf{Modelo} & \textbf{Parâmetros} & \textbf{Pretrained} & \textbf{Características} \\
-            \midrule
-            ResNet-50 & 25.6M & ImageNet & Skip connections, 50 camadas \\
-            DenseNet-121 & 8.0M & ImageNet & Dense connections \\
-            EfficientNet-B0 & 5.3M & ImageNet & Compound scaling \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
-    
-    \vspace{0.5cm}
-    
-    \begin{block}{Métricas de Avaliação}
-        \begin{itemize}
-            \item \textbf{Sensibilidade:} Detectar casos de TB
-            \item \textbf{Especificidade:} Identificar casos normais
-            \item \textbf{AUC-ROC:} Capacidade discriminativa
-            \item \textbf{F1-Score:} Balanço geral
-        \end{itemize}
+\begin{frame}{Técnicas de Regularização}
+    \scriptsize
+    \begin{block}{Prevenção de Overfitting}
+        Múltiplas técnicas aplicadas para generalização com dataset pequeno (662 imagens)
     \end{block}
+    
+    \vspace{0.2cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{CNNs Pré-treinadas:}
+        \begin{itemize}
+            \item Dropout: 0.5
+            \item Batch Normalization
+            \item Data Augmentation
+            \item Early Stopping (p=10)
+            \item Weight Decay: $10^{-5}$
+            \item Transfer Learning
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{CNN Baseline:}
+        \begin{itemize}
+            \item Dropout: 0.4
+            \item Batch Normalization
+            \item Data Augmentation
+            \item Early Stopping (p=10)
+            \item Weight Decay: $10^{-4}$
+            \item Init: Kaiming (He)
+        \end{itemize}
+    \end{columns}
+    
+    \vspace{0.2cm}
+    
+    \begin{alertblock}{Nota Metodológica}
+        Hiperparâmetros otimizados individualmente para cada abordagem (prática padrão em transfer learning)
+    \end{alertblock}
 \end{frame}
 
-\begin{frame}{SimpleCNN: Baseline Tradicional}
+\begin{frame}{CNN Baseline: Arquitetura Tradicional}
     \begin{columns}
         \column{0.5\textwidth}
         \textbf{Arquitetura:}
@@ -315,7 +335,7 @@
     \end{columns}
 \end{frame}
 
-\begin{frame}{Por que SimpleCNN como Baseline?}
+\begin{frame}{Por que CNN Baseline?}
     \begin{block}{Justificativa Acadêmica}
         \begin{itemize}
             \item \textbf{Comparação justa}: Mesma tarefa, mesmos dados
@@ -329,23 +349,49 @@
     
     \begin{columns}
         \column{0.5\textwidth}
-        \textbf{SimpleCNN (do zero):}
+        \textbf{CNN Baseline (do zero):}
         \begin{itemize}
             \item Aprende tudo do zero
-            \item Precisa de mais épocas (100)
+            \item Precisa de mais épocas
             \item Risco de overfitting
-            \item Performance esperada: 75-80\%
         \end{itemize}
         
         \column{0.5\textwidth}
         \textbf{Pré-treinadas (ImageNet):}
         \begin{itemize}
             \item Já conhecem features básicas
-            \item Menos épocas (50)
-            \item Menos overfitting
-            \item Performance: 86-96\%
+            \item Convergem em menos épocas
+            \item Menor risco de overfitting
         \end{itemize}
     \end{columns}
+\end{frame}
+
+\begin{frame}{Modelos Avaliados}
+    \begin{table}
+        \small
+        \begin{tabular}{lccc}
+            \toprule
+            \textbf{Modelo} & \textbf{Parâmetros} & \textbf{Pretrained} & \textbf{Características} \\
+            \midrule
+            CNN Baseline & 1.2M & --- & 4 blocos, treinada do zero \\
+            \midrule
+            ResNet-50 & 25.6M & ImageNet & Skip connections, 50 camadas \\
+            DenseNet-121 & 8.0M & ImageNet & Dense connections \\
+            EfficientNet-B0 & 5.3M & ImageNet & Compound scaling \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    
+    \vspace{0.3cm}
+    
+    \begin{block}{Figuras de Mérito}
+        \begin{itemize}
+            \item \textbf{Sensibilidade:} Detectar casos de TB
+            \item \textbf{Especificidade:} Identificar casos normais
+            \item \textbf{AUC-ROC:} Capacidade discriminativa
+            \item \textbf{F1-Score:} Balanço geral
+        \end{itemize}
+    \end{block}
 \end{frame}
 
 %===========================================
@@ -353,252 +399,105 @@
 %===========================================
 \section{Resultados Obtidos}
 
-\begin{frame}{Resultados - ResNet50}
-    \begin{table}
-        \begin{tabular}{lc}
-            \toprule
-            \textbf{Métrica} & \textbf{Valor} \\
-            \midrule
-            Acurácia & 91.00\% \\
-            Precisão & 91.84\% \\
-            Recall (Sensibilidade) & 90.00\% \\
-            F1-Score & 90.91\% \\
-            AUC-ROC & \textbf{96.04\%} \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
-    
-    \vspace{0.5cm}
-    
-    \begin{exampleblock}{Destaque}
-        AUC-ROC de 96.04\% indica excelente capacidade discriminativa entre casos de TB e normais.
-    \end{exampleblock}
-\end{frame}
 
-\begin{frame}{Resultados - DenseNet121}
+
+\begin{frame}{Comparação Completa dos Modelos}
     \begin{table}
-        \begin{tabular}{lc}
+        \tiny
+        \begin{tabular}{lccccc}
             \toprule
-            \textbf{Métrica} & \textbf{Valor} \\
+            \textbf{Métrica} & \textbf{CNN Baseline} & \textbf{ResNet50} & \textbf{DenseNet121} & \textbf{EfficientNet-B0} & \textbf{Melhor} \\
             \midrule
-            Acurácia & 85.00\% \\
-            Precisão & 87.23\% \\
-            Recall (Sensibilidade) & 82.00\% \\
-            F1-Score & 84.54\% \\
-            AUC-ROC & 86.32\% \\
+            Sensibilidade & 80.00\% & \textbf{90.00\%} & 82.00\% & 80.00\% & ResNet50 \\
+            Especificidade & 90.00\% & 92.00\% & 88.00\% & \textbf{94.00\%} & EfficientNet \\
+            AUC-ROC & 90.64\% & \textbf{96.04\%} & 86.32\% & 89.48\% & ResNet50 \\
+            Acurácia & 85.00\% & \textbf{91.00\%} & 85.00\% & 87.00\% & ResNet50 \\
+            Precisão & 88.89\% & 91.84\% & 87.23\% & \textbf{93.02\%} & EfficientNet \\
+            F1-Score & 84.21\% & \textbf{90.91\%} & 84.54\% & 86.02\% & ResNet50 \\
+            \midrule
+            Parâmetros & \textbf{1.2M} & 25.6M & 8.0M & \textbf{5.3M} & Baseline \\
+            Épocas & 33 & 25 & \textbf{13} & 16 & DenseNet \\
+            FN (Falsos Neg.) & 10 & \textbf{5} & 9 & 10 & ResNet50 \\
+            FP (Falsos Pos.) & 5 & 4 & 6 & \textbf{3} & EfficientNet \\
             \bottomrule
         \end{tabular}
     \end{table}
     
-    \vspace{0.3cm}
+    \vspace{0.2cm}
     
     \begin{columns}
         \column{0.5\textwidth}
-        \textbf{Matriz de Confusão:}
-        \begin{table}
-            \footnotesize
-            \begin{tabular}{cc|cc}
-                \multicolumn{2}{c}{} & \multicolumn{2}{c}{\textbf{Predito}} \\
-                \multicolumn{2}{c|}{} & Normal & TB \\
-                \cline{2-4}
-                \multirow{2}{*}{\rotatebox{90}{\textbf{Real}}} & Normal & 44 & 6 \\
-                & TB & 9 & 41 \\
-            \end{tabular}
-        \end{table}
-        
-        \column{0.5\textwidth}
-        \textbf{Métricas Clínicas:}
+        \scriptsize
+        \textbf{Análise:}
         \begin{itemize}
-            \item Sensibilidade: 82\%
-            \item Especificidade: 88\%
-            \item Convergiu em 13 épocas
-            \item Modelo mais leve (8M parâmetros)
-        \end{itemize}
-    \end{columns}
-\end{frame}
-
-\begin{frame}{Comparação: ResNet50 vs DenseNet121}
-    \begin{table}
-        \small
-        \begin{tabular}{lccc}
-            \toprule
-            \textbf{Métrica} & \textbf{ResNet50} & \textbf{DenseNet121} & \textbf{Diferença} \\
-            \midrule
-            Acurácia & \textbf{91.00\%} & 85.00\% & +6.0\% \\
-            Precisão & \textbf{91.84\%} & 87.23\% & +4.6\% \\
-            Sensibilidade & \textbf{90.00\%} & 82.00\% & +8.0\% \\
-            Especificidade & \textbf{92.00\%} & 88.00\% & +4.0\% \\
-            F1-Score & \textbf{90.91\%} & 84.54\% & +6.4\% \\
-            AUC-ROC & \textbf{96.04\%} & 86.32\% & +9.7\% \\
-            \midrule
-            Parâmetros & 25.6M & \textbf{8.0M} & -69\% \\
-            Épocas & 25 & \textbf{13} & -48\% \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
-    
-    \vspace{0.3cm}
-    
-    \begin{exampleblock}{Conclusão}
-        \textbf{ResNet50 apresentou desempenho superior} em todas as métricas clínicas:
-        \begin{itemize}
-            \item +9.7\% em AUC-ROC (capacidade discriminativa)
-            \item +8.0\% em Sensibilidade (detecção de TB)
-            \item +4.0\% em Especificidade (identificação de normais)
-        \end{itemize}
-        DenseNet121 é mais eficiente (menos parâmetros, convergência mais rápida), mas ResNet50 oferece melhor performance para aplicação clínica.
-    \end{exampleblock}
-\end{frame}
-
-\begin{frame}{Comparação Completa: Três CNNs Pré-treinadas}
-    \begin{table}
-        \footnotesize
-        \begin{tabular}{lcccc}
-            \toprule
-            \textbf{Métrica} & \textbf{ResNet50} & \textbf{DenseNet121} & \textbf{EfficientNet-B0} & \textbf{Melhor} \\
-            \midrule
-            Sensibilidade & \textbf{90.00\%} & 82.00\% & 80.00\% & ResNet50 \\
-            Especificidade & 92.00\% & 88.00\% & \textbf{94.00\%} & EfficientNet \\
-            AUC-ROC & \textbf{96.04\%} & 86.32\% & 89.48\% & ResNet50 \\
-            Acurácia & \textbf{91.00\%} & 85.00\% & 87.00\% & ResNet50 \\
-            Precisão & 91.84\% & 87.23\% & \textbf{93.02\%} & EfficientNet \\
-            F1-Score & \textbf{90.91\%} & 84.54\% & 86.02\% & ResNet50 \\
-            \midrule
-            Parâmetros & 25.6M & \textbf{8.0M} & \textbf{5.3M} & EfficientNet \\
-            Épocas & 25 & \textbf{13} & 16 & DenseNet \\
-            FN (Falsos Neg.) & \textbf{5} & 9 & 10 & ResNet50 \\
-            FP (Falsos Pos.) & 4 & 6 & \textbf{3} & EfficientNet \\
-            \bottomrule
-        \end{tabular}
-    \end{table}
-    
-    \vspace{0.3cm}
-    
-    \begin{columns}
-        \column{0.5\textwidth}
-        \textbf{Análise por Modelo:}
-        \begin{itemize}
-            \item \textbf{ResNet50}: Melhor performance geral
+            \item \textbf{ResNet50}: Melhor performance
             \item \textbf{EfficientNet}: Melhor especificidade
-            \item \textbf{DenseNet}: Mais eficiente
+            \item \textbf{DenseNet}: Convergiu em menos épocas
+            \item \textbf{Baseline}: Menor complexidade
         \end{itemize}
         
         \column{0.5\textwidth}
+        \scriptsize
         \textbf{Trade-offs:}
         \begin{itemize}
             \item Performance vs Eficiência
             \item Sensibilidade vs Especificidade
-            \item Convergência vs Acurácia
         \end{itemize}
     \end{columns}
 \end{frame}
 
-\begin{frame}{Análise Detalhada por Modelo}
-    \begin{columns}
-        \column{0.33\textwidth}
-        \textbf{ResNet50}
-        \begin{block}{Pontos Fortes}
-            \begin{itemize}
-                \item ✓ Melhor AUC-ROC (96\%)
-                \item ✓ Melhor sensibilidade (90\%)
-                \item ✓ Balanceamento ideal
-                \item ✓ Menos FN (5)
-            \end{itemize}
-        \end{block}
-        \begin{alertblock}{Limitações}
-            \begin{itemize}
-                \item Mais parâmetros (25.6M)
-                \item Mais épocas (25)
-            \end{itemize}
-        \end{alertblock}
-        
-        \column{0.33\textwidth}
-        \textbf{DenseNet121}
-        \begin{block}{Pontos Fortes}
-            \begin{itemize}
-                \item ✓ Eficiente (8M)
-                \item ✓ Rápida convergência (13)
-                \item ✓ Boa performance geral
-            \end{itemize}
-        \end{block}
-        \begin{alertblock}{Limitações}
-            \begin{itemize}
-                \item Menor AUC-ROC (86\%)
-                \item Mais FN (9)
-                \item Sensibilidade baixa (82\%)
-            \end{itemize}
-        \end{alertblock}
-        
-        \column{0.33\textwidth}
-        \textbf{EfficientNet-B0}
-        \begin{block}{Pontos Fortes}
-            \begin{itemize}
-                \item ✓ Mais leve (5.3M)
-                \item ✓ Melhor especificidade (94\%)
-                \item ✓ Menos FP (3)
-                \item ✓ Alta precisão (93\%)
-            \end{itemize}
-        \end{block}
-        \begin{alertblock}{Limitações}
-            \begin{itemize}
-                \item Sensibilidade baixa (80\%)
-                \item Mais FN (10)
-            \end{itemize}
-        \end{alertblock}
-    \end{columns}
+\begin{frame}{Matrizes de Confusão (Comparação Visual)}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.85\textwidth]{imgs/all_confusion_matrices.png}
+        \caption{Matrizes de confusão dos 4 modelos avaliados}
+    \end{figure}
 \end{frame}
 
-\begin{frame}{Sensibilidade e Especificidade - ResNet50}
-    \begin{columns}
-        \column{0.5\textwidth}
-        \textbf{Métricas Clínicas:}
-        \begin{itemize}
-            \item \textbf{Sensibilidade:} 90.00\%
-            \begin{itemize}
-                \item Detecta 9 em cada 10 casos de TB
-                \item TP/(TP+FN) = 45/(45+5)
-            \end{itemize}
-            \item \textbf{Especificidade:} 92.00\%
-            \begin{itemize}
-                \item Identifica 92\% dos normais
-                \item TN/(TN+FP) = 46/(46+4)
-            \end{itemize}
-        \end{itemize}
-        
-        \vspace{0.3cm}
-        
-        \textbf{Matriz de Confusão:}
-        \begin{table}
-            \footnotesize
-            \begin{tabular}{cc|cc}
-                \multicolumn{2}{c}{} & \multicolumn{2}{c}{\textbf{Predito}} \\
-                \multicolumn{2}{c|}{} & Normal & TB \\
-                \cline{2-4}
-                \multirow{2}{*}{\rotatebox{90}{\textbf{Real}}} & Normal & 46 & 4 \\
-                & TB & 5 & 45 \\
-            \end{tabular}
-        \end{table}
-        
-        \column{0.5\textwidth}
-        \textbf{Interpretação Clínica:}
-        \begin{block}{Pontos Fortes}
-            \begin{itemize}
-                \item ✓ Alta sensibilidade (90\%)
-                \item ✓ Alta especificidade (92\%)
-                \item ✓ Balanceamento adequado
-                \item ✓ AUC-ROC excelente (96\%)
-            \end{itemize}
-        \end{block}
-        
-        \begin{alertblock}{Atenção}
-            \begin{itemize}
-                \item 5 falsos negativos (FN)
-                \item 4 falsos positivos (FP)
-                \item Sempre confirmar com exames adicionais
-            \end{itemize}
-        \end{alertblock}
-    \end{columns}
+\begin{frame}{Curvas ROC (Performance Clínica)}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.75\textwidth]{imgs/roc_curves_combined.png}
+        \caption{Comparação das curvas ROC. A ResNet-50 (topo esquerdo) apresenta a maior área sob a curva (AUC).}
+    \end{figure}
 \end{frame}
+
+\begin{frame}{Análise Detalhada: Pontos Fortes e Fracos}
+    \tiny
+    \begin{table}
+        \begin{tabular}{lll}
+            \toprule
+            \textbf{Modelo} & \textbf{Pontos Fortes} & \textbf{Pontos Fracos} \\
+            \midrule
+            \textbf{CNN Baseline} & $\bullet$ Simplicidade arquitetural & $\bullet$ AUC-ROC: 90.64\% \\
+             & $\bullet$ Serve como referência & $\bullet$ Sensibilidade: 80\% \\
+             & $\bullet$ Sem dependências externas & $\bullet$ Sem transfer learning \\
+            \midrule
+            \textbf{ResNet-50} & $\checkmark$ Melhor AUC-ROC: 96.04\% & $\bullet$ 25.6M parâmetros \\
+             & $\checkmark$ Melhor sensibilidade: 90\% & $\bullet$ 25 épocas \\
+             & $\checkmark$ Especificidade: 92\% & $\bullet$ Custo computacional alto \\
+             & $\checkmark$ Menos falsos negativos (5) & \\
+            \midrule
+            \textbf{DenseNet-121} & $\checkmark$ Convergência rápida (13 épocas) & $\bullet$ AUC-ROC: 86.32\% (pior) \\
+             & $\checkmark$ Eficiente (8M params) & $\bullet$ Sensibilidade: 82\% \\
+             & $\checkmark$ Performance aceitável & $\bullet$ Mais falsos negativos (9) \\
+            \midrule
+            \textbf{EfficientNet-B0} & $\checkmark$ Mais leve (5.3M params) & $\bullet$ Sensibilidade: 80\% \\
+             & $\checkmark$ Melhor especificidade: 94\% & $\bullet$ AUC-ROC: 89.48\% \\
+             & $\checkmark$ Alta precisão: 93.02\% & $\bullet$ Mais falsos negativos (10) \\
+             & $\checkmark$ Menos falsos positivos (3) & \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    
+    \vspace{0.1cm}
+    
+    \begin{exampleblock}{Conclusão}
+        \footnotesize
+        \textbf{ResNet-50}: melhor performance clínica. \textbf{EfficientNet-B0}: melhor custo-benefício. \textbf{DenseNet-121}: convergência rápida. \textbf{CNN Baseline}: Serve como referência.
+    \end{exampleblock}
+\end{frame}
+
 
 \begin{frame}{Comparação Visual dos Modelos}
     \begin{figure}
@@ -607,14 +506,88 @@
         \caption{Comparação de métricas entre os três modelos pré-treinados}
     \end{figure}
 \end{frame}
-\begin{frame}{Tabela Comparativa Detalhada}
+
+\begin{frame}{Evolução do Treinamento (F1-Score)}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \includegraphics[width=\textwidth]{imgs/f1_score_comparison.png}
+        
+        \column{0.4\textwidth}
+        \footnotesize
+        \textbf{Interpretação:}
+        \begin{itemize}
+            \item \textbf{Eixo Y:} F1-Score (quanto maior, melhor). Harmonia entre Precisão e Sensibilidade.
+            \item \textbf{Convergência:} A \textcolor{orange}{DenseNet} (laranja) sobe muito rápido, aprendendo cedo.
+            \item \textbf{Performance:} A \textcolor{blue}{ResNet} (azul) atinge o pico mais alto.
+            \item \textbf{Baseline:} A \textcolor{red}{CNN Simples} (vermelho) tem desempenho inferior e oscila mais.
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+%===========================================
+% 5. INTERPRETABILIDADE
+%===========================================
+\section{Interpretabilidade}
+
+
+
+
+\begin{frame}{Metodologia de Comparação Visual}
+    \begin{block}{O que é Grad-CAM?}
+        Técnica que destaca os pixels da imagem que mais influenciaram a decisão da rede neural (Gradient-weighted Class Activation Mapping).
+    \end{block}
+
+    \vspace{0.3cm}
+
+    \begin{alertblock}{Cenário de Consenso}
+        Para garantir uma comparação justa entre as arquiteturas, selecionamos uma amostra onde \textbf{todos os 4 modelos} classificaram corretamente a Tuberculose (Probabilidade $> 50\%$).
+    \end{alertblock}
+
+    \vspace{0.3cm}
+    \footnotesize
+    \textbf{Objetivo:} Analisar se redes mais complexas (ex: ResNet, EfficientNet) focam em áreas mais precisas da lesão comparadas à Baseline.
+\end{frame}
+
+\begin{frame}{Grad-CAM (CNN Baseline)}
     \begin{figure}
         \centering
-        \includegraphics[width=0.9\textwidth]{imgs/model_comparison_table.png}
-        \caption{Tabela comparativa completa dos modelos}
+        \includegraphics[width=1.0\textwidth]{imgs/simplecnn_gradcam_tb.png}
+        \caption{Grad-CAM na camada Conv4 da SimpleCNN. A rede identifica as opacidades, apresentando áreas de ativação dispersas sobre a região pulmonar.}
     \end{figure}
 \end{frame}
 
+\begin{frame}{Grad-CAM (ResNet-50) vs Baseline}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{imgs/resnet50_gradcam_tb.png}
+        \caption{Mapa de atenção (Grad-CAM) da ResNet-50. Note como o foco é mais concentrado e menos ruidoso em comparação à Baseline.}
+    \end{figure}
+    
+    \footnotesize
+\end{frame}
+
+\begin{frame}{Grad-CAM (Outras Arquiteturas)}
+    \begin{columns}
+        \begin{column}{0.48\textwidth}
+            \centering
+            \textbf{DenseNet121}\\
+            \includegraphics[width=\textwidth]{imgs/densenet121_gradcam_tb.png}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \centering
+            \textbf{EfficientNet-B0}\\
+            \includegraphics[width=\textwidth]{imgs/efficientnet_b0_gradcam_tb.png}
+        \end{column}
+    \end{columns}
+    \vspace{0.2cm}
+    \scriptsize
+    \textbf{Síntese da Comparação Visual:}
+    \begin{itemize}
+        \item \textbf{ResNet-50 (Slide anterior):} Foco mais intenso e contínuo (correlaciona com maior Sensibilidade).
+        \item \textbf{EfficientNet-B0:} Foco mais recortado e conservador (correlaciona com maior Especificidade).
+        \item \textbf{DenseNet-121:} Foco mais granular e disperso (atenção a detalhes de textura).
+    \end{itemize}
+\end{frame}
 
 %===========================================
 % 5. CONCLUSÕES

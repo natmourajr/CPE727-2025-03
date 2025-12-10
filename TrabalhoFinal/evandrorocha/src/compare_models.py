@@ -239,6 +239,7 @@ def main():
     # Definir modelos a comparar
     models = {
         #'MLP Baseline': 'models/mlp_baseline_test_metrics.json',
+        'Simple CNN': 'models/simplecnn_test_metrics.json',
         'ResNet50': 'models/resnet50_test_metrics.json',
         'DenseNet121': 'models/densenet121_test_metrics.json',
         'EfficientNet-B0': 'models/efficientnet_b0_test_metrics.json',
