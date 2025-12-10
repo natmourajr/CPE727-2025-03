@@ -4,37 +4,36 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
 
-from ThallesNonato.models.ae import AutoRec
 
-def train_autorec(R, dataloader, hidden_dim=500, lr=0.001, num_epochs=10, device=None):
+def train_autorec(model, dataloader, optimizer, device, epochs=10):
+    model.train()
+    criterion = nn.MSELoss(reduction="mean")
+    train_losses = []
 
-    device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = AutoRec(num_items=R.shape[1], hidden_dim=hidden_dim).to(device)
+    for epoch in range(epochs):
+        epoch_loss = 0
 
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
-    dataset_size = len(dataloader.dataset)
-
-    for epoch in range(num_epochs):
-        model.train()
-        running_loss = 0.0
-
-        for batch in tqdm(dataloader, desc=f"Epoch {epoch+1}/{num_epochs}"):
+        for batch in dataloader:  
             batch = batch.to(device)
 
             optimizer.zero_grad()
+
             output = model(batch)
-            loss = criterion(output, batch)  
+
+            mask = (batch != 0).float()
+            loss = criterion(output * mask, batch)
+
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.item() * batch.size(0)
+            epoch_loss += loss.item()
 
-        epoch_loss = running_loss / dataset_size
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}")
+        epoch_loss /= len(dataloader)
+        train_losses.append(epoch_loss)
 
-    return model
+        print(f"[AutoRec] Epoch {epoch+1}/{epochs} - Loss: {epoch_loss:.4f}")
+
+    return train_losses
 
 def evaluate_autorec(model, test_matrix, device=None):
     model.eval()
