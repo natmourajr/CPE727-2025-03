@@ -12,7 +12,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.7.19 /uv /uvx /bin/
 
 COPY . /app
 
-WORKDIR /app/experiments/${EXPERIMENT}
+WORKDIR /app/TrabalhoFinal/${EXPERIMENT}
 
 # Setup UV and Python environment
 RUN uv venv /venv

@@ -42,6 +42,8 @@ def generate_best_models_metrics_and_stack(batch_size=16, device=None):
         logger.log(f"RUNNING {model_name}")
         model = MODELS_NAME[model_name](num_classes=1, device=device)
         model = load_best_model(model_name, model, saved_data_path, device, logger)
+        if model is None:
+            continue
         models_stack[model_name] = model
 
         test_transform = MODELS_TEST_TRANSFORMS[model_name]
@@ -65,6 +67,9 @@ def generate_best_models_metrics_and_stack(batch_size=16, device=None):
         metrics, all_probs, all_labels = bootstrap_metric(model, test_loader, threshold, device, best_model_metrics_path, logger, n_boot=1)
         models_metrics[model_name] = metrics
         models_probs[model_name] = all_probs
+
+    if models_probs == {}:
+        return None
 
     stack_probs = np.mean(
         np.column_stack(list(models_probs.values())),
@@ -91,7 +96,9 @@ def generate_best_models_metrics_and_stack(batch_size=16, device=None):
 def load_best_model(model_name, model, saved_data_path, device, logger):
     best_model = os.path.join(saved_data_path, model_name, "best_model.pth")
     if not os.path.exists(best_model):
-        logger.log("No best model found")
+        logger.log(f"No best model found for {model_name}")
+        logger.log(f"Generate a best_model.pth and save it in {best_model}")
+        return None
 
     model.load_state_dict(torch.load(best_model, map_location=torch.device(device)))
     return model
