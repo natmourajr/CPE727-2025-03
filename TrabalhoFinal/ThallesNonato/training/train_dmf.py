@@ -1,5 +1,8 @@
 import torch
 import tqdm
+import numpy as np
+from sklearn.metrics import mean_squared_error
+
 
 def train(model, train_loader, optimizer, device, epochs=5):
     criterion = torch.nn.MSELoss()
