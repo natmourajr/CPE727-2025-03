@@ -1,7 +1,0 @@
-Precisamos:
-
-1. Entender GAN e suas equações
-2. Construir uma apresentação explicando o assunto
-3. Construir um case de exemplo
-4. Construir uma apresentação explicando o case de exemplo
-5. Integrar em um projeto maior
