@@ -1,6 +1,33 @@
 # TS Diffusion (Jump-ODE + Difusão)
 Implementação em PyTorch de um modelo de difusão para séries temporais com encoder Jump-ODE, self-attention e embeddings temporais híbridos. Inclui pipelines de treino, imputação e previsão recursiva usando DataFrames (ex.: exportados da Cognite) com colunas de séries, atributos estáticos e janelas de predição de estado.
 
+## Arquitetura Latente (VAE + Difusão)
+
+O modelo `TSDiffusion` incorpora explicitamente um **Variational Autoencoder (VAE)** no espaço latente, acoplado a um encoder temporal Jump-ODE e a um processo de difusão DDPM.
+
+- O encoder recorrente (Jump-ODE + self-attention) mapeia cada janela temporal
+  \(\mathbf{X} = (x_{t-L+1}, \dots, x_t)\) para os parâmetros
+  \(\mu_z(\mathbf{X})\) e \(\log \sigma_z^2(\mathbf{X})\), definindo a posterior aproximada
+  \(q_\phi(z \mid \mathbf{X})\).
+
+- A amostragem do código latente é feita via **truque de reparametrização**:
+  \[
+    z = \mu_z + \sigma_z \odot \epsilon, \quad \epsilon \sim \mathcal{N}(0, I).
+  \]
+
+- O decoder reconstrói a série observada \(\hat{\mathbf{X}}\) a partir de \(z\), produzindo
+  médias e variâncias \((\mu_x, \log \sigma_x^2)\) por variável e passo temporal.
+
+- A função objetivo inclui:
+  - termo de reconstrução (log-likelihood Gaussiano),
+  - termo de regularização KL entre \(q_\phi(z \mid \mathbf{X})\) e a prior \(p(z)\),
+  - termos adicionais de difusão, máscara de observação e predição de estado/horizonte.
+
+A **difusão é aplicada no espaço latente**, utilizando o encoder Jump-ODE como estimador
+condicionado de ruído, permitindo denoising consistente, imputação e geração recursiva
+de séries temporais.
+
+
 ## Dependências
 - Python 3.10+
 - PyTorch (GPU opcional)
