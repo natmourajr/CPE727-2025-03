@@ -30,7 +30,7 @@ def train(model, train_loader, optimizer, device, epochs=5):
 
         print(f"Epoch {epoch+1}/{epochs} | MSE: {epoch_loss:.4f}")
 
-    return train_losses   # ← ESSA LINHA PRECISA EXISTIR
+    return train_losses  
 
 
 def evaluate_dmf(model, test_loader, device):
