@@ -1,5 +1,6 @@
 from models.dmf import DMF
 from models.ae import AutoRec
+from models.ncf import NCF
 
 def create_model(model_type, num_users, num_movies, device):
     model_type = model_type.lower()
@@ -9,5 +10,8 @@ def create_model(model_type, num_users, num_movies, device):
 
     if model_type == "ae":
         return AutoRec(num_items=num_movies).to(device)
+    
+    if model_type == "ncf":
+        return NCF(n_users= num_users, n_items= num_movies)
 
     raise ValueError(f"Modelo desconhecido: {model_type}")

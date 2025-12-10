@@ -2,6 +2,10 @@ import torch
 import pandas as pd
 import json
 import os
+from torch.utils.data import random_split
+from torch.utils.data import DataLoader
+from utils.visualization import plot_learning_curve
+
 
 from utils.preprocessing import (
     load_raw_ratings, parse_netflix_ratings, filter_sparse,
@@ -22,6 +26,10 @@ from training.train_dmf import evaluate_dmf
 # AutoRec
 from training.train_ae import train_autorec as train_ae
 from training.train_ae import evaluate_autorec
+
+#NCF
+from training.train_ncf import train_ncf
+from training.train_ncf import evaluate_ncf
 
 
 def main(model_type="dmf"):
@@ -67,12 +75,35 @@ def main(model_type="dmf"):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
+    train_dataset = torch.utils.data.TensorDataset(
+    torch.tensor(train_users, dtype=torch.long),
+    torch.tensor(train_movies, dtype=torch.long),
+    torch.tensor(train_ratings, dtype=torch.float32)
+)
+
+    val_size = int(0.1 * len(train_dataset))
+    train_size = len(train_dataset) - val_size
+    train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
+
+    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True)
+    valid_loader = DataLoader(val_dataset, batch_size=256, shuffle=False)
+
     # -------------------------------
     # 2) TREINO ESPECÍFICO DO MODELO
     # -------------------------------
     if model_type == "dmf":
         print("\n🔥 Treinando DMF...")
         train_losses = train_dmf(model, train_loader, optimizer, device, epochs=3)
+        rmse = evaluate_dmf(model, test_loader, device)
+    
+    elif model_type == "ncf":
+        train_losses, val_losses = train_ncf(
+        model, 
+        train_loader, 
+        valid_loader=valid_loader,
+        epochs=10, 
+        lr=0.001
+        )
         rmse = evaluate_dmf(model, test_loader, device)
 
     elif model_type == "ae":
@@ -117,6 +148,8 @@ def main(model_type="dmf"):
         # Avaliação
         rmse = evaluate_autorec(model, test_matrix.values, device)
 
+    elif model_type == "plot":
+        plot_learning_curve()    
 
     else:
         raise ValueError(f"❌ Tipo de modelo desconhecido: {model_type}")
@@ -127,14 +160,11 @@ def main(model_type="dmf"):
     os.makedirs(f"training/curves/{model_type}", exist_ok=True)
 
     with open(f"training/curves/{model_type}/curves.json", "w") as f:
-        train_losses = [float(x) for x in train_losses]
-        rmse = float(rmse)
-
-        json.dump(
-            {"train_losses": train_losses, "rmse": rmse},
-            f,
-            indent=4
-        )
+        json.dump({
+            "train_losses": [float(x) for x in train_losses],
+            "val_losses": [float(x) for x in val_losses],
+            "rmse": float(rmse)
+        }, f, indent=4)
 
     print(f"📈 Curvas salvas em training/curves/{model_type}/curves.json")
 

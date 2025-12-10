@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt
+import json
+import matplotlib
 import pickle
+import os
 
 
 def plot_movies_by_year(movie_titles):
@@ -123,3 +126,31 @@ def filter_sparse_data(df, min_movie_ratings=10000, min_user_ratings=200):
 def load_preprocessed():
     with open("datasets/processed/preprocessed.pkl", "rb") as f:
         return pickle.load(f)
+
+def plot_learning_curve(model_type):
+    # Ler JSON com curvas
+    with open(f"training/curves/{model_type}/curves.json", "r") as f:
+        data = json.load(f)
+
+    train_losses = data["train_losses"]
+    val_losses = data.get("val_losses", None)
+
+    # Criar figura
+    plt.figure(figsize=(8,6))
+    plt.plot(range(1, len(train_losses)+1), train_losses, label='Train Loss')
+    if val_losses:
+        plt.plot(range(1, len(val_losses)+1), val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title(f'Learning Curve - {model_type.upper()}')
+    plt.legend()
+    plt.grid(True)
+
+    # Criar pasta se não existir
+    os.makedirs(f"training/curves/{model_type}", exist_ok=True)
+
+    # Salvar a figura
+    plt.savefig(f"training/curves/{model_type}/learning_curve.png")
+
+    # Mostrar o gráfico
+    plt.show()
