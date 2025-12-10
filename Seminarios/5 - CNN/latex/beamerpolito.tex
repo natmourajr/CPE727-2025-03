@@ -1,0 +1,963 @@
+\documentclass{beamer}
+\usepackage[portuguese]{babel}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{pgfgantt}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float} % Pacote essencial para a opção [H]
+\usepackage{tabularx}
+\usepackage{booktabs}   % Para linhas de tabela profissionais
+\usepackage[table]{xcolor} % Para cores em tabelas
+
+\definecolor{marker_color}{RGB}{77,201,232}
+\definecolor{marker_done_color}{RGB}{45,115,133}
+\definecolor{finish_color}{RGB}{232,166,60}
+
+\newcommand{\ganttchartyear}{\number\year}
+\newcommand{\ganttchartmonth}{\ifnum\month<10 0\fi\number\month} 
+
+\usetheme{sintef}
+
+\newcommand{\testcolor}[1]{\colorbox{#1}{\textcolor{#1}{test}}~\texttt{#1}}
+\usefonttheme[onlymath]{serif}
+
+\titlebackground*{assets/background}
+
+% adicionar o numero na lista final da apresentação
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+
+\title{Convolutional Neural Networks}
+% \subtitle{Resolvendo o Problema de Picasso \cite{gliozzi2022combining}}
+\course{CPE 727 - Aprendizado Profundo}
+\author{Brenno Rodrigues de Carvalho da Silva, Gabriel Guimarães, Lucas Alexandre, Raphael Nagao}
+
+\IDnumber{\href{mailto:brennorcs@poli.ufrj.br}{brennorcs@poli.ufrj.br}, \href{mailto:guimaraes921@poli.ufrj.br}{guimaraes921@poli.ufrj.br}, \href{mailto:lucas.alexandre@coppe.ufrj.br}{lucas.alexandre@coppe.ufrj.br}, \href{mailto:rnagao@cos.ufrj.br}{rnagao@cos.ufrj.br}}
+
+\begin{document}
+\maketitle
+
+\section{Revisão: Redes Convolucionais (CNNs)}
+
+\footlinecolor{}
+\begin{frame}{O que são CNNs?}
+\begin{itemize}
+    \item CNNs (Convolutional Neural Networks) são redes neurais projetadas para processar dados com estrutura espacial, como imagens.
+\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{Convolutional layer.png}
+    \caption{Camadas das CNN \cite{geron2022hands}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{frame}
+
+\begin{frame}{O que são CNNs?}
+\begin{itemize}
+    \item Compostas por:
+    \begin{itemize}
+        \item Camadas \textbf{convolucionais} (extração de padrões locais)
+        \item Camadas de \textbf{pooling} (redução de dimensionalidade)
+        \item Camadas densas (classificação)
+    \end{itemize}
+\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{Typical CNN architecture.png}
+    \caption{Arquitetura típica de CNN \cite{geron2022hands}.}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Camadas Convolucionais}
+\begin{itemize}
+    \item Aplicam \textbf{filtros} (kernels) sobre a imagem para gerar mapas de ativação.
+    \item Cada filtro aprende a detectar um padrão específico (bordas, texturas, etc).
+    \item Resulta em mapas de ativação (feature maps).
+\end{itemize}
+\begin{figure}
+         \centering
+         \includegraphics[width=0.43\linewidth]{Applying 2 different filters.png}
+         \caption{Aplicando 2 filtros diferentes para obter 2 mapas de características. \cite{geron2022hands}.}
+         \label{fig:placeholder}
+     \end{figure}
+\end{frame}
+
+\begin{frame}{Pooling e suas limitações}
+\begin{itemize}%[<alert@2>]
+    \item Reduz as dimensões dos mapas de ativação
+    \item Os dois tipos mais comuns:
+    \begin{itemize}
+        \item Max pooling: obtém o valor máximo da região.
+        \item Average Pooling: obtém a média dos valores da região. 
+    \end{itemize}
+\end{itemize}
+
+\begin{columns}
+\begin{column}{0.85\textwidth}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\linewidth]{Max pooling layer.png}
+    \caption{Camada de \textit{max pooling} (\textit{kernel pooling} de 2x2, stride de 2, sem uso de \cite{geron2022hands}.}
+\end{figure}
+\end{column}
+\begin{column}{0.15\textwidth}
+\begin{colorblock}[yellow]{sintefred}{Problema:}
+perde informações espaciais importantes.
+\small
+\end{colorblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\section{A matemática por trás}
+
+\begin{frame}{O que é a Convolução Discreta}
+Em redes neurais tradicionais (totalmente conectadas), geralmente "achatamos" os dados de entrada, como uma imagem, em um único vetor longo. Isso ignora uma propriedade fundamental desses dados: a estrutura intrínseca. Imagens, por exemplo, têm eixos (altura, largura) onde a ordem importa, e canais (como R, G, B) que representam diferentes "visões" dos dados.
+\end{frame}
+
+\begin{frame}{O que é a Convolução Discreta}
+A convolução discreta é uma transformação linear projetada especificamente para preservar e explorar essa noção de ordem.
+
+Diferente de uma transformação afim (multiplicação por matriz densa), a convolução é:
+\begin{itemize}
+    \item \textbf{Esparsa:} Apenas algumas unidades de entrada contribuem para uma determinada unidade de saída.
+    \item \textbf{Reutiliza parâmetros:} Os mesmos pesos (o "kernel") são aplicados em múltiplos locais da entrada.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{O Mecanismo da Convolução}
+O processo funciona da seguinte maneira:
+\begin{enumerate}
+    \item \textbf{Mapa de Características de Entrada (Input):} A entrada da camada (por exemplo, uma imagem).
+    \item \textbf{Kernel (Filtro):} Um pequeno conjunto de pesos (ex: 3x3) que "desliza" sobre o mapa de entrada.
+    \item \textbf{Operação:} Em cada posição, calculamos o produto elemento a elemento entre o kernel e a porção da entrada que ele sobrepõe.
+    \item \textbf{Soma:} Os resultados desses produtos são somados para gerar um único valor de saída.
+    \item \textbf{Mapa de Características de Saída (Output):} Esse valor se torna um "pixel" no mapa de saída. O processo se repete até o kernel percorrer toda a entrada, formando um novo mapa.
+\end{enumerate}
+\end{frame}
+
+
+
+
+\begin{frame}{O Mecanismo da Convolução}
+    \begin{figure} % Apenas UM ambiente figure para os dois gráficos
+        
+        \begin{minipage}{0.15\textwidth} % Define a primeira coluna (com 48% da largura do texto)
+            \centering
+            \includegraphics[width=\linewidth]{figures/kernel.png}
+            \caption{Kernel \cite{dumoulin2016guide}}
+            \label{fig:Kernel} % Label corrigido para ser único
+        \end{minipage}
+        \hfill % Adiciona um espaço flexível entre as duas colunas
+        \begin{minipage}{0.6\textwidth} % Define a segunda coluna (com 48% da largura do texto)
+            \centering
+            % Dica: É uma boa prática usar nomes de arquivo sem acentos (ex: roc_curve_Validacao.png)
+            \includegraphics[width=\linewidth]{figures/Convolução.png}
+            \caption{Convolução 2D \cite{dumoulin2016guide}}
+            \label{fig:conv} % Label corrigido para ser único
+        \end{minipage}
+
+    \end{figure}
+\end{frame}
+
+\begin{frame}{A Aritmética da Convolução}
+Como prever o tamanho da saída de uma camada convolucional?
+\vspace{0.5cm}
+
+O tamanho da saída ( $o$ ) é determinado por quatro hiperparâmetros:
+\begin{itemize}
+    \item $i$ (Input Size): O tamanho (altura ou largura) da entrada;
+    \item $k$ (Kernel Size): O tamanho (altura ou largura) do kernel;
+    \item $s$ (Stride): O "passo", ou seja, a distância que o kernel se move entre operações;
+    \item $p$ (Zero Padding): O número de zeros adicionados nas bordas da entrada.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Caso 1: Sem Padding ($p=0$), Strides Unitários ($s=1$)}
+Este é o caso mais básico. O kernel ( $k$ ) desliza pela entrada ( $i$ ) um pixel de cada vez.
+\vspace{0.5cm}
+\begin{equation}
+    o = (i - k) + 1
+    \label{eq:0_padding}
+\end{equation}
+Exemplo (Baseado na Fig \ref{fig:0_padding} ):
+\begin{itemize}
+    \item Input $i = 4$ (uma matriz 4x4)
+    \item Kernel $k = 3$ (uma matriz 3x3)
+    \item Stride $s = 1$,
+    \item Padding $p = 0$
+    \item Saída $o = (4 - 3) + 1 = 2$.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Caso 1: Sem Padding ($p=0$), Strides Unitários ($s=1$)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/Sem_paddig.png}
+    \caption{Convolução Kernel 3x3 com uma entrada 4x4 sem padding \cite{dumoulin2016guide}}
+    \label{fig:0_padding}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Caso 2: Padding ($p>0$), Strides Unitários ($s=1$)}
+O padding adiciona zeros ao redor da entrada. Se adicionarmos $p$ zeros de cada lado, o "tamanho efetivo" da entrada se torna $i + 2p$. A fórmula geral é ajustada:
+\vspace{0.5cm}
+\begin{equation}
+    o = (i +2p - k) + 1
+    \label{eq:padding>0}
+\end{equation}
+Exemplo (Baseado na Fig \ref{fig:2_padding} ):
+\begin{itemize}
+    \item Input $i = 5$ (uma matriz 5x5)
+    \item Kernel $k = 4$ (uma matriz 4x4)
+    \item Stride $s = 1$,
+    \item Padding $p = 2$
+    \item Saída $o = (5 +2\cdot2 -4) + 1 = 6$.
+\end{itemize}
+\begin{equation}
+    o = (i +2p - k) + 1
+    \label{eq:exemplo1}
+\end{equation}
+
+\end{frame}
+
+\begin{frame}{Caso 2: Padding ($p=2$), Strides Unitários ($s=1$)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/2_padding.png}
+    \caption{Convolução Kernel 4x4 com uma entrada 5x5 com  padding = 2 \cite{dumoulin2016guide}}
+    \label{fig:2_padding}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Caso 3: Half padding Strides Unitários ($s=1$)}
+Uma propriedade muito desejável é fazer com que a saída tenha o mesmo tamanho da entrada ($o = i$). Isso é comum em arquiteturas modernas (como ResNets) para manter as dimensões espaciais.
+\vspace{0.5cm}
+Isso é alcançado (quando $s=1$ e $k$ é ímpar ($k = 2n+1$)) definindo o padding como: $p = \lfloor k / 2 \rfloor$
+\begin{equation}
+    o = i +2(k/2) - (k - 1) = i + 2n -2n = i
+    \label{eq:half_padding}
+\end{equation}
+
+\end{frame}
+
+\begin{frame}{Caso 3: Half padding Strides Unitários ($s=1$)}
+
+    Exemplo (Baseado na Fig \ref{fig:half_padding} ):
+    \begin{itemize}
+        \item Input $i = 5$ (uma matriz 5x5)
+        \item Kernel $k = 3$ (uma matriz 3x3)
+        \item Stride $s = 1$,
+        \item Padding $p = \lfloor 3 / 2 \rfloor = 1$.
+    \begin{equation}
+        o = (5 + 2 \cdot 1 - 3) + 1 = (5 + 2 - 3) + 1 = 5
+        \label{eq:exemplo3}
+    \end{equation}
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Caso 3: Half padding Strides Unitários ($s=1$)}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\linewidth]{figures/half_padding.png}
+        \caption{Convolução Kernel 3x3 com uma entrada 5x5 com  stride = 1 e half padding \cite{dumoulin2016guide}}
+        \label{fig:half_padding}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Caso 4: Sem Padding ($p=0$), Strides Não Unitários ($s > 1$)}
+    Quando o stride (passo) é maior que 1 ($s>1$), o kernel "pula" pela entrada. Isso funciona como uma forma de subamostragem (downsampling).
+    \vspace{0.5cm}
+    Como o kernel dá passos de tamanho $s$, o número de posições possíveis diminui. 
+        \begin{equation}
+            o = \left\lfloor \frac{i - k}{s} \right\rfloor + 1
+            \label{eq:stride+}
+        \end{equation}
+
+\end{frame}
+
+\begin{frame}{Caso 4: Sem Padding ($p=0$), Strides Não Unitários ($s > 1$)}
+
+    Exemplo (Baseado na Fig \ref{fig:half_padding} ):
+    \begin{itemize}
+        \item Input $i = 5$ (uma matriz 5x5)
+        \item Kernel $k = 3$ (uma matriz 3x3)
+        \item Stride $s = 2$,
+        \item Padding $p = 0$.
+        \item $\lfloor \cdot \rfloor$ representa a função piso.
+    \begin{equation}
+        o =\lfloor \frac{5 -3}{2}\rfloor + 1 = 2
+        \label{eq:exemplo4}
+    \end{equation}
+    \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Caso 4: Sem Padding ($p=0$), Strides Não Unitários ($s > 1$)}
+\begin{figure}
+
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/arbitrary_stride.png}
+    \caption{Convolução Kernel 3x3 com uma entrada 5x5 com  stride = 2 e padding = 0 \cite{dumoulin2016guide}}
+    \label{fig:half_padding}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Caso Geral}
+    Finalmente, podemos combinar todos os parâmetros (padding e strides não unitários) para obter a relação mais geral.
+    \vspace{0.5cm}
+    \begin{equation}
+        o = \left\lfloor \frac{i +2p - k}{s} \right\rfloor + 1
+        \label{eq:general}
+    \end{equation}
+\end{frame}
+
+\section{Aritmética do Pooling}
+
+\begin{frame}{Pooling}
+\vspace{0.5cm}
+O \textit{pooling} é uma operação utilizada para reduzir a dimensionalidade espacial dos mapas de ativação, com objetivo de diminuir o custo computacional.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\linewidth]{figures/pooling.png}
+    \caption{Exemplo de camada de \textit{pooling}}
+    \cite{akhtar2020interpretation}
+    \label{fig:pooling}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Tipos de Pooling}
+As camadas de pooling resumem as informações presentes em pequenas regiões da imagem.
+
+Os tipos mais comuns são:
+\begin{enumerate}
+    \item \textbf{Max Pooling:} Seleciona o maior valor dentro da região analisada.
+    Preserva as características mais intensas (bordas, texturas fortes).
+    \item \textbf{Average Pooling:} Calcula a média dos valores dentro da região.
+    Produz uma representação mais suave, útil quando se deseja manter uma noção geral da região.
+\end{enumerate}
+\end{frame}
+
+
+\begin{frame}{Parâmetros que determinam o tamanho da saída}
+    O tamanho da saída de uma camada de \textit{pooling} depende de três valores:
+
+    \begin{itemize}
+        \item \textbf{Input Size}: tamanho (altura ou largura) da entrada;
+        \item (\textbf{Kernel Size}): tamanho da janela de \textit{}{pooling};
+        \item (\textbf{Stride}): distância que a janela se desloca entre cada operação.
+    \end{itemize}
+
+    \noindent
+    Consideraremos \textbf{padding = 0} (sem adição de bordas).
+    
+\end{frame}
+
+\begin{frame}{Fórmula}
+    A dimensão de saída ($o$) é dada por:
+
+\begin{equation}
+    o = \left\lfloor \frac{i - k}{s} \right\rfloor + 1
+    \label{eq:stride+}
+    \end{equation}
+    
+    \noindent
+    Onde:
+    \begin{itemize}
+        \item $i$ é o tamanho da entrada;
+        \item $k$ é o tamanho da janela;
+        \item $s$ é o passo de deslizamento (\textit{stride});
+        \item $\lfloor \cdot \rfloor$ representa a função piso.
+    \end{itemize}
+    
+    Essa fórmula é aplicada separadamente para altura e largura.
+\end{frame}
+
+\begin{frame}{Exemplos}
+    \begin{figure}
+    \centering
+    \includegraphics[width=0.4\linewidth]{figures/exemplos-pooling.png}
+    \caption{Exemplos de \textit{Max Pool} e \textit{Average Pool}} 
+    \cite{ahamed2020handwritten}
+    \label{fig:pooling}
+\end{figure}
+\end{frame}
+
+\section{Convolução Transposta}
+
+\begin{frame}{O que é uma Convolução Transposta?}
+
+A convolução transposta (ou DCNN) é a operação inversa que permite que as redes neurais aumentem o tamanho dos dados, transformando uma entrada de baixa dimensão em uma saída de alta dimensão, o oposto do que uma convolução padrão faz.\cite{dumoulin2016guide}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{figures/Conv_transposta/Example_transp_conv.png}
+    \caption{Exemplo de convolução transposta \cite{DOSREIS2024113258}}
+    \label{fig:transp_conv_example}
+\end{figure}
+    
+\end{frame}
+
+
+\begin{frame}{Objetivo}
+\begin{columns}[T,totalwidth=\linewidth]
+    \begin{column}{0.48\linewidth}
+    \vspace{1.0cm}
+        \begin{itemize}
+            \item Reverter a Convolução
+            \item Projeção para Maior Dimensão
+            \item Decodificação e Reconstrução
+            \item Resolução de Tarefas de Baixo Nível
+            \item Expansão da Dimensão de Características
+        \end{itemize}        
+    \end{column}
+
+    \begin{column}{0.52\linewidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\linewidth]{figures/Conv_transposta/deconv.png}
+            \caption{Exemplo de deconvolução numa imagem real \cite{ong2015fullyconvolutionalnetworkssemantic}}
+            \label{fig:deconv}
+        \end{figure}
+    \end{column}    
+\end{columns}    
+\end{frame}
+
+\begin{frame}[t]{Matemática da Deconvolução}
+\vspace{1.0cm}
+Dimensões de saída \cite{PytorchTransp} 
+
+\begin{equation}
+    H_{out} = (H_{in} - 1) \times \text{s}[0] - 2 \times \text{p}[0] + \text{d}[0] \times (\text{k}[0] - 1) + \text{p'}[0] + 1
+\end{equation}
+
+\begin{equation}
+    W_{out} = (W_{in} - 1) \times \text{s}[1] - 2 \times \text{p}[1] + \text{d}[1] \times (\text{k}[1] - 1) + \text{p'}[1] + 1
+\end{equation}
+
+\end{frame}
+
+
+\begin{frame}{Algorítimo}
+
+\begin{columns}[T,totalwidth=\linewidth]
+
+    % ======== Coluna ESQUERDA (tópicos) ========
+    \begin{column}{0.50\linewidth}
+        \begin{itemize}
+            \item A \textbf{Conv2D} aplica um filtro (kernel) sobre a imagem,
+                  extraindo padrões locais.
+            \item O \textbf{stride} e o \textbf{padding} controlam o tamanho da saída.
+            \item O \textbf{ConvTranspose2D} faz a operação inversa,
+                  reconstruindo a forma espacial original.
+            \item Ambas usam o mesmo kernel no exemplo ao lado.
+        \end{itemize}
+    \end{column}
+
+    % ======== Coluna DIREITA (imagem) ========
+    \begin{column}{0.50\linewidth}
+        \vspace*{-2.0cm}
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.4\linewidth]{figures/Conv_transposta/conv_transposta_criada.png}
+            \caption{Convolução transposta gerada no python}
+            \label{fig:conv_transpose_example}
+        \end{figure}
+    \end{column}
+
+\end{columns}
+    
+\end{frame}
+
+\begin{frame}{No zero padding, unit strides, transposed}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/Conv_transposta/No_zero_unit_strides_transposed.png}
+    \caption{Convolução transposta (i' = 2, k' = 3, s' = 1, p' = 2)\cite{dumoulin2016guide}}
+    \label{fig:nozero_unitstride}
+\end{figure}
+
+\begin{equation}
+    o' = i' + (k - 1)
+\end{equation}
+    
+\end{frame}
+
+
+\begin{frame}{Zero padding, unit strides, transposed}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/Conv_transposta/zero_pading_unit_strides.png}
+    \caption{Convolução transposta (i' = 6, k' = 4, s' = 1, p' = 1)\cite{dumoulin2016guide}}
+    \label{fig:nozero_unitstride}
+\end{figure}
+
+\begin{equation}
+    o' = i' + (k - 1) - 2p
+\end{equation}
+    
+\end{frame}
+
+
+\begin{frame}{No zero padding, non-unit strides, transposed}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/Conv_transposta/No_zero_non_unit_strides.png}
+    \caption{Convolução transposta (i' = 2, \~{i}' = 3, k' = 3, s' = 1, p' = 2)\cite{dumoulin2016guide}}
+    \label{fig:nozero_unitstride}
+\end{figure}
+
+\begin{equation}
+    o' = s(i' - 1) + k
+\end{equation}
+\end{frame}
+
+
+\begin{frame}{Zero padding, non-unit strides, transposed}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/Conv_transposta/zer_pading_non_unit_strides.png}
+    \caption{Convolução transposta (i' = 3, \~{i}' = 5, k' = 3, s' = 1, p' = 1)\cite{dumoulin2016guide}}
+    \label{fig:nozero_unitstride}
+\end{figure}
+
+\begin{equation}
+    o' = s(i' - 1) + k - 2p
+\end{equation}
+\end{frame}
+
+\section{Modelos Alternativos}
+
+\begin{frame}{LeNet-5 (1998)}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{figures/modelos/Arquitetura_LeNet5.jpg}
+    \caption{Arquitetura da LeNet-5 \cite{lenet_lecun}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{frame}
+
+\begin{frame}{AlexNet (2012)}
+\begin{itemize}
+    \item Considerada um marco no deep learning modernos;
+    \item Utilização de grande volume de dados para o treinamento (ImageNet);
+    \item Uso de GPU;
+    \item Dropout;
+    \item Data Augmentation;
+    \item Substituição da tanh() pela ReLu().
+\end{itemize}
+\end{frame}
+
+\begin{frame}{AlexNet (2012)}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{figures/modelos/Arquitetura_AlexNet.png}
+    \caption{Arquitetura da LeNet-5 \cite{alexnet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{frame}
+
+\begin{frame}{VGGNet (2014)}
+\begin{itemize}
+    \item Aumentar a performance, aumentando a profundidade da rede;
+    \item Pode-se aproximar filtros largos como 5x5 e 7x7 utilizando filtros 3x3:
+    \begin{itemize}
+        \item um filtro 5x5 tem o mesmo campo receptivo de 2 filtros 3x3;
+        \item um filtro 7x7 tem o mesmo campo receptivo de 3 filtros 3x3.
+    \end{itemize}
+    \item Diminuição do número de parâmetros;
+    \item Adiciona mais camadas não lineares ReLu com o uso de filtros menores.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{VGGNet (2014)}
+\begin{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.43\linewidth]{figures/modelos/familia_vggnet.jpg}
+    \caption{Família de modelos VGGNet \cite{vggnet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{GoogLeNet / Inception (2012)}
+\begin{itemize}
+    \item Busca de aumentar o desempenho da AlexNet sem aumento de custo computacional;
+    \item Criação do Módulo Inception;
+    \item Introdução da camada de bottlenecks (convoluções de 1x1).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{GoogLeNet / Inception (2012)}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{figures/modelos/inception.png}
+    \caption{Módulo Inception \cite{googlenet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{frame}
+
+\begin{frame}{GoogLeNet / Inception (2012)}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{figures/modelos/arquitetura_googlenet.png}
+    \caption{Arquitetura completa da GoogLeNet \cite{googlenet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{frame}
+
+\begin{frame}{ResNet (2015)}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+\begin{itemize}
+    \item Problema de degradação para redes muito profundas;
+    \item Prova experimental, utilizando camadas de identidade, que redes mais profuntas devem ser pelo menos tão boas quanto suas versões menores;
+    \item Criação de blocos de resíduos (shortcut connection).
+    \begin{itemize}
+        \item Algoritmos de resíduos são mais performáticos em visão computacional (VLAD, Fisher Vectors, Multigrid)
+        \item Resíduo converge mais rápido e é mais fácil de otimizar
+    \end{itemize}
+\end{itemize}
+\end{column}
+
+\begin{column}{0.4\textwidth}
+\small
+\begin{figure}
+    \centering
+    \includegraphics[width=0.85\linewidth]{figures/modelos/residual_block.png}
+    \caption{Bloco de Resíduo (shortcut connection) \cite{resnet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{ResNet (2015)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{figures/modelos/arquitetura_resnet.png}
+    \caption{Arquitetura família ResNet \cite{resnet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{frame}
+
+\begin{frame}{DenseNet (2017)}
+\begin{itemize}
+    \item Busca superar a limitação da ResNet de overfit para mais de centenas de camadas;
+    \item Shortcut connection entre todas as camadas, com concatenação dos resultados dos mapas de características ao invés de somar;
+    \item A preservação das características aprendidas faz com que haja um melhor fluxo das informações e do gradiente no treinamento.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{DenseNet (2017)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{figures/modelos/arquitetura_densenet.png}
+    \caption{Arquitetura DenseNet \cite{densenet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{frame}
+
+\begin{frame}{CapsNet (2017)}
+\begin{columns}
+\begin{column}{0.4\textwidth}
+\small
+Uma cápsula é um grupo de neurônios cuja saída é um vetor:
+\begin{itemize}
+    \item \textbf{Comprimento do vetor}: probabilidade de existência.
+    \item \textbf{Direção do vetor}: propriedades da entidade (posição, orientação, etc).
+\end{itemize}
+\end{column}
+\begin{column}{0.6\textwidth}
+\small
+\begin{figure}
+    \centering
+    \includegraphics[width=.7\linewidth]{figures/modelos/Cápsulas.png}
+    \caption{dinâmica de cápsulas “filho” e “pai”, com vetores de ativação e previsão (ĉ‑vetores) conectando-os.}
+    \label{fig:capsulas}
+\end{figure}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{CapsNet (2017)}
+
+\begin{columns}
+\begin{column}{0.3\textwidth}
+\small
+\begin{itemize}
+    \item Camada convolucional inicial.
+    \item \textbf{Primary Capsules} (lower-level): vetores derivados de filtros convolucionais.
+    \item \textbf{Digit Capsules} (higher-level): uma por classe (ex: dígitos 0-9).
+    \item Classificação baseada na magnitude do vetor de saída.
+\end{itemize}
+\end{column}
+
+\begin{column}{0.7\textwidth}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{figures/modelos/CapsNetArch.png}
+    \caption{Arquitetura da CapsNet \cite{mukhometzianov2018capsnet}}
+    \label{fig:placeholder}
+\end{figure}
+\end{column}
+\end{columns}
+
+\end{frame}
+
+\begin{frame}{EfficientNet (2019)}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+\begin{itemize}
+    \item Ao contrário dos outros modelos até então a EfficientNet não busca introduzir uma inovação na arquitetura das CNNs, mas sim numa maneira de escalar e crescer a rede;
+    \item \textbf{Compound Scalling (depth, width, resolution):} ao invés de escalar a rede arbitrariamente em uma das 3 dimensões, a EfficientNet propõe um método para escalar uniformemente largura, profundidade e resolução da rede utilizando um conjunto fixo de coeficientes de escalonamento.
+\end{itemize}
+\end{column}
+
+\begin{column}{0.4\textwidth}
+\small
+\begin{figure}
+    \centering
+    \includegraphics[width=0.85\linewidth]{figures/modelos/otimizacao_parametros_efficientnet.jpg}
+    \caption{Coeficientes de escalonamento do compound scalling \cite{efficientnet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{EfficientNet (2019)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{figures/modelos/comparativo_efficientnet.jpg}
+    \caption{Comparativo tamanho e precisão entre modelos no ImageNet \cite{efficientnet}.}
+    \label{fig:placeholder}
+\end{figure}
+\end{frame}
+
+% \begin{frame}{\textit{Matrix Capsules with EM Routing} \cite{hinton2018matrix} }
+
+% \begin{itemize}
+%     \item Representação das Cápsulas:
+%      \begin{itemize}
+%          \item Ao invés de vetores agora as capsulas são matrizes que representam a pose;
+%      \end{itemize}
+%     \item Mecanismo de Roteamento: 
+%     \begin{itemize}
+%          \item Algoritmo iteratvo \textit{Expectation-Maximization (EM)};
+%      \end{itemize}
+%      \item Função de ativação: 
+%     \begin{itemize}
+%          \item Função logística;
+%      \end{itemize}
+%      \item Número de Parâmetros:
+%          \begin{itemize}
+%          \item  Número de Parâmetros: Conseguiu uma redução significativa de parâmetros em comparação com o CapsNet original.
+%      \end{itemize}
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{\textit{Efficient-CapsNet} \cite{mazzia2021efficient}}
+
+% \begin{itemize}
+%     \item Representação das Cápsulas:
+%      \begin{itemize}
+%          \item Retorna à ideia origial onde as capsulas são vetores;
+%      \end{itemize}
+%     \item Mecanismo de Roteamento: 
+%          \begin{itemize}
+%          \item Algoritmo \textit{Self-attention routing} (não iterativo);
+%      \end{itemize}
+%     \item Função de ativação: 
+%          \begin{itemize}
+%          \item Utiliza uma variante da função \textit{squash} original;
+%      \end{itemize}
+%      \item Número de Parâmetros:
+%          \begin{itemize}
+%          \item  Número de Parâmetros: Conseguiu uma redução significativa de parâmetros em comparação com o CapsNet original e o Matrix CapsNet.
+%      \end{itemize}     
+% \end{itemize}
+% \end{frame}
+
+% \begin{frame}{\textit{GRU + CapsNet} \cite{grucaps}}
+% \begin{columns}
+
+% \begin{column}{0.55\textwidth}
+% \begin{itemize}
+%     \item Explora a tarefa de identificar emoções em tweets NLP (dataset: WASSA 2018);    
+
+%     \item Arquitetura: 
+%     \begin{itemize}
+%          \item Embedding layer (word2vec), Bi-GRU layer com \textbf{capsule network}.
+%          \item Features de GRU são passados para a Caps Net;
+%      \end{itemize}
+     
+%     \item Função de ativação e Mecanismo de Roteamento: 
+%      \begin{itemize}
+%          \item Função \textit{squash} original e \textit{dynamic routing}.
+%      \end{itemize}
+     
+% \end{itemize}
+% \end{column}
+
+% \begin{column}{0.40\textwidth}
+%  \begin{figure}
+%     \centering
+%     \includegraphics[width=\linewidth]{assets/grucaps.png}
+%     \caption{Arquitetura GRU + CapsNet \cite{grucaps}.}
+% \end{figure}
+% \end{column}
+
+% \end{columns}
+% \end{frame}
+
+
+% \begin{frame}{\textit{TimeCaps} \cite{timecaps}}
+% \begin{columns}
+% \begin{column}{0.55\textwidth}
+% \begin{itemize}
+%     \item Tarefa de \textbf{classificação} e reconstrução de sinais ECG.    
+    
+%     \item Arquitetura: 
+%          \begin{itemize}
+%          \item Convolutional Layer com Primary Capsule Networks.
+%          \item Uma camada recebe features de tempo e a outra de espaço. 
+%      \end{itemize}
+     
+%     \item Função de ativação e Mecanismo de Roteamento: 
+%          \begin{itemize}
+%          \item Variação do \textit{squash} adaptado, utilizando \textit{dynamic routing}.
+%      \end{itemize}
+     
+% \end{itemize}
+% \end{column}
+
+% \begin{column}{0.36\textwidth}
+%  \begin{figure}
+%     \centering
+%     \includegraphics[width=\linewidth]{assets/timecaps.png}
+%     \caption{Arquitetura TimeCaps \cite{timecaps}.}  
+% \end{figure}
+% \end{column}
+% \end{columns}
+
+% \end{frame}
+
+
+\section{Conclusões}
+
+% \begin{frame}[fragile]{Comparação Profissional}
+%     % Use um tamanho de fonte menor para garantir que tudo caiba confortavelmente
+%     \footnotesize
+
+%     \textbf{Comparativo entre arquiteturas de Redes Capsulares (CapsNet)}
+    
+%     % \rowcolors{<linha inicial>}{<cor da linha ímpar>}{<cor da linha par>}
+%     % Usamos uma cor cinza muito clara (gray!10) para as linhas pares.
+%     \rowcolors{2}{}{gray!10}
+
+%     % Use tabularx para ajustar a tabela à largura do texto do slide
+%     \begin{tabularx}{\textwidth}{@{} l X X X X X @{}} % O @{} remove o espaço extra nas bordas
+%         \toprule
+%         \textbf{Característica} & \textbf{CapsNet} & \textbf{\textit{Matrix Capsules}} & \textbf{\textit{Efficient-CapsNet}} & \textbf{GRU + CapsNet} & \textbf{TimeCaps} \\
+%         \midrule
+
+%         \textbf{Roteamento} & 
+%         \textit{Dynamic Routing}, iterativo & 
+%         \textit{Expectation-Maximization Routing} &  % , iterativo (baseado em clusters Gaussianos)
+%         \textit{Self-Attention}, não-iterativo & 
+%         \textit{Dynamic Routing} & 
+%         \textit{Dynamic Routing} \\
+%         \addlinespace
+
+%         \textbf{Representação da Pose} & 
+%         Vetores (orientação do vetor)  & 
+%         Matrizes 4x4 & 
+%         Vetores (orientação do vetor) & 
+%         Vetores (orientação do vetor) & 
+%         Vetores (orientação do vetor)\\
+%         \addlinespace
+
+%         \textbf{Representação da Presença} & 
+%         Comprimento do vetor  & 
+%         Unidade logística separada  & 
+%         Comprimento do vetor & 
+%         Comprimento do vetor & 
+%         Comprimento do vetor\\
+%         \addlinespace
+
+%         \textbf{Função de Ativação} & 
+%         \textit{Squash} & 
+%         Logística & 
+%         Variante da \textit{squash} & 
+%         \textit{Squash} & 
+%         Variante da \textit{squash} \\
+
+%         \bottomrule
+%     \end{tabularx}
+% \end{frame}
+
+\begin{frame}{Vantagens das CNNs}
+    \begin{columns}
+    \begin{column}{0.5\textwidth}
+    \begin{itemize}
+    \item \textbf{Redução de dimensionalidade.}
+        
+    \item \textbf{Prevenção de overfitting.}
+    
+    \item \textbf{Preservação das informações mais relevantes.}
+    
+    \item \textbf{Compatibilidade com arquiteturas profundas.} 
+\end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{figures/maxpooled_1-1.png}
+        \caption{Redução da dimensionalidade.}
+    \end{figure} 
+    \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Limitações das CNNs}
+    \begin{columns}
+    \begin{column}{0.5\textwidth}
+    \begin{itemize}
+        \item Podem não capturar relações espaciais entre partes do objeto.
+        \item Sensíveis a rotações, escala e perspectiva ("\textit{Picasso problem}").
+        \item Dependem de grandes volumes de dados e \textit{data augmentation}.
+        \item Pooling remove informação estrutural importante.
+        \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{DATA AUGMENTATION.png}
+        \caption{DATA AUGMENTATION - novas instâncias de treinamento a  partir de instâncias existentes. \cite{geron2022hands}}
+    \end{figure} 
+    \end{column}
+    \end{columns}
+\end{frame}
+
+\section{Referências Bibliográficas} 
+\begin{frame}[allowframebreaks]
+        \frametitle{Referências Bibliográficas} 
+        \bibliographystyle{ieeetr}
+        \bibliography{presentation_bib.bib}
+\end{frame}
+
+\backmatter
+\end{document}

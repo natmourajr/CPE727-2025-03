@@ -1,0 +1,19 @@
+[project]
+name = "mnist_loader"
+version = "0.1.0"
+description = "A PyTorch DataLoader for the MNIST dataset with or without noise."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.7",
+    "numpy>=2.2.0",
+    "pandas>=2.2.0",
+    "scikit-learn>=1.6.0",
+    "torch>=2.8.0",
+    "torchvision>=0.23.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.1",
+]

@@ -1,0 +1,277 @@
+\documentclass{beamer}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usepackage{tikz}
+\usepackage[portuguese]{babel}
+\usepackage{booktabs}
+\usetikzlibrary{arrows.meta,calc, positioning}
+\usetheme{sintef}
+
+\newcommand{\testcolor}[1]{\colorbox{#1}{\textcolor{#1}{test}}~\texttt{#1}}
+
+\usefonttheme[onlymath]{serif}
+
+\titlebackground*{assets/background}
+
+% adicionar o numero na lista final da apresentação
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+
+\title{Autoencoders - Testes e Aplicações}
+\subtitle{}
+\course{CPE 727 - Aprendizado de Profundo}
+\author{Felipe Fink Grael, Rafael Tadeu Cardoso dos Santos, Thalles Nonato Leal Santos e Jefferson Osowsky}
+\begin{document}
+\maketitle
+
+% ============================
+% Autoencoder: Motivação
+% ============================
+
+\section{Autoencoder Simples}
+\begin{frame}{Dataset}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{assets/fashionMnist.png}
+        \caption{Fashion MNIST}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Modelo}
+    \begin{columns}
+        \begin{column}{0.7\textwidth}
+            \begin{itemize}
+                \item Input: imagens 28x28x1 (Fashion MNIST)
+                \item Encoder:
+            \begin{itemize}
+                \item 2 Camadas Lineares (Fully Connected)
+                \item Primeira camada: transforma $28 \times 28 \rightarrow 128$ unidades
+                \item Segunda camada: transforma $128 \rightarrow 64$ unidades
+                \item Função de ativação ReLU após cada camada
+            \end{itemize}
+
+        \item Decoder:
+            \begin{itemize}
+                \item 2 Camadas Lineares (Fully Connected)
+                \item Primeira camada: transforma $64 \rightarrow 128$ unidades
+                \item Segunda camada: transforma $128 \rightarrow 28 \times 28$ unidades
+                \item Função de ativação ReLU nas camadas intermediárias
+                \item Ativação final Sigmoid para normalizar a saída em $[0, 1]$
+            \end{itemize}
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.3\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=0.75\textwidth]{assets/autoenconderArc.png}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Metodologia}
+    \begin{itemize}
+        \item Aplicação de \textbf{K-Fold Cross-Validation} (K=5).
+        \item Learning Rate de 0.0003.
+        \item 150 épocas.
+        \item Treinamento separado para cada fold.
+        \item Uso do otimizador \textbf{Adam}.
+        \item Loss MSE.
+        \item Cálculo do \textbf{SSIM} na validação.
+        \item Treinamento final utilizando todo o dataset.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Resultados}
+    \begin{figure}
+        \centering
+        \begin{minipage}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{assets/ae-train_loss.png}
+        \end{minipage}
+        \hfill
+        \begin{minipage}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{assets/ae-val_loss.png}
+        \end{minipage}
+    \end{figure}
+\end{frame}
+
+
+\begin{frame}{Resultados}
+    \begin{figure}
+        \centering
+        \begin{minipage}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{assets/ae-train_loss.png}
+        \end{minipage}
+        \hfill
+        \begin{minipage}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{assets/ae-val_loss.png}
+        \end{minipage}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Resultados}
+    \begin{figure}
+        \centering
+        \begin{minipage}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{assets/ae-learningCurveFolds.png}
+        \end{minipage}
+        \hfill
+        \begin{minipage}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{assets/ae-SSIM.png}
+        \end{minipage}
+    \end{figure}
+\end{frame}
+
+
+\begin{frame}{Resultado - Reconstrução da imagem}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{assets/generatedAE.png}
+        \caption{Output do modelo - SSIM 0.7 no conjunto de teste}
+    \end{figure}
+\end{frame}
+
+\section{Denoising Autoencoder}
+
+\begin{frame}{Dataset}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{assets/mnist_dataset_example_grid.png}
+        \caption{Imagens do MNIST e Noisy MNIST. Ruído Gaussiano com 0.3 de desvio padrão.}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Modelo}
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \begin{itemize}
+                \item Input: imagens 28x28x1 (Noisy MNIST)
+                \item Encoder:
+                    \begin{itemize}
+                        \item 3 Camadas Convolucionais (Kernel 3x3 e Stride 1)
+                        \item BatchNorm
+                        \item ReLU
+                        \item MaxPooling(Kernel 2x2, Stride 2)
+                    \end{itemize}
+                \item Decoder:
+                    \begin{itemize}
+                        \item 2 Camadas Convolucionais T. (Kernel 3x3 e Stride 2)
+                        \item BatchNorm
+                        \item ReLU
+                        \item Camada  Convolucional T. Final (Kernel 3x3, Stride 1)
+                        \item Sigmoid
+                    \end{itemize}
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=0.75\textwidth]{assets/dae_architecture.png}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Metodologia}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth]{assets/metodologia_dae.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Treinamento}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{assets/fold_0_training_curve.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Resultado - Denoising}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{assets/denoising_comparison_all_methods_0.3.png}
+    \end{figure}
+\end{frame}
+
+% \section{Variational Autoencoder}
+%
+\section{Reuter Corpus com Autoencoder}
+\begin{frame}{Reuter Corpus V1}
+    \begin{itemize}
+        \item Coleção de 804.414 artigos de notícias da Reuters (1996-1997)
+        \item 103 categorias de tópicos organizadas hierarquicamente
+        \item Classificação multi-label: cada documento pode pertencer a múltiplas categorias
+        \item Categorias abrangem temas como economia, política, esportes, tecnologia, etc.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Método}
+    \begin{itemize}
+        \item Objetivo: Replicar o plot do Hinton (2006)
+        \item Autoencoder com mesma arquitetura (2000, 500, 250, 125, 2)
+        \item Ativação linear na camada do espaço latente, e Leaky ReLU nas demais
+        \item Otimização com AdamW, sem pré-treino
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Evolução do treino}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{assets/rcv1_train.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Resultado}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{assets/rcv1_scatter.png}
+    \end{figure}
+\end{frame}
+
+\section{Anexos}
+
+\begin{frame}{Treinamento}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{assets/fold_1_training_curve.png}
+    \end{figure}
+\end{frame}
+\begin{frame}{Treinamento}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{assets/fold_2_training_curve.png}
+    \end{figure}
+\end{frame}
+\begin{frame}{Treinamento}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{assets/fold_3_training_curve.png}
+    \end{figure}
+\end{frame}
+\begin{frame}{Treinamento}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{assets/fold_4_training_curve.png}
+    \end{figure}
+\end{frame}
+\begin{frame}{Resultado - Denoising}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{assets/denoising_comparison_all_methods_0.5.png}
+    \end{figure}
+\end{frame}
+\begin{frame}{Resultado - Denoising}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{assets/denoising_comparison_all_methods_0.8.png}
+    \end{figure}
+\end{frame}
+
+\backmatter
+\end{document}

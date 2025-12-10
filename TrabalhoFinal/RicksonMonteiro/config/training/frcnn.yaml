@@ -1,0 +1,30 @@
+model: "fasterrcnn"
+
+dataset:
+  canonical_json: "data/canonical/canonical_dataset.json"
+
+model_cfg:
+  num_classes: 16
+  pretrained: true
+  img_dir: "data/canonical/images/canonical"
+
+training:
+  batch_size: 8
+  num_epochs: 100
+  learning_rate: 0.01
+  warmup_epochs: 3
+  weight_decay: 0.0005
+  momentum: 0.9
+  scheduler_step_size: 10
+  scheduler_gamma: 0.97
+  early_stop:
+    patience: 20
+  score_threshold: 0.05
+  nms_iou: 0.5
+  max_dets: 200
+  num_workers: 4
+
+cross_validation:
+  num_folds: 5
+
+seed: 42

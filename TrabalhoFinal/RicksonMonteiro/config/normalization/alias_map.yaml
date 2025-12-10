@@ -1,0 +1,86 @@
+alias_map:
+
+  alga:
+    - alga
+    - algas
+    - algae
+
+  bentonico:
+    - bentonico
+    - bentônico
+    - benthonico
+
+  bioconstrutor:
+    - bioconstrutor
+    - bio-construtor
+
+  bivalvia:
+    - bivalvia
+    - bivalve
+    - bivalves
+
+  bryozoa:
+    - bryozoa
+    - briozoa
+
+  crustacea:
+    - crustacea
+    - crustaceo
+    - crustáceo
+    - crustaceos
+    - crustáceos
+
+  dente:
+    - dente
+    - dentes
+    - tooth
+
+  diatomacea:
+    - diatomacea
+    - diatomaceas
+    - diatomácea
+    - diatomáceas
+
+  echinoidea:
+    - echinoidea
+    - equinoidea
+
+  fragmento_de_microfossil:
+    - fragmento de microfossil
+    - fragmento de microfóssil
+    - fragmento microfossil
+    - fragmento microfóssil
+
+  gastropoda:
+    - gastropoda
+    - gastrópode
+    - gastropode
+
+  microfossil_desconhecido:
+    - microfossil desconhecido
+    - microfóssil desconhecido
+    - fossil desconhecido
+    - microfossil indiferenciado
+    - microfóssil indiferenciado
+    - fossil indiferenciado
+
+  ostracoda:
+    - ostracoda
+    - ostracode
+
+  planctonico:
+    - planctonico
+    - planctônico
+    - plancton
+
+  porifera:
+    - porifera
+    - porífero
+
+  radiolaria:
+    - radiolaria
+    - radiolario
+
+  scaphopoda:
+    - scaphopoda
+    - escafopode

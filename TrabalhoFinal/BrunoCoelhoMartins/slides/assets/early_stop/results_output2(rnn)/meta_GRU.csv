@@ -1,0 +1,2 @@
+model,train_time_seconds,n_train_samples,n_val_samples,n_test_samples,num_classes
+GRU,7791.701539763002,389601,86549,108457,5

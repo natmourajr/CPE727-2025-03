@@ -1,0 +1,23 @@
+group_map:
+
+  fossil:
+    - alga
+    - bentonico
+    - bioconstrutor
+    - bivalvia
+    - bryozoa
+    - crustacea
+    - dente
+    - diatomacea
+    - echinoidea
+    - gastropoda
+    - microfossil_desconhecido
+    - microfossil_indiferenciado
+    - ostracoda
+    - planctonico
+    - porifera
+    - radiolaria
+    - scaphopoda
+
+  fragmento:
+    - fragmento_de_microfossil
