@@ -1,0 +1,6 @@
+normalization:
+  lowercase_classes: true
+  strict_classes: false
+
+  enable_alias_map: false
+  enable_group_map: false
