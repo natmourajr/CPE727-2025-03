@@ -1,0 +1,322 @@
+\documentclass{beamer}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usetheme{sintef}
+
+\newcommand{\testcolor}[1]{\colorbox{#1}{\textcolor{#1}{test}}~\texttt{#1}}
+
+\usefonttheme[onlymath]{serif}
+
+\titlebackground*{assets/background}
+
+% adicionar o numero na lista final da apresentação
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+
+\title{Comparação de Arquiteturas de Deep Learning na detecção de anomalias em sensores de poços de petróleo}
+\course{CPE 727 - Aprendizado Profundo}
+\author{Bruno Coelho Martins}
+\IDnumber{\href{mailto:bruno.martins@smt.ufrj.br}{bruno.martins@smt.ufrj.br}}
+
+\begin{document}
+\maketitle
+
+%%% INÍCIO
+
+\section{Introdução}
+
+\begin{frame}{Introdução}
+\begin{itemize}
+    \item Classificação de séries temporais é um problema fundamental em Aprendizado de Máquina, com aplicações em sensores industriais, saúde, sinais fisiológicos e predição de eventos. Nesse trabalho, será estudado modelos de classificação na base 3W.
+    \item Este trabalho estuda a criação de classificadores usando diferentes arquiteturas:
+    \begin{itemize}
+        \item MLP (baseline)
+        \item CNN
+        \item LSTM
+        \item GRU
+    \end{itemize}
+    \item Utilização do \textbf{3W Toolkit}, que facilita experimentos com modelos unificados utilizando a base 3W.
+\end{itemize}
+\end{frame}
+
+
+\section{Problema a ser abordado}
+
+\begin{frame}{Problema a ser abordado}
+\begin{itemize}
+    \item Como construir um classificador de séries temporais eficiente usando arquiteturas de Deep Learning.
+    \item Dificuldades clássicas:
+    \begin{itemize}
+        \item Capturar padrões locais e globais.
+        \item Lidar com dados ruidosos.
+        \item Ajustar hiperparâmetros e evitar overfitting.
+    \end{itemize}
+    \item Objetivo do trabalho:
+    \begin{block}{}
+        Comparar arquiteturas profundas e verificar qual apresenta melhor desempenho no conjunto de dados.
+    \end{block}
+\end{itemize}
+\end{frame}
+
+
+\section{Revisão Bibliográfica}
+
+\begin{frame}{Revisão Bibliográfica}
+\begin{itemize}
+    \item A literatura apresenta modelos bem estabelecidos para séries temporais:
+    \begin{itemize}
+        \item \textbf{CNNs}: capturam padrões locais e variações rápidas \cite{zheng2014lstm, wang2017multilevel}.
+        \item \textbf{LSTM/GRU}: modelam dependências de longo prazo \cite{lipton2015critical, cho2014gru}.
+        \item \textbf{MLPs}: úteis como baseline, mas menos robustos.
+    \end{itemize}
+    \item Trabalhos recentes mostram que combinações CNN+LSTM superam modelos isolados em diversos benchmarks \cite{ordonez2016deep}.
+    \item Este trabalho adota o pipeline experimental do \textbf{3W Toolkit} baseado no dataset descrito em \cite{3wdatasetv2}.
+\end{itemize}
+\end{frame}
+
+\section{Base de Dados}
+
+\begin{frame}{Base de Dados — 3W Dataset}
+\begin{itemize}
+    \item O \textbf{3W Dataset} é um conjunto de dados público voltado para tarefas de \textbf{classificação de séries temporais multivariadas}.
+    \item Contém sinais provenientes de sensores industriais.
+    \item Possui dados reais, simulados e criados manualmente.
+    \item Inclui múltiplas classes correspondentes a diferentes eventos e comportamentos operacionais (0 a 9).
+    \item É acompanhado pelo \textbf{3W Toolkit}.
+\end{itemize}
+\end{frame}
+
+\section{Método Proposto}
+
+\begin{frame}{Método Proposto}
+\begin{itemize}
+    \item Pipeline utilizado:
+    \begin{enumerate}
+        \item Pré-processamento das séries temporais.
+        \item Seleção de arquiteturas (MLP, CNN, LSTM, GRU).
+        \item Treinamento com divisão treinamento/validação/teste.
+        \item Métricas avaliadas:
+        \begin{itemize}
+            \item Balanced Accuracy (principal que será mostrada/comparada)
+            \item Precision
+            \item Recall
+            \item F1-score
+            \item CrossEntropyLoss para treinamento
+        \end{itemize}
+    \end{enumerate}
+    \item Uso do \textbf{3W Toolkit} para padronização dos experimentos.
+    \item Notebook do workshop usado como referência (7\_model\_training\_and\_evaluation.ipynb)
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Método Proposto — Pré-processamento da base}
+\begin{itemize}
+    \item \texttt{clean\_data = True}
+    \item Apenas sinais reais
+    \item Divisão dos eventos em treino (75\%), validação (15\%) e teste (15\%)
+    \item Windowing de cada divisão (\texttt{window\_size = 100}, \texttt{overlap = 0.5})
+    \begin{itemize}
+        \item Sinais: hann
+        \item Labels: boxcar
+    \end{itemize}
+    
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Método Proposto — Escolha das Classes}
+\begin{itemize}
+    \item Retirada de classes que geravam poucos dados após windowing:
+    \begin{itemize}
+        \item Antes: 234542, 1288(X), 1725(X), 9806, 55383, 6245(X), 269(X), 92521, 41362, 2344(X)
+        \item Depois: 196703,   9805,  52385,  66321,  64387
+    \end{itemize}
+    \item Classes usadas: 0, 3, 4, 7, 8
+    \item Total de eventos: de 1119 para 1019 (\texttt{train=713, val=153, test=153})
+    \item Total de janelas: \texttt{train=389601, val=86549, test=108457}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Método Proposto — Configurações gerais}
+\begin{itemize}
+    \item \texttt{epochs = 100} (com early stopping de 10 épocas)
+    \item Otimizador Adam
+    \item \texttt{learning\_rate = 1e-3}
+    \item \texttt{weight\_decay = 1e-5}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Método Proposto — Configurações dos modelos}
+\begin{itemize}
+
+    \item \textbf{MLP (Implementado no toolkit)}:
+    \begin{itemize}
+        \item \texttt{hidden\_sizes = (32, 16)}
+        \item \texttt{activation = relu}
+        \item \texttt{regularization = 0.01}
+    \end{itemize}
+
+    \item \textbf{CNN}:
+    \begin{itemize}
+        \item \texttt{conv\_channels = [16, 32]}
+        \item \texttt{kernel\_sizes = [3, 3]}
+        \item \texttt{activation = relu}
+    \end{itemize}
+
+    \item \textbf{LSTM e GRU}:
+    \begin{itemize}
+        \item \texttt{hidden\_size = 64}
+        \item \texttt{num\_layers = 2}
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{Resultados Obtidos}
+
+\begin{frame}{Resultados Obtidos}
+\begin{itemize}
+    \item Resultados de validação calculados com a classe \texttt{ModelAssessment} do toolkit.
+    \item Treinados na CPU AMD Ryzen 5 2600.
+    \item Com o early stopping tradicional:
+\end{itemize}
+%\textbf{Tabela 1 — Configuração normal}
+\begin{table}[]
+\centering
+\begin{tabular}{lccc}
+\hline
+\textbf{Modelo} & \textbf{Balanced Acc.} & \textbf{Época Final} & \textbf{Tempo (s)} \\
+\hline
+MLP  & 0.8752 & 44  & 525.39 \\
+CNN  & 0.7724 & 25  & 552.47 \\
+LSTM & 0.8132 & 26  & 3987.82 \\
+GRU  & 0.7738 & 15  & 7791.70 \\
+\hline
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}{Resultados Obtidos}
+\begin{itemize}
+    \item Utilizando early stop só quando a validation loss ficar abaixo de 0.1 (não ocorreu):
+\end{itemize}
+
+%\textbf{Tabela 2 — Configuração early stopping 0.1}
+\begin{table}[]
+\centering
+\begin{tabular}{lccc}
+\hline
+\textbf{Modelo} & \textbf{Balanced Acc.} & \textbf{Época Final} & \textbf{Tempo (s)} \\
+\hline
+MLP  & 0.7886 & 100 & 1156.52 \\
+CNN  & 0.7520 & 100 & 2006.39 \\
+LSTM & 0.8319 & 100 & 14949.02 \\
+GRU  & 0.8508 & 100 & 53357.29 \\
+\hline
+\end{tabular}
+\end{table}
+
+\end{frame}
+
+\begin{frame}{Resultados — Curvas de Loss (early stopping tradicional)}
+\begin{figure}[H]
+\centering
+\begin{tabular}{cc}
+\includegraphics[width=0.45\textwidth]{assets/early_stop/results_output6(mlp)/loss_curve_MLP.png} &
+\includegraphics[width=0.45\textwidth]{assets/early_stop/results_output4(cnn)/loss_curve_CNN.png} \\
+\includegraphics[width=0.45\textwidth]{assets/early_stop/results_output2(rnn)/loss_curve_LSTM.png} &
+\includegraphics[width=0.45\textwidth]{assets/early_stop/results_output2(rnn)/loss_curve_GRU.png}
+\end{tabular}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Resultados — Curvas de Loss (early stopping modificado)}
+\begin{figure}[H]
+\centering
+\begin{tabular}{cc}
+\includegraphics[width=0.45\textwidth]{assets/modified/results_output5(mlp)/loss_curve_MLP.png} &
+\includegraphics[width=0.45\textwidth]{assets/modified/results_output2(cnn)/loss_curve_CNN.png} \\
+\includegraphics[width=0.45\textwidth]{assets/modified/results_output3(rnn)/loss_curve_LSTM.png} &
+\includegraphics[width=0.45\textwidth]{assets/modified/results_output3(rnn)/loss_curve_GRU.png}
+\end{tabular}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Resultados — Matrizes de Confusão (early stopping tradicional)}
+\begin{figure}[H]
+\centering
+\begin{tabular}{cc}
+\textbf{MLP} & \textbf{CNN} \\
+\includegraphics[width=0.45\textwidth]{assets/early_stop/results_output6(mlp)/confusion_MLP_val.png} &
+\includegraphics[width=0.45\textwidth]{assets/early_stop/results_output4(cnn)/confusion_CNN_val.png}
+\end{tabular}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Resultados — Matrizes de Confusão (early stopping tradicional)}
+\begin{figure}[H]
+\centering
+\begin{tabular}{cc}
+\textbf{LSTM} & \textbf{GRU} \\
+\includegraphics[width=0.45\textwidth]{assets/early_stop/results_output2(rnn)/confusion_LSTM_val.png} &
+\includegraphics[width=0.45\textwidth]{assets/early_stop/results_output2(rnn)/confusion_GRU_val.png}
+\end{tabular}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Resultados — Matrizes de Confusão (early stopping modificado)}
+\begin{figure}[H]
+\centering
+\begin{tabular}{cc}
+\textbf{MLP} & \textbf{CNN} \\
+\includegraphics[width=0.45\textwidth]{assets/modified/results_output5(mlp)/confusion_MLP_val.png} &
+\includegraphics[width=0.45\textwidth]{assets/modified/results_output2(cnn)/confusion_CNN_val.png}
+\end{tabular}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Resultados — Matrizes de Confusão (early stopping modificado)}
+\begin{figure}[H]
+\centering
+\begin{tabular}{cc}
+\textbf{LSTM} & \textbf{GRU} \\
+\includegraphics[width=0.45\textwidth]{assets/modified/results_output3(rnn)/confusion_LSTM_val.png} &
+\includegraphics[width=0.45\textwidth]{assets/modified/results_output3(rnn)/confusion_GRU_val.png}
+\end{tabular}
+\end{figure}
+\end{frame}
+
+
+\section{Conclusões}
+
+\begin{frame}{Conclusões}
+\begin{itemize}
+    \item Problema de alta dimensionalidade, difícil convergência.
+    \item Early stopping tradicional fazia os modelos de RNN pararem de treinar muito cedo.
+    \item Mesmo modificando o early stopping, a validação não converge. Os modelos não estão aprendendo padrões generalizáveis.
+    \item Neste caso em específico, a escolha com melhores resultados é a MLP com early stopping tradicional. Porém, talvez outras configurações para a CNN e as RNNs (como com o uso de dropout) pudessem mudar esse quadro.
+\end{itemize}
+\end{frame}
+
+\section{Trabalhos Futuros}
+
+\begin{frame}{Trabalhos Futuros}
+\begin{itemize}
+    \item Testar: uso de dropout, diminuir learning rate, outros tamanhos de redes.
+    \item Fazer validação cruzada
+    \item Escolher menos sensores
+    \item Múltiplos modelos para diferentes classes
+    \item Testar arquiteturas híbridas (CNN+LSTM)
+    \item Implementar CNN e as RNNs na versão mais expansível do toolkit
+    \item Uso de Foundation Models
+\end{itemize}
+    
+\end{frame}
+
+\section{Referências Bibliográficas} 
+\begin{frame}[allowframebreaks]
+        \frametitle{Referências Bibliográficas} 
+        \bibliographystyle{ieeetr}
+        \bibliography{presentation_bib.bib}
+\end{frame}
+
+\backmatter
+\end{document}

@@ -1,0 +1,2 @@
+model,train_time_seconds,n_train_samples,n_val_samples,n_test_samples,num_classes
+MLP,1156.5193502730108,389601,86549,108457,5
