@@ -93,7 +93,7 @@ def main(model_type="dmf"):
     # -------------------------------
     if model_type == "dmf":
         print("\n🔥 Treinando DMF...")
-        train_losses = train_dmf(model, train_loader, optimizer, device, epochs=3)
+        train_losses = train_dmf(model, train_loader, optimizer, device, epochs=100)
         rmse = evaluate_dmf(model, test_loader, device)
     
     elif model_type == "ncf":
@@ -101,7 +101,7 @@ def main(model_type="dmf"):
         model, 
         train_loader, 
         valid_loader=valid_loader,
-        epochs=10, 
+        epochs=100, 
         lr=0.001
         )
         rmse = evaluate_dmf(model, test_loader, device)
@@ -142,7 +142,7 @@ def main(model_type="dmf"):
             dataloader=train_loader,
             optimizer=optimizer,
             device=device,
-            epochs=3
+            epochs=100
         )
 
         # Avaliação
