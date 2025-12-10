@@ -179,7 +179,6 @@ Os modelos são avaliados usando:
 - **Recall/Sensitivity**: Taxa de verdadeiros positivos
 - **F1-Score**: Média harmônica entre precisão e recall
 - **AUC-ROC**: Área sob a curva ROC
-- **AUC-PR**: Área sob a curva Precision-Recall
 - **Confusion Matrix**: Matriz de confusão
 
 ## 🛠️ Técnicas Utilizadas
@@ -205,12 +204,10 @@ Os modelos são avaliados usando:
 
 Os resultados incluem:
 
-- **Curvas de treinamento** (loss e accuracy)
 - **Matrizes de confusão** para cada modelo
 - **Curvas ROC** comparativas
 - **Curvas Precision-Recall** comparativas
 - **Tabela comparativa** de métricas
-- **Checkpoints** dos melhores modelos
 
 ## 🔧 Customização
 

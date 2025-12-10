@@ -2,6 +2,7 @@
 
 \usetheme{default}
 \usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
 \usepackage{tikz}
 \usepackage{tabularx}
 \usetikzlibrary{positioning}
@@ -35,13 +36,13 @@
     \end{picture}%
 }
 
- \AtBeginSection[]
-  {
-    \begin{frame}
-      \centering
-      \huge\insertsectionhead
-    \end{frame}
-  }
+% \AtBeginSection[]
+%   {
+%     \begin{frame}
+%       \centering
+%       \huge\insertsectionhead
+%     \end{frame}
+%   }
 
 \title{Detecção de Tuberculose em Radiografias de Tórax}
 \subtitle{Utilizando Deep Learning e Transfer Learning}
@@ -72,20 +73,35 @@
 }
 
 \begin{frame}{Agenda}
-  \tableofcontents
+  \begin{enumerate}
+      \item \hyperref[sec:intro]{Introdução}
+      \item \hyperref[sec:problem]{Problema Abordado}
+      \item \hyperref[sec:method]{Método Proposto}
+      \item \hyperref[sec:results]{Resultados Obtidos}
+        \begin{itemize}
+            \item \hyperref[sec:results]{Comparação de Desempenho}
+            \item \hyperref[sec:interp]{Interpretabilidade (Grad-CAM)}
+        \end{itemize}
+      \item \hyperref[sec:concl]{Conclusões e Recomendação}
+  \end{enumerate}
 \end{frame}
 
 %===========================================
 % 1. INTRODUÇÃO
 %===========================================
 \section{Introdução}
+\begin{frame}
+    \centering
+    \huge Introdução
+    \label{sec:intro}
+\end{frame}
 
 \begin{frame}{Contexto}
     \begin{columns}
         \column{0.5\textwidth}
         \textbf{Tuberculose: Um Problema Global}
         \begin{itemize}
-            \item 10 milhões de casos/ano (OMS, 2022)
+            \item 10 milhões de casos/ano (OMS, 2022) [9]
             \item 1,5 milhões de mortes/ano
             \item Principal causa de morte por doença infecciosa
             \item Diagnóstico precoce é crucial
@@ -107,7 +123,7 @@
         \begin{itemize}
             \item Capacidade de aprender características complexas
             \item Alto desempenho em tarefas de visão computacional
-            \item Potencial para auxiliar diagnóstico médico
+            \item Potencial para auxiliar diagnóstico médico [1][3]
             \item Redução de tempo e custo
         \end{itemize}
     \end{block}
@@ -123,6 +139,11 @@
 % 2. PROBLEMA ABORDADO
 %===========================================
 \section{Problema Abordado}
+\begin{frame}
+    \centering
+    \huge Problema Abordado
+    \label{sec:problem}
+\end{frame}
 
 \begin{frame}{Definição do Problema}
     \begin{block}{Problema de Classificação Binária}
@@ -193,6 +214,11 @@
 % 3. MÉTODO PROPOSTO
 %===========================================
 \section{Método Proposto}
+\begin{frame}
+    \centering
+    \huge Método Proposto
+    \label{sec:method}
+\end{frame}
 
 \begin{frame}{Pipeline de Processamento (CNNs Pré-treinadas)}
     \begin{enumerate}
@@ -210,7 +236,7 @@
             \item Rotation/scale/shift (p=0.5, $\pm15°$)
         \end{itemize}
         
-        \item \textbf{Transfer Learning}
+        \item \textbf{Transfer Learning [4]}
         \begin{itemize}
             \item Backbone congelado (feature extraction)
             \item Apenas classificador treinado
@@ -285,7 +311,7 @@
             \item Data Augmentation
             \item Early Stopping (p=10)
             \item Weight Decay: $10^{-4}$
-            \item Init: Kaiming (He)
+            \item Init: Kaiming (He) [5]
         \end{itemize}
     \end{columns}
     
@@ -375,9 +401,9 @@
             \midrule
             CNN Baseline & 1.2M & --- & 4 blocos, treinada do zero \\
             \midrule
-            ResNet-50 & 25.6M & ImageNet & Skip connections, 50 camadas \\
-            DenseNet-121 & 8.0M & ImageNet & Dense connections \\
-            EfficientNet-B0 & 5.3M & ImageNet & Compound scaling \\
+            ResNet-50 [5] & 25.6M & ImageNet & Skip connections, 50 camadas \\
+            DenseNet-121 [6] & 8.0M & ImageNet & Dense connections \\
+            EfficientNet-B0 [7] & 5.3M & ImageNet & Compound scaling \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -398,6 +424,11 @@
 % 4. RESULTADOS
 %===========================================
 \section{Resultados Obtidos}
+\begin{frame}
+    \centering
+    \huge Resultados Obtidos
+    \label{sec:results}
+\end{frame}
 
 
 
@@ -406,7 +437,7 @@
         \tiny
         \begin{tabular}{lccccc}
             \toprule
-            \textbf{Métrica} & \textbf{CNN Baseline} & \textbf{ResNet50} & \textbf{DenseNet121} & \textbf{EfficientNet-B0} & \textbf{Melhor} \\
+            \textbf{Figura de Mérito} & \textbf{CNN Baseline} & \textbf{ResNet50} & \textbf{DenseNet121} & \textbf{EfficientNet-B0} & \textbf{Melhor} \\
             \midrule
             Sensibilidade & 80.00\% & \textbf{90.00\%} & 82.00\% & 80.00\% & ResNet50 \\
             Especificidade & 90.00\% & 92.00\% & 88.00\% & \textbf{94.00\%} & EfficientNet \\
@@ -454,13 +485,6 @@
     \end{figure}
 \end{frame}
 
-\begin{frame}{Curvas ROC (Performance Clínica)}
-    \begin{figure}
-        \centering
-        \includegraphics[width=0.75\textwidth]{imgs/roc_curves_combined.png}
-        \caption{Comparação das curvas ROC. A ResNet-50 (topo esquerdo) apresenta a maior área sob a curva (AUC).}
-    \end{figure}
-\end{frame}
 
 \begin{frame}{Análise Detalhada: Pontos Fortes e Fracos}
     \tiny
@@ -498,15 +522,6 @@
     \end{exampleblock}
 \end{frame}
 
-
-\begin{frame}{Comparação Visual dos Modelos}
-    \begin{figure}
-        \centering
-        \includegraphics[width=0.9\textwidth]{imgs/model_comparison.png}
-        \caption{Comparação de métricas entre os três modelos pré-treinados}
-    \end{figure}
-\end{frame}
-
 \begin{frame}{Evolução do Treinamento (F1-Score)}
     \begin{columns}
         \column{0.6\textwidth}
@@ -524,17 +539,35 @@
     \end{columns}
 \end{frame}
 
+\begin{frame}{Evolução do Treinamento (AUC-ROC)}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \includegraphics[width=\textwidth]{imgs/auc_per_epoch_comparison.png}
+        
+        \column{0.4\textwidth}
+        \footnotesize
+        \textbf{Interpretação:}
+        \begin{itemize}
+            \item \textbf{Eixo Y:} Área sob a Curva ROC (Capacidade discriminativa).
+            \item \textbf{ResNet-50:} Liderança consistente ($>0.96$).
+            \item \textbf{DenseNet-121 (Nota):}
+            \begin{itemize}
+                \item AUC continuou subindo até a Época 23.
+                \item O treinamento parou (Early Stop) porque o \textbf{F1-Score} (prioridade de equilíbrio) parou de melhorar na Época 13.
+            \end{itemize}
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
 %===========================================
 % 5. INTERPRETABILIDADE
 %===========================================
-\section{Interpretabilidade}
-
-
-
+\subsection{Interpretabilidade}
 
 \begin{frame}{Metodologia de Comparação Visual}
+    \label{sec:interp}
     \begin{block}{O que é Grad-CAM?}
-        Técnica que destaca os pixels da imagem que mais influenciaram a decisão da rede neural (Gradient-weighted Class Activation Mapping).
+        Técnica que destaca os pixels da imagem que mais influenciaram a decisão da rede neural (Gradient-weighted Class Activation Mapping) [8].
     \end{block}
 
     \vspace{0.3cm}
@@ -593,48 +626,37 @@
 % 5. CONCLUSÕES
 %===========================================
 \section{Conclusões}
-
-\begin{frame}{Conclusões}
-    \begin{block}{Principais Contribuições}
-        \begin{itemize}
-            \item Implementação de transfer learning com feature extraction
-            \item Avaliação de ResNet-50 para detecção de TB
-            \item Resultados superiores à média da literatura
-            \item Pipeline reproduzível com Docker
-        \end{itemize}
-    \end{block}
-    
-    \vspace{0.3cm}
-    
-    \begin{block}{Lições Aprendidas}
-        \begin{itemize}
-            \item Transfer learning com backbone congelado é essencial para datasets pequenos
-            \item Feature extraction evita overfitting (vs fine-tuning completo)
-            \item Data augmentation crucial para generalização
-            \item Balanceamento entre sensibilidade e especificidade é alcançável
-        \end{itemize}
-    \end{block}
+\begin{frame}
+    \centering
+    \huge Conclusões
+    \label{sec:concl}
 \end{frame}
 
-
-\begin{frame}{Referências}
-    \footnotesize
-    \begin{thebibliography}{99}
-        \bibitem{lakhani2017}
-        Lakhani, P., \& Sundaram, B. (2017). Deep learning at chest radiography: automated classification of pulmonary tuberculosis by using convolutional neural networks. \textit{Radiology}, 284(2), 574-582.
+\begin{frame}{Conclusões e Recomendação}
+    \begin{block}{Recomendação Principal: \textbf{ResNet-50}}
+        \begin{itemize}
+            \item \textbf{Maior Sensibilidade (90\%):} Melhor modelo para \textbf{triagem}, minimizando Falsos Negativos (crítico em saúde).
+            \item \textbf{Maior AUC-ROC (96\%):} Melhor capacidade geral de separação entre classes.
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.2cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Alternativas (Trade-offs):}
+        \begin{itemize}
+            \item \textbf{EfficientNet:} Máxima Especificidade (94\%). Ideal para confirmação / reduzir falsos alarmes.
+            \item \textbf{DenseNet:} Aprendizado mais rápido, mas instável no final.
+        \end{itemize}
         
-        \bibitem{rajaraman2018}
-        Rajaraman, S., et al. (2018). Pre-trained convolutional neural networks as feature extractors toward improved malaria parasite detection in thin blood smear images. \textit{PeerJ}, 6, e4568.
-        
-        \bibitem{hwang2016}
-        Hwang, S., et al. (2016). A novel approach for tuberculosis screening based on deep convolutional neural networks. \textit{Medical Imaging 2016: Computer-Aided Diagnosis}.
-        
-        \bibitem{pan2010}
-        Pan, S. J., \& Yang, Q. (2010). A survey on transfer learning. \textit{IEEE Transactions on Knowledge and Data Engineering}, 22(10), 1345-1359.
-        
-        \bibitem{he2016}
-        He, K., et al. (2016). Deep residual learning for image recognition. \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 770-778.
-    \end{thebibliography}
+        \column{0.5\textwidth}
+        \textbf{Contribuição Técnica:}
+        \begin{itemize}
+            \item \textbf{Transfer Learning:} Provou reduzir drasticamente o ruído visual (visto no Grad-CAM) comparado à CNN do zero.
+            \item \textbf{Generalização:} Modelos pré-treinados evitaram o overfitting severo, comum em datasets pequenos.
+        \end{itemize}
+    \end{columns}
 \end{frame}
 
 \begin{frame}[standout]
@@ -647,5 +669,39 @@
     \vspace{1cm}
     
 \end{frame}
+
+\begin{frame}{Referências}
+    \scriptsize
+    \begin{thebibliography}{99}
+        \bibitem{lakhani2017}
+        Lakhani, P., \& Sundaram, B. (2017). Deep learning at chest radiography: automated classification of pulmonary tuberculosis by using convolutional neural networks. \textit{Radiology}, 284(2), 574-582. [1]
+        
+        \bibitem{rajaraman2018}
+        Rajaraman, S., et al. (2018). Pre-trained convolutional neural networks as feature extractors toward improved malaria parasite detection in thin blood smear images. \textit{PeerJ}, 6, e4568. [2]
+        
+        \bibitem{hwang2016}
+        Hwang, S., et al. (2016). A novel approach for tuberculosis screening based on deep convolutional neural networks. \textit{Medical Imaging 2016: Computer-Aided Diagnosis}. [3]
+        
+        \bibitem{pan2010}
+        Pan, S. J., \& Yang, Q. (2010). A survey on transfer learning. \textit{IEEE Transactions on Knowledge and Data Engineering}, 22(10), 1345-1359. [4]
+        
+        \bibitem{he2016}
+        He, K., et al. (2016). Deep residual learning for image recognition. \textit{CvPR}. [5]
+        
+        \bibitem{huang2017}
+        Huang, G., et al. (2017). Densely connected convolutional networks. \textit{CVPR}. [6]
+        
+        \bibitem{tan2019}
+        Tan, M., \& Le, Q. (2019). EfficientNet: Rethinking model scaling for CNNs. \textit{ICML}. [7]
+        
+        \bibitem{selvaraju2017}
+        Selvaraju, R. R., et al. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based localization. \textit{ICCV}. [8]
+        
+        \bibitem{who2022}
+        World Health Organization. (2022). \textit{Global tuberculosis report 2022}. WHO. [9]
+    \end{thebibliography}
+\end{frame}
+
+
 
 \end{document}
