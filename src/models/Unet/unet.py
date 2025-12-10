@@ -2,6 +2,10 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+import torch
+from torch import nn
+import torch.nn.functional as F
+
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
@@ -112,9 +116,9 @@ class UNet(nn.Module):
 
 
 class UNetBinaryClassifier(nn.Module):
-    def __init__(self, n_channels=3):
+    def __init__(self, n_channels=3, num_classes=1, device="cpu"):
         super().__init__()
-        backbone = UNet(n_channels=n_channels, n_classes=1)
+        backbone = UNet(n_channels=n_channels, n_classes=num_classes)
         self.encoder = nn.Sequential(
             backbone.inc,
             backbone.down1,
@@ -126,10 +130,11 @@ class UNetBinaryClassifier(nn.Module):
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.dropout = nn.Dropout2d(p=0.3)
         self.fc = nn.Linear(1024, 1)
+        self.to(device)
 
     def forward(self, x):
         x = self.encoder(x)
         x = self.pool(x)
         x = torch.flatten(x, 1)
-        x = self.dropout(x) 
+        x = self.dropout(x)
         return self.fc(x)
