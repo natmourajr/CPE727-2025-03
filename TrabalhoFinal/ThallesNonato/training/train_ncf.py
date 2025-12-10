@@ -7,7 +7,7 @@ import torch
 from torch import nn, optim
 import tqdm
 
-def train_ncf(model, train_loader, valid_loader=None, epochs=10, lr=0.001, device=None):
+def train_ncf(model, train_loader, valid_loader=None, epochs=100, lr=0.001, device=None):
     """
     Treina o modelo NCF e opcionalmente avalia na validação a cada época.
 
@@ -85,3 +85,54 @@ def evaluate_ncf(model, data_loader, device=None):
 
     rmse = np.sqrt(mean_squared_error(truths, preds))
     return rmse
+
+def evaluate_ranking(model, train_users, train_movies, test_users, test_movies, num_users, num_movies, device, K=10):
+    """
+    Avaliação de ranking (Precision@K e NDCG@K) para modelos de recomendação
+    que recebem (user_id, item_id) como entrada, como DMF ou NCF.
+
+    Args:
+        model: modelo treinado
+        train_users, train_movies: arrays de treino
+        test_users, test_movies: arrays de teste (reduzidos)
+        num_users, num_movies: total de usuários e itens
+        device: cuda ou cpu
+        K: top-K para ranking
+    """
+    model.eval()
+    df_train = np.column_stack((train_users, train_movies))
+    df_test  = np.column_stack((test_users, test_movies))
+
+    precisions, ndcgs = [], []
+
+    def precision_at_k(recommended, true_items, K):
+        recommended_k = recommended[:K]
+        return len(np.intersect1d(recommended_k, true_items)) / K
+
+    def ndcg_at_k(recommended, true_items, K):
+        recommended_k = recommended[:K]
+        dcg = sum(1 / np.log2(i + 2) for i, item in enumerate(recommended_k) if item in true_items)
+        ideal_dcg = sum(1 / np.log2(i + 2) for i in range(min(K, len(true_items))))
+        return dcg / ideal_dcg if ideal_dcg > 0 else 0
+
+    with torch.no_grad():
+        for user_idx in np.unique(test_users):
+            train_items = df_train[df_train[:,0]==user_idx][:,1]
+            candidate_items = np.setdiff1d(np.arange(num_movies), train_items)
+            true_items = df_test[df_test[:,0]==user_idx][:,1]
+
+            if len(true_items) == 0 or len(candidate_items) == 0:
+                continue
+
+            user_tensor = torch.tensor([user_idx]*len(candidate_items), dtype=torch.long).to(device)
+            movie_tensor = torch.tensor(candidate_items, dtype=torch.long).to(device)
+
+            preds = model(user_tensor, movie_tensor).cpu().numpy()
+            recommended_items = candidate_items[np.argsort(preds)[::-1]][:K]
+
+            precisions.append(precision_at_k(recommended_items, true_items, K))
+            ndcgs.append(ndcg_at_k(recommended_items, true_items, K))
+
+    precision_mean = np.mean(precisions)
+    ndcg_mean = np.mean(ndcgs)
+    return precision_mean, ndcg_mean

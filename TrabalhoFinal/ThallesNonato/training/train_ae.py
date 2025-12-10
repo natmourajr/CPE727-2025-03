@@ -5,19 +5,19 @@ from tqdm import tqdm
 import numpy as np
 
 
-def train_autorec(model, dataloader, optimizer, device, epochs=10):
-    model.train()
+def train_autorec(model, train_loader, optimizer, device, epochs=10, val_loader=None):
     criterion = nn.MSELoss(reduction="mean")
     train_losses = []
+    val_losses = []
 
     for epoch in range(epochs):
+        # ---- TREINO ----
+        model.train()
         epoch_loss = 0
-
-        for batch in dataloader:  
+        for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Train"):
             batch = batch.to(device)
 
             optimizer.zero_grad()
-
             output = model(batch)
 
             mask = (batch != 0).float()
@@ -28,12 +28,30 @@ def train_autorec(model, dataloader, optimizer, device, epochs=10):
 
             epoch_loss += loss.item()
 
-        epoch_loss /= len(dataloader)
+        epoch_loss /= len(train_loader)
         train_losses.append(epoch_loss)
+        print(f"[AutoRec] Epoch {epoch+1}/{epochs} - Train Loss: {epoch_loss:.4f}")
 
-        print(f"[AutoRec] Epoch {epoch+1}/{epochs} - Loss: {epoch_loss:.4f}")
+        # ---- VALIDAÇÃO ----
+        if val_loader is not None:
+            model.eval()
+            val_epoch_loss = 0
+            with torch.no_grad():
+                for batch in val_loader:
+                    batch = batch.to(device)
+                    output = model(batch)
 
-    return train_losses
+                    mask = (batch != 0).float()
+                    loss = criterion(output * mask, batch)
+
+                    val_epoch_loss += loss.item()
+
+            val_epoch_loss /= len(val_loader)
+            val_losses.append(val_epoch_loss)
+            print(f"[AutoRec] Epoch {epoch+1}/{epochs} - Val Loss: {val_epoch_loss:.4f}")
+
+    return train_losses, val_losses
+
 
 def evaluate_autorec(model, test_matrix, device=None):
     model.eval()
