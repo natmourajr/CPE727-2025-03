@@ -16,6 +16,7 @@ dependencies = [
     "optuna>=4.6.0",
     "optuna-integration[pytorch-lightning]>=4.6.0",
     "pandas>=2.3.3",
+    "plotly>=6.5.0",
     "scikit-learn>=1.8.0",
     "tensorboard>=2.20.0",
     "tensorboardx>=2.6.4",

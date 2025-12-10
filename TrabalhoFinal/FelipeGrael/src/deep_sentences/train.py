@@ -93,6 +93,7 @@ def train_rnn(
     accelerator: str = 'auto',
     devices: int = 1,
     gradient_clip_val: float = 1.0,
+    seed: int = 202512,
     output_dir: str = 'outputs',
     experiment_name: Optional[str] = None,
     checkpoint_monitor: str = 'val_loss',
@@ -143,6 +144,8 @@ def train_rnn(
         Number of devices to use
     gradient_clip_val : float, default=1.0
         Gradient clipping value (important for RNN stability)
+    seed : int, default=202512
+        Random seed for reproducibility
     output_dir : str, default='outputs'
         Directory to save outputs (checkpoints, logs)
     experiment_name : str or None, default=None
@@ -179,6 +182,7 @@ def train_rnn(
         'accelerator': accelerator,
         'devices': devices,
         'gradient_clip_val': gradient_clip_val,
+        'seed': seed,
         'checkpoint_monitor': checkpoint_monitor,
         'checkpoint_mode': checkpoint_mode,
     }
