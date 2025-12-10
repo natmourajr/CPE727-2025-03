@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import pickle
+
 
 def plot_movies_by_year(movie_titles):
     data = movie_titles["Ano"].value_counts().sort_index()
@@ -117,3 +119,7 @@ def filter_sparse_data(df, min_movie_ratings=10000, min_user_ratings=200):
     print(f"Shape depois do filtro: {df_filtered.shape}")
 
     return df_filtered
+
+def load_preprocessed():
+    with open("datasets/processed/preprocessed.pkl", "rb") as f:
+        return pickle.load(f)

@@ -1,9 +1,12 @@
 import pandas as pd
 import numpy as np
+import pickle
+import os
 from collections import deque
+from sklearn.model_selection import train_test_split
 
 
-def load_movie_titles(path="dataset/movie_titles.csv"):
+def load_movie_titles(path="datasets/movie_titles.csv"):
     movie_titles = pd.read_csv(
         path,
         encoding='ISO-8859-1',
@@ -23,7 +26,7 @@ def load_movie_titles(path="dataset/movie_titles.csv"):
     return movie_titles
 
 
-def load_raw_ratings(path="dataset/combined_data_1.txt"):
+def load_raw_ratings(path="datasets/combined_data_1.txt"):
     df_raw = pd.read_csv(
         path, 
         header=None,
@@ -131,4 +134,11 @@ def prepare_data(df):
         test_users, test_movies, test_ratings,
         len(user2idx), len(movie2idx)
     )
+
+
+def save_preprocessing_objects(**objects):
+    os.makedirs("datasets/processed", exist_ok=True)
+
+    with open("datasets/processed/preprocessed.pkl", "wb") as f:
+        pickle.dump(objects, f)
 
