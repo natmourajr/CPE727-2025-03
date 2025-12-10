@@ -50,11 +50,24 @@ def main(model_type="dmf"):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    train(model, train_loader, optimizer, device, epochs=3)
-    evaluate_dmf(model, test_loader, device)
+    # ------------ AQUI ------------
+    train_losses = train(model, train_loader, optimizer, device, epochs=3)
+    rmse = evaluate_dmf(model, test_loader, device)
+    # ------------------------------
 
+    # Salvar curves
+    import json, os
+    os.makedirs(f"training/curves/{model_type}", exist_ok=True)
+
+    with open(f"training/curves/{model_type}/curves.json", "w") as f:
+        json.dump({"train_losses": train_losses, "rmse": rmse}, f, indent=4)
+
+    print(f"📈 Curvas salvas em training/curves/{model_type}/curves.json")
+
+    # Salvar modelo
     torch.save(model.state_dict(), f"training/{model_type}_model.pth")
     print(f"✔ Modelo salvo em training/{model_type}_model.pth")
+
 
 if __name__ == "__main__":
     import sys
