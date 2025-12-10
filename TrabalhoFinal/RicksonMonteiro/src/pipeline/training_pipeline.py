@@ -4,7 +4,7 @@ import json
 import shutil
 from datetime import datetime
 import yaml
-
+import copy
 from src.cross_validation.cross_validator import CrossValidator
 from src.trainer.trainer_factory import TrainerFactory
 
@@ -56,7 +56,7 @@ class TrainingPipeline:
 
         # Caminho para canonical.json
         canonical_json = self.cfg["dataset"]["canonical_json"]
-
+        print(f"Dataset: {canonical_json}")
 
         validator = CrossValidator(
             canonical_json=canonical_json,
@@ -86,8 +86,8 @@ class TrainingPipeline:
             val_json = fold_dir / "val.json"
 
             trainer = TrainerClass(
-                training_cfg=self.training_cfg,
-                model_cfg=self.model_cfg,
+                training_cfg=copy.deepcopy(self.training_cfg),
+                model_cfg=copy.deepcopy(self.model_cfg),
                 fold_dir=fold_dir,
                 train_json=train_json,
                 val_json=val_json

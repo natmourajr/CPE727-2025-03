@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import time
-from typing import Dict, Any, Tuple, List
+from typing import Tuple
 
 import torch
 import torch.optim as optim
@@ -20,7 +20,11 @@ from pycocotools.cocoeval import COCOeval
 
 from src.dataset.coco_dataset import CocoDatasetXYXY
 from src.trainer.utils import collate_fn, save_metrics
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+import torchvision.transforms as T
 
+from src.dataset.transforms.retina_transform import RetinaTransform
 
 def warmup_lr(optimizer, step, warmup_steps, base_lr, start_factor=0.1):
     """Warmup linear por step: começa em base_lr * start_factor e sobe até base_lr."""
@@ -32,6 +36,15 @@ def warmup_lr(optimizer, step, warmup_steps, base_lr, start_factor=0.1):
 
     for pg in optimizer.param_groups:
         pg["lr"] = base_lr * scale
+
+
+def get_retina_train_transforms(size=640):
+    return T.Compose([
+        T.Resize((size, size)),   # simples e consistente
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]),
+    ])
 
 
 class RetinaNetTrainer:
@@ -138,7 +151,7 @@ class RetinaNetTrainer:
                     "labels": pred["labels"].cpu().tolist(),
                 })
         return outputs
-
+    
     # -------------------------------------------------------------------------
     def postprocess(self, out):
         boxes = torch.tensor(out["boxes"], dtype=torch.float32)
@@ -246,14 +259,24 @@ class RetinaNetTrainer:
 
             # --------------------- TRAIN LOOP ---------------------
             for imgs, tgts in train_loader:
-                imgs = [img.to(self.device) for img in imgs]
-                tgts = [
-                    {"boxes": t["boxes"].to(self.device), "labels": t["labels"].to(self.device)}
-                    for t in tgts if len(t["boxes"]) > 0
-                ]
+                # imgs: list[PIL->tensor], tgts: list[dict]
+                # primeiro mova imagens p/ device but keep pairing
+                paired = []
+                for img, tgt in zip(imgs, tgts):
+                    # Some datasets might have boxes stored as list; ensure tensor
+                    if "boxes" in tgt and len(tgt["boxes"]) > 0:
+                        img_dev = img.to(self.device)
+                        tgt_dev = {
+                            "boxes": tgt["boxes"].to(self.device),
+                            "labels": tgt["labels"].to(self.device)
+                        }
+                        paired.append((img_dev, tgt_dev))
 
-                if len(tgts) == 0:
+                if len(paired) == 0:
                     continue
+
+                imgs = [p[0] for p in paired]
+                tgts = [p[1] for p in paired]
 
                 self.optimizer.zero_grad()
 

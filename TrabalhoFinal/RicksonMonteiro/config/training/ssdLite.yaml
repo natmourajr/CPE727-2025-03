@@ -1,12 +1,12 @@
 model: "ssd"
 
 dataset:
-  canonical_json: "data/canonical/canonical_dataset_grouped.json"
+  canonical_json: "data/canonical/canonical_dataset.json"
 
 model_cfg:
   pretrained: true
   img_dir: "data/canonical/images/canonical"
-  num_classes: 2
+  num_classes: 16
 
 training:
   batch_size: 16

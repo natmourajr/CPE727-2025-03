@@ -2,7 +2,7 @@
 __pycache__/
 *.py[codz]
 *$py.class
-venv
+venv/
 # C extensions
 *.so
 experiments/*
@@ -212,4 +212,4 @@ data/raw/*
 data/interim/*
 data/canonical/*
 data/external/*
-
+data/*

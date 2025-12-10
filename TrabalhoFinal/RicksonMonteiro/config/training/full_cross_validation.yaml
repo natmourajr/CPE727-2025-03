@@ -1,3 +1,3 @@
-fcnn: config/training/frcnn.yaml
 retina: config/training/retinanet.yaml
 ssdLite: config/training/ssdLite.yaml
+fcnn: config/training/frcnn.yaml
