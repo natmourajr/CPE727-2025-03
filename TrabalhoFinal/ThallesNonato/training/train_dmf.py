@@ -6,6 +6,7 @@ from sklearn.metrics import mean_squared_error
 
 def train(model, train_loader, optimizer, device, epochs=5):
     criterion = torch.nn.MSELoss()
+    train_losses = []
 
     for epoch in range(epochs):
         model.train()
@@ -24,7 +25,13 @@ def train(model, train_loader, optimizer, device, epochs=5):
 
             running_loss += loss.item() * len(user)
 
-        print(f"Epoch {epoch+1}/{epochs} | MSE: {running_loss / len(train_loader.dataset):.4f}")
+        epoch_loss = running_loss / len(train_loader.dataset)
+        train_losses.append(epoch_loss)
+
+        print(f"Epoch {epoch+1}/{epochs} | MSE: {epoch_loss:.4f}")
+
+    return train_losses   # ← ESSA LINHA PRECISA EXISTIR
+
 
 def evaluate_dmf(model, test_loader, device):
     model.eval()
@@ -47,26 +54,3 @@ def evaluate_dmf(model, test_loader, device):
     print(f"\n➡️ Test RMSE: {rmse:.4f}")
 
     return rmse
-
-
-def evaluate_autorec(model, test_matrix, device=None):
-    model.eval()
-    device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    test_matrix = torch.tensor(test_matrix, dtype=torch.float32).to(device)
-
-    with torch.no_grad():
-        output = model(test_matrix)
-
-    output = output.cpu().numpy()
-    true_values = test_matrix.cpu().numpy()
-
-    mask = ~np.isnan(true_values)
-
-    mse = np.mean((output[mask] - true_values[mask]) ** 2)
-    rmse = np.sqrt(mse)
-
-    print(f"\n➡️ AutoRec Test RMSE: {rmse:.4f}")
-
-    return rmse
-
