@@ -12,11 +12,12 @@ import shutil
 SHENZHEN_URL = "https://lhncbc.nlm.nih.gov/LHC-downloads/downloads.html#tuberculosis-image-data-sets"
 
 # Fontes de download (em ordem de prioridade)
+# Fontes de download (em ordem de prioridade)
 DATASET_SOURCES = [
     {
-        'name': 'Google Drive (Rápido)',
-        'url': 'https://drive.google.com/uc?export=download&id=1vxPcD1HKrX3HMP2NbJiPmact2YBdwovm&confirm=t',
-        'type': 'gdrive'
+        'name': 'Kaggle (Prioridade)',
+        'type': 'kaggle',
+        'id': 'raddar/tuberculosis-chest-xrays-shenzhen'
     },
     {
         'name': 'NIH OpenI (Original)',
@@ -49,45 +50,7 @@ def download_file(url, destination, resume=True):
         headers['Range'] = f'bytes={downloaded_size}-'
     
     try:
-        # Verificar se é Google Drive
-        if 'drive.google.com' in url:
-            print("🔍 Detectado Google Drive - processando confirmação...")
-            response = requests.get(url, stream=True, timeout=30)
-            
-            # Verificar se há página de confirmação
-            if 'text/html' in response.headers.get('content-type', ''):
-                # Extrair token de confirmação
-                import re
-                content = response.text
-                
-                # Procurar por diferentes padrões de token
-                patterns = [
-                    r'confirm=([^&"]+)',
-                    r'id="download-form"[^>]*action="([^"]+)"',
-                    r'href="(/uc\?export=download[^"]+)"'
-                ]
-                
-                token = None
-                for pattern in patterns:
-                    match = re.search(pattern, content)
-                    if match:
-                        token = match.group(1)
-                        break
-                
-                if token:
-                    # Construir URL com token
-                    if token.startswith('/uc'):
-                        url = f"https://drive.google.com{token}"
-                    elif '&id=' in url:
-                        file_id = url.split('id=')[1].split('&')[0]
-                        url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={token}"
-                    
-                    print(f"✅ Token de confirmação obtido")
-                    response = requests.get(url, stream=True, timeout=30, headers=headers)
-                else:
-                    print("⚠️  Não foi possível extrair token - tentando download direto...")
-        else:
-            response = requests.get(url, stream=True, timeout=30, headers=headers)
+        response = requests.get(url, stream=True, timeout=30, headers=headers)
         
         # Verificar se servidor suporta range requests
         if downloaded_size > 0 and response.status_code not in [206, 200]:
@@ -181,7 +144,46 @@ def download_shenzhen_dataset(output_dir='./data'):
             print(f"{'='*70}\n")
             
             try:
-                success = download_file(source['url'], zip_path, resume=True)
+                if source['type'] == 'kaggle':
+                    # Tentar importar kaggle
+                    try:
+                        import kaggle
+                    except ImportError:
+                        print(f"⚠️  Biblioteca 'kaggle' não encontrada. Pulando fonte Kaggle.")
+                        continue
+
+                    print(f"🔑 Autenticando e baixando do Kaggle ({source['id']})...")
+                    print("   (Necessita arquivo kaggle.json configurado ou variáveis de ambiente)")
+                    
+                    # Kaggle baixa um zip com nome diferente as vezes
+                    # Vamos baixar para o diretório
+                    kaggle.api.dataset_download_files(source['id'], path=output_path, unzip=False, quiet=False)
+                    
+                    # Encontrar o zip baixado
+                    # O nome geralmente é o slug do dataset.zip
+                    possible_zips = list(output_path.glob("*.zip"))
+                    # Se antes não tinha zip (verificado no inicio), o novo é o nosso
+                    # Mas como startamos um loop, melhor procurar pelo mais recente ou pelo nome esperado.
+                    # O dataset raddar/tuberculosis... baixa como tuberculosis-chest-xrays-shenzhen.zip
+                    
+                    downloaded_zip = None
+                    for zip_f in possible_zips:
+                        if zip_f.name != "shenzhen_dataset.zip": # Ignorar se for o nosso target (que nao existia)
+                             downloaded_zip = zip_f
+                             break
+                    
+                    if downloaded_zip and downloaded_zip.exists():
+                        print(f"✅ Download Kaggle concluído: {downloaded_zip.name}")
+                        # Renomear para o padrão esperado
+                        if zip_path.exists(): zip_path.unlink()
+                        downloaded_zip.rename(zip_path)
+                        success = True
+                    else:
+                        print("⚠️  Download Kaggle parece ter falhado (arquivo não encontrado)")
+                        success = False
+
+                else:
+                    success = download_file(source['url'], zip_path, resume=True)
                 
                 if success and zip_path.exists():
                     print(f"\n✅ Download bem-sucedido de: {source['name']}")
