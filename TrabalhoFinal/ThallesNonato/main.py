@@ -135,7 +135,7 @@ def main(model_type="dmf"):
             model, 
             train_loader, 
             valid_loader=val_loader,
-            epochs=2, 
+            epochs=100, 
             lr=0.001
         )
 

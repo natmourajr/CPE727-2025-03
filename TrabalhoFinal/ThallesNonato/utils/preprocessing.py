@@ -102,13 +102,21 @@ def prepare_data(df):
 
     df_p = df.pivot_table(index="User", columns="Movie", values="Rating")
 
+    # split treino/teste antes de preencher NaNs
     X_train, X_test = train_test_split(df_p, test_size=0.2, random_state=42)
 
+    # média por item no treino
+    item_mean = X_train.mean(axis=0)
+
+    # preenche NaNs: treino com média do item do treino, teste também com média do treino
+    X_train_filled = X_train.fillna(item_mean)
+    X_test_filled = X_test.fillna(item_mean)
+
     # desfaz pivot
-    train_df = X_train.stack().reset_index()
+    train_df = X_train_filled.stack().reset_index()
     train_df.columns = ["User", "Movie", "Rating"]
 
-    test_df = X_test.stack().reset_index()
+    test_df = X_test_filled.stack().reset_index()
     test_df.columns = ["User", "Movie", "Rating"]
 
     # encode users
@@ -118,6 +126,23 @@ def prepare_data(df):
     # encode movies
     unique_movies = np.unique(train_df["Movie"])
     movie2idx = {m: i for i, m in enumerate(unique_movies)}
+
+    # arrays treino
+    train_users = np.array([user2idx[u] for u in train_df["User"]])
+    train_movies = np.array([movie2idx[m] for m in train_df["Movie"]])
+    train_ratings = train_df["Rating"].astype(np.float32).values
+
+    # arrays teste
+    test_users = np.array([user2idx.get(u, 0) for u in test_df["User"]])
+    test_movies = np.array([movie2idx.get(m, 0) for m in test_df["Movie"]])
+    test_ratings = test_df["Rating"].astype(np.float32).values
+
+    return (
+        train_users, train_movies, train_ratings,
+        test_users, test_movies, test_ratings,
+        len(user2idx), len(movie2idx)
+    )
+    user2idx = {m: i for i, m in enumerate(unique_movies)}
 
     # train
     train_users = np.array([user2idx[u] for u in train_df["User"]])
