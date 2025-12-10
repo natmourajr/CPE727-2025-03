@@ -1,0 +1,330 @@
+\documentclass{beamer}
+\usepackage[portuguese]{babel}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{pgfgantt}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float} % Pacote essencial para a opção [H]
+\usepackage{tabularx}
+\usepackage{booktabs}   % Para linhas de tabela profissionais
+\usepackage[table]{xcolor} % Para cores em tabelas
+
+\definecolor{marker_color}{RGB}{77,201,232}
+\definecolor{marker_done_color}{RGB}{45,115,133}
+\definecolor{finish_color}{RGB}{232,166,60}
+
+\newcommand{\ganttchartyear}{\number\year}
+\newcommand{\ganttchartmonth}{\ifnum\month<10 0\fi\number\month} 
+
+\usetheme{sintef}
+
+\newcommand{\testcolor}[1]{\colorbox{#1}{\textcolor{#1}{test}}~\texttt{#1}}
+\usefonttheme[onlymath]{serif}
+
+\titlebackground*{assets/background}
+
+% adicionar o numero na lista final da apresentação
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+
+\title{Detecção de Covid-19 em raios X de pulmão}
+\course{CPE 727 - Aprendizado Profundo}
+\author{Raphael Nagao}
+
+\IDnumber{\href{mailto:rnagao@cos.ufrj.br}{rnagao@cos.ufrj.br}}
+
+\begin{document}
+\maketitle
+
+\section{Motivação}
+
+\begin{frame}{Motivação}
+A Covid 19 foi uma doença que com certeza entrará para os livros de história pelo seu impacto na vida das pessoas e na sociedade durante o período da pandemia. A doença deixou as pessoas em isolamento durante cerca de 2 anos e tirou a vida de milhares.
+
+Uma grande dificuldade no período era o diagnóstico da doença. Uma vez que seus sintomas pareciam inicialmente o de uma gripe normal e existirem casos assintomáticos. Com isso, ela conseguiu muitas vezes infectar pessoas de forma despercebida e se proliferar rapidamente.
+
+Dessa forma, um modelo de rede pronfunda capaz de detectar a doença em radiografias pulmonares, poderia ser uma ferramenta interessante para auxiliar no diagnóstico da doença.
+\end{frame}
+
+\section{Dataset: Covidx Cxr4}
+
+\begin{frame}{Exemplos de Imagens}
+\begin{figure}[htbp]
+\centering
+\begin{tabular}{@{}cccc@{}}
+    \includegraphics[width=0.2\textwidth]{figures/img_1.png} &
+    \includegraphics[width=0.2\textwidth]{figures/img_2.png} &
+    \includegraphics[width=0.2\textwidth]{figures/img_3.png} &
+    \includegraphics[width=0.2\textwidth]{figures/img_4.png} \\
+
+    \includegraphics[width=0.2\textwidth]{figures/img_5.png} &
+    \includegraphics[width=0.2\textwidth]{figures/img_6.png} &
+    \includegraphics[width=0.2\textwidth]{figures/img_7.png} &
+    \includegraphics[width=0.2\textwidth]{figures/img_8.png}
+\end{tabular}
+\caption{Exemplos de imagens do dataset \cite{covidx_cxr2_kaggle}}
+\label{fig:dataset_examples}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Distribuição do Dataset}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/distribuicao_imagens_covidx_cxr4.jpg}
+    \caption{Distribuição das imagens no dataset \cite{covidx_cxr2_kaggle}.}
+\end{figure}
+\end{frame}
+
+
+\section{Treinamento}
+
+\begin{frame}{Hiperparâmetros e Otimizador}
+\begin{itemize}
+    \item \textbf{Otimizador}: optim.Adam
+    \item \textbf{Épocas}: 200
+    \item \textbf{Learning Rate}: 0.00001
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Função de perda}
+\begin{itemize}
+    \item \textbf{BCEWithLogitsLoss}
+    \begin{itemize}
+        \item pos\_weight: $10664 / 57199$
+    \end{itemize}
+    \item Como o dataset é bastante desbalanceado, adiciona-se o pos\_weight que vai adicionar um peso a classe positiva do BCEWithLogitsLoss. No caso, como a classe rara é a negativa, estamos dando um valor $< 1$ para o pos\_weight.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Early Stopping e Scheduler}
+\begin{itemize}
+    \item \textbf{Early Stopping}
+    \begin{itemize}
+        \item Patience: 50
+        \item Min\_delta: 0.0
+        \item Value: ROC AUC
+    \end{itemize}
+    \item \textbf{optim.lr\_scheduler.ReduceLROnPlateau}
+    \begin{itemize}
+        \item Mode: min
+        \item Factor: 0.5
+        \item Patience: 15
+        \item Valor: Average Loss de Validação
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Calculo de Threshold e Validação}
+\begin{itemize}
+    \item Com o fim do treinamento carrega-se os parâmetros do melhor modelo pelo early stop
+    \item Utilizando os dados de validação e o melhor modelo, calcula-se para ele o melhor threshold utilizando o \textbf{Índice de Youden} (TPR - FPR)
+    \item Com o melhor threshold, geramos as seguintes figuras de mérito para o dataloader de teste:
+    \begin{itemize}
+        \item ROC
+        \item Acurácia
+        \item Recall
+        \item Precisão
+        \item F1-Score
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{Modelos Treinados}
+
+\begin{frame}{Modelos Treinados}
+    \begin{itemize}
+        \item DenseNet121 com transfer learning \cite{huang2018denselyconnectedconvolutionalnetworks}
+        \item ViT com transfer learning \cite{dosovitskiy2021imageworth16x16words}
+        \item Unet \cite{ronneberger2015unetconvolutionalnetworksbiomedical}
+        \item Stack dos 3 modelos
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Data Augmentation}
+\begin{itemize}
+    \item \textbf{Grayscale}: transforma a imagem em tons de cinza
+    \item \textbf{Resize}: redimensiona a imagem (512x512 para Unet e Densenet e 224x224 para o ViT)
+    \item \textbf{RandomResizedCrop}: corta e redimensiona a imagem (somente para Unet e Densenet)
+    \item \text{RandomRotation}: rotaciona a imagem (10)
+    \item \textbf{RandomAffine}: aplica uma transformação afim na imagem (degrees=0, translate=(0.02,0.02))
+    \item \textbf{RandomErasing}: apaga aleatoriamente pixels da imagem (p=0.2)
+    \item \textbf{Normalize}: Normaliza as imagens (utilizado na Densenet e ViT, pois foi feito transfer learning do modelo da ImageNet)
+\end{itemize}
+\end{frame}
+
+\begin{frame}{DenseNet}
+\begin{itemize}
+    \item ROC
+\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\linewidth]{figures/roc_curve_densenet.png}
+    \caption{Curva ROC da DenseNet.}
+\end{figure}
+\end{frame}
+
+\begin{frame}{DenseNet}
+\begin{itemize}
+    \item Figuras de Mérito
+    \begin{itemize}
+        \item \textbf{Threshold}: 0.5238
+        \item \textbf{Accuracy}: 0.6247
+        \item \textbf{Recall}: 0.6922
+        \item \textbf{Precision}: 0.6098
+        \item \textbf{F1-Score}: 0.6484
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{DenseNet}
+\begin{figure}[htbp]
+\centering
+\begin{tabular}{@{}cccc@{}}
+    \includegraphics[width=0.2\textwidth]{figures/densenet_original_12.png} &
+    \includegraphics[width=0.2\textwidth]{figures/densenet_saliency_12.png} &
+    \includegraphics[width=0.2\textwidth]{figures/densenet_original_13.png} &
+    \includegraphics[width=0.2\textwidth]{figures/densenet_saliency_13.png} \\
+
+    \includegraphics[width=0.2\textwidth]{figures/densenet_original_14.png} &
+    \includegraphics[width=0.2\textwidth]{figures/densenet_saliency_14.png} &
+    \includegraphics[width=0.2\textwidth]{figures/densenet_original_15.png} &
+    \includegraphics[width=0.2\textwidth]{figures/densenet_saliency_15.png}
+\end{tabular}
+\caption{Exemplos de Mapas de Saliência Densenet}
+\label{fig:saliencia_densenet}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}{ViT}
+\begin{itemize}
+    \item ROC
+\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\linewidth]{figures/roc_curve_vit.png}
+    \caption{Curva ROC do ViT.}
+\end{figure}
+\end{frame}
+
+\begin{frame}{ViT}
+\begin{itemize}
+    \item Figuras de Mérito
+    \begin{itemize}
+        \item \textbf{Threshold}: 0.6025
+        \item \textbf{Accuracy}: 0.5776
+        \item \textbf{Recall}: 0.6125
+        \item \textbf{Precision}: 0.5726
+        \item \textbf{F1-Score}: 0.5919
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ViT}
+\begin{figure}[htbp]
+\centering
+\begin{tabular}{@{}cccc@{}}
+    \includegraphics[width=0.2\textwidth]{figures/vit_original_0.png} &
+    \includegraphics[width=0.2\textwidth]{figures/vit_saliency_0.png} &
+    \includegraphics[width=0.2\textwidth]{figures/vit_original_1.png} &
+    \includegraphics[width=0.2\textwidth]{figures/vit_saliency_1.png} \\
+
+    \includegraphics[width=0.2\textwidth]{figures/vit_original_2.png} &
+    \includegraphics[width=0.2\textwidth]{figures/vit_saliency_2.png} &
+    \includegraphics[width=0.2\textwidth]{figures/vit_original_3.png} &
+    \includegraphics[width=0.2\textwidth]{figures/vit_saliency_3.png}
+\end{tabular}
+\caption{Exemplos de Mapas de Saliência ViT}
+\label{fig:saliencia_vit}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Unet}
+\begin{itemize}
+    \item ROC
+\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\linewidth]{figures/roc_curve_unet.png}
+    \caption{Curva ROC do ViT.}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Unet}
+\begin{itemize}
+    \item Figuras de Mérito
+    \begin{itemize}
+        \item \textbf{Threshold}: 0.9790
+        \item \textbf{Accuracy}: 0.7162
+        \item \textbf{Recall}: 0.7406
+        \item \textbf{Precision}: 0.7061
+        \item \textbf{F1-Score}: 0.7229
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Unet}
+\begin{figure}[htbp]
+\centering
+\begin{tabular}{@{}cccc@{}}
+    \includegraphics[width=0.2\textwidth]{figures/unet_original_11.png} &
+    \includegraphics[width=0.2\textwidth]{figures/unet_saliency_11.png} &
+    \includegraphics[width=0.2\textwidth]{figures/unet_original_12.png} &
+    \includegraphics[width=0.2\textwidth]{figures/unet_saliency_12.png} \\
+
+    \includegraphics[width=0.2\textwidth]{figures/unet_original_13.png} &
+    \includegraphics[width=0.2\textwidth]{figures/unet_saliency_13.png} &
+    \includegraphics[width=0.2\textwidth]{figures/unet_original_14.png} &
+    \includegraphics[width=0.2\textwidth]{figures/unet_saliency_14.png}
+\end{tabular}
+\caption{Exemplos de Mapas de Saliência Unet}
+\label{fig:saliencia_unet}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}{Stack de Modelos}
+\begin{itemize}
+    \item A fim de checar a possibilidade de os modelos estarem aprendendo casos complementares, foi pensada a construção de uma stack dos modelos, utilizando a média entre as probabilidades dos modelos 
+    \item Figuras de Mérito
+    \begin{itemize}
+        \item \textbf{Accuracy}: 0.5517
+        \item \textbf{Recall}: 0.9842
+        \item \textbf{Precision}: 0.5277
+        \item \textbf{F1-Score}: 0.6870
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Stack de Modelos}
+\begin{itemize}
+    \item ROC
+\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\linewidth]{figures/roc_curve_stack.png}
+    \caption{Curva ROC do ViT.}
+\end{figure}
+\end{frame}
+
+\section{Conclusão e Próximos Passos}
+
+\begin{frame}{Conclusão e Próximos Passos}
+\begin{itemize}
+    \item Entre os modelos gerados, claramente a Unet teve o melhor desempenho. Mesmo quando comparada ao Stack, tendo um resultado próximo e com uma performance melhor
+    \item Como um próximo passo, seria interessante testar o treinamento dos modelos utilizando também máscaras para as imagens de pulmão. Essa ideia vem da observação dos mapas de saliência, uma vez que os modelos parecem estar observando muito mais as áreas fora do pulmão.
+\end{itemize}
+\end{frame}
+
+\section{Referências Bibliográficas} 
+\begin{frame}[allowframebreaks]
+        \frametitle{Referências Bibliográficas} 
+        \bibliographystyle{ieeetr}
+        \bibliography{presentation_bib.bib}
+\end{frame}
+
+\backmatter
+\end{document}
