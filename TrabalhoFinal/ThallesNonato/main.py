@@ -121,7 +121,7 @@ def main(model_type="dmf"):
             model, 
             train_loader, 
             valid_loader=val_loader,
-            epochs=100, 
+            epochs=50, 
             lr=0.001
         )
 
@@ -188,7 +188,7 @@ def main(model_type="dmf"):
             train_loader=train_loader_ae,
             optimizer=optimizer,
             device=device,
-            epochs=2,
+            epochs=50,
             val_loader=val_loader_ae
         )
 
