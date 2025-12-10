@@ -56,20 +56,6 @@ def main(model_type="dmf"):
     )
 
     # Salvar pré-processamento
-    save_preprocessing_objects(
-        df_raw=df_raw,
-        df=df,
-        df_filtered=df_filtered,
-        train_users=train_users,
-        train_movies=train_movies,
-        train_ratings=train_ratings,
-        test_users=test_users,
-        test_movies=test_movies,
-        test_ratings=test_ratings,
-        num_users=num_users,
-        num_movies=num_movies
-    )
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = create_model(model_type, num_users, num_movies, device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -95,7 +81,7 @@ def main(model_type="dmf"):
     # -------------------------------
     if model_type == "dmf":
         print("\n🔥 Treinando DMF...")
-        train_losses, val_losses = train_dmf(model, train_loader, optimizer, device, epochs=2, val_loader=val_loader)
+        train_losses, val_losses = train_dmf(model, train_loader, optimizer, device, epochs=100, val_loader=val_loader)
         
         # Avaliação
         rmse = evaluate_dmf(model, test_loader, device)
