@@ -8,6 +8,6 @@ def create_model(model_type, num_users, num_movies, device):
         return DMF(num_users=num_users, num_movies=num_movies).to(device)
 
     if model_type == "ae":
-        return AutoRec(num_users=num_users, num_movies=num_movies).to(device)
+        return AutoRec(num_items=num_movies).to(device)
 
     raise ValueError(f"Modelo desconhecido: {model_type}")
