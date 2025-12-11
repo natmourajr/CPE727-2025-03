@@ -1,0 +1,180 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{setspace}
+
+% Configurações
+\onehalfspacing
+\setcounter{secnumdepth}{2}
+
+% Título e autores
+\title{\textbf{Proposta do Trabalho Final}\\CPE775 -- Aprendizado de Máquina}
+\author{Miguel Fernandes de Sousa\\CRID: 125074229\\PEE/COPPE/UFRJ}
+\date{Novembro de 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth,height=3cm]{/Users/miguel/Developer/msc/disciplinas/trabalho_final_CPE775/samples/fashionmnis_converted.jpg}
+    \caption{Amostras do dataset Fashion MNIST: 50 imagens de diferentes categorias de roupas em escala de cinza (28x28 pixels).}
+    \label{fig:fashion_mnist_samples}
+\end{figure}
+
+\begin{table}[h]
+    \centering
+    \caption{Amostras do dataset AG\_NEWS com título e descrição de notícias em diferentes categorias.}
+    \label{tab:ag_news_samples}
+    \tiny
+    \begin{tabular}{|l|p{2.5cm}|p{4cm}|}
+        \hline
+        \textbf{Classe} & \textbf{Título} & \textbf{Descrição} \\
+        \hline
+        World & Venezuelans Vote Early in Referendum on Chavez Rule (Reuters) & Reuters - Venezuelans turned out early and in large numbers on Sunday to vote in a historic referendum that will either remove left-wing President Hugo Chavez from office or give him a new mandate to govern for the next two years. \\
+        \hline
+        Sports & Phelps, Thorpe Advance in 200 Freestyle (AP) & AP - Michael Phelps took care of qualifying for the Olympic 200-meter freestyle semifinals Sunday, and then found out he had been added to the American team for the evening's 400 freestyle relay final. Phelps' rivals Ian Thorpe and Pieter van den Hoogenband and teammate Klete Keller were faster than the teenager in the 200 free preliminaries. \\
+        \hline
+        Business & Wall St. Bears Claw Back Into the Black (Reuters) & Reuters - Short-sellers, Wall Street's dwindling band of ultra-cynics, are seeing green again. \\
+        \hline
+        Sci/Tech & Group to Propose New High-Speed Wireless Format (Reuters) & Reuters - A group of technology companies including Texas Instruments Inc., STMicroelectronics N.V. and others said they plan to propose a new high-speed wireless format for short-range communications that would operate in the 5 GHz frequency band. \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\section{Identificação}
+\begin{itemize}
+    \item \textbf{Nome:} Miguel Fernandes de Sousa
+    \item \textbf{Período:} 2025/3
+    \item \textbf{CRID:} 125074229
+\end{itemize}
+
+\section{Descrição Sintética do Problema Abordado}
+
+O comparativo do trabalho aborda dois problemas de classificação multiclasse utilizando modelos generativos e discriminativos em duas modalidades de dados distintas: imagens (dataset Fashion MNIST) e texto (dataset AG\_NEWS).
+
+Serão utilizados dois datasets: Fashion MNIST, para classificação de 10 categorias de roupas a partir de imagens 28x28 pixels, totalizando 784 features; e o dataset AG\_NEWS, para classificação de 4 categorias de notícias, cujas features de entrada são obtidas a partir de vetorização TF-IDF, limitado a 10.000 features. O Fashion MNIST conta com 70 mil imagens, enquanto o AG\_NEWS conta com 127.600 pares de título e descrição curta, geralmente uma frase, sobre o corpo da notícia (que não consta no dataset).
+
+O objetivo é avaliar como se comporta a acurácia dos modelos quando aplicados a esses dois tipos de dados. Há a expectativa de que o modelo naive bayes se comporte melhor no dataset de texto, uma vez que tarefas de classificação de imagem têm alta correlação entre as features, enquanto que naive bayes assume independência entre as features. Também será utilizado o modelo de Floresta Aleatória, enquanto modelo mais sofisticado.
+
+No caso particular do Fashion MNIST, será feito um comparativo do comportamento dos modelos nesse dataset com e sem o uso de seleção de atributos a partir da PCA, identificando se houve diferenças de acurácia, tempo de treinamento e interpretabilidade das componentes. À princípio, serão testados com 2, 10, 50 e 100 componentes.
+
+Os modelos utilizados serão os classificadores generativos Naive Bayes Gaussiano e Gaussian Mixture Models (GMM), os classificadores discriminativos são a Regressão Logística com Softmax, a regressão logística com One-vs-Rest (OvR) e a Floresta Aleatória.
+
+\section{Metodologia}
+
+Para a importação dos modelos, será utilizada a biblioteca scikit-learn, uma vez que são modelos mais simples se comparados a modelos de aprendizado profundo (caso contrário, PyTorch seria uma boa escolha).
+
+Para o pré-processamento, o conjunto Fashion MNIST contará com normalização min-max: o valor mínimo de 0 será mapeado em -1 e o valor máximo de 255 será mapeado em +1 (com exceção do modelo MultinomialNB, truncado entre 0 e 1, pois aparentemente esse modelo não suporta valores negativos). Essa escolha se dá 1) pela maior previsibilidade dos dados de entrada e 2) pela distribuição de intensidade não necessariamente seguir uma distribuição normal, pelo contrário: a maioria dos pixels está justamente nos dois extremos da faixa de valores. A matriz de pixels é convertida em um vetor de tamanho 784.
+
+Por sua vez, o AG\_NEWS limitará para os termos mais frequentes e contará com remoção de stop words. A quantidade máxima de features é limitada em 10.000, ignorando termos com pouca quantidade de informação, que aparecem em mais da metade dos documentos e termos pouco frequentes que aparecem em menos de 5 documentos. A vetorização será feita com TF-IDF, utilizando a frequência logarítmica e normalização L2.
+
+Para o modelo de mistura de gaussianas, serão avaliados com uma a quatro componentes por classe, melhor acomodando o modelo à distribuição dos dados que não sabemos à priori. A matriz de covariância usada será tanto a completa quanto a diagonal no caso do Fashion MNIST, e estritamente diagonal no caso do AG\_NEWS, devido à alta dimensionalidade (784 vs. 10000 features em cada dataset). A quantidade de inicializações aleatórias será de 5, com máximo de 200 iterações.
+
+No caso dos modelos de Naive Bayes, há modelos para diferentes distribuições na biblioteca scikit-learn. Serão avaliados o GaussianNB, BernoulliNB e MultinomialNB para ambos os datasets.
+
+Para a regressão logística, será utilizada a norma L2, avaliando diferentes valores para a penalidade da norma. Há um parâmetro no scikit-learn que permite alternar entre a classificação um-contra-todos e a softmax.
+
+Para a otimização de hiperparâmetros, será utilizado o Grid Search com validação cruzada estratificada (Stratified K-Fold), com 5 divisões por iteração, usando o F1 score como critério de avaliação. A biblioteca MLFlow será utilizada para registrar o histórico dos resultados dos modelos.
+
+Para a avaliação final, serão utilizadas métricas-padrão de classificação: acurácia, precisão, recall e F1, além de gerar a matriz de confusão e avaliar a incidência dos erros.
+
+\section{Descrição das Bases de Dados a Serem Exploradas}
+
+\subsection{Fashion MNIST (Imagens)}
+
+Fashion MNIST (Fashion-Modified National Institute of Standards and Technology)
+
+\begin{itemize}
+    \item \textbf{Total de amostras:} 70.000 imagens
+    \begin{itemize}
+        \item Treino original: 60.000 (dividido em 48.000 treino + 12.000 validação)
+        \item Teste: 10.000
+    \end{itemize}
+    \item \textbf{Dimensionalidade:} 28x28 pixels = 784 features (após achatamento)
+    \item \textbf{Tipo de dado:} Escala de cinza, normalizado para [0.0, 1.0], float32
+    \item \textbf{Classes:} 10 categorias com cerca de 4.800 amostras por classe no conjunto de treinamento:
+    \begin{enumerate}
+        \item T-shirt
+        \item Trouser
+        \item Pullover
+        \item Dress
+        \item Coat
+        \item Sandal
+        \item Shirt
+        \item Sneaker
+        \item Bag
+        \item Ankle boot
+    \end{enumerate}
+\end{itemize}
+
+A escolha pelo Fashion MNIST se dá por ser um problema de classificação de imagens, com uma quantidade razoável de features de entrada e tamanho razoável para o dataset. As features de entrada sendo todas Float facilitam muito o pré-processamento.
+
+\subsection{AG\_NEWS (Texto)}
+
+AG's News Topic Classification Dataset
+\begin{itemize}
+    \item \textbf{Total de amostras:} 127.600 notícias
+    \item Representação em forma de "bag-of-words" via TF-IDF, sem o uso de "embeddings".
+    \begin{itemize}
+        \item Treino original: 120.000 (dividido em 96.000 treino + 24.000 validação)
+        \item Teste: 7.600
+    \end{itemize}
+    \item \textbf{Dimensionalidade:} Limitado a 10.000 features, descarta termos que apareçam em mais de 50\% dos documentos (artigos, preposições, termos que não trazem informação) e em menos de 5 documentos (termos que possam ser ruído ou erros de digitação), compondo os limites superior e inferior de frequência dos termos.
+    \item \textbf{Tipo de dado:} Texto transformado via TF-IDF, com ``term frequency'' em escala log e normalizado.
+    \item \textbf{Classes:} 4 categorias balanceadas (30.000 amostras por classe no treino):
+    \begin{enumerate}
+        \item World
+        \item Sports
+        \item Business
+        \item Sci/Tech
+    \end{enumerate}
+\end{itemize}
+
+O dataset AG\_NEWS complementa Fashion MNIST ao fornecer um dataset textual com características distintas, com maior dimensionalidade e esparsidade, mas com features menos dependentes entre si, se comparadas a tarefas de classificação de imagem.
+
+\section{Contribuição / Originalidade}
+Ng \& Jordan (2002), ao compararem modelos generativos e discriminativos, demonstram que modelos generativos, tal como naive bayes, convergem mais rápido e contam com acurácia melhor quando há poucos dados. Apesar disso, modelos discriminativos, tal como a regressão logística, tendem a superar os generativos à medida que a quantidade de dados aumenta. Em geral, conjuntos de dados com poucos dados tendem a se beneficiar do naive bayes.
+
+Por sua vez, Zheng et al. (2023) revisitam o trabalho de Ng \& Jordan (2002), identificando que o fenômeno descrito ocorre não apenas como atributos "brutos" de modelos supervisionados, mas também ao utilizar atributos pré-treinados de redes neurais profundas para treinar classificadores lineares, inclusive em classificadores multiclasses.
+
+Bouzidi et al. (2024) fizeram um levantamento comparando a literatura de CNNs e Vision Transformers (ViTs) para classificação em Fashion MNIST. Os resultados indicam que CNNs superaram ViTs em acurácia: 99.18\% vs. 95.25\%. Os autores justificam essa diferença em razão da baixa dimensionalidade do Fashion MNIST, o que cria padrões locais de textura, borda e outros atributos, o que é mais eficientemente identificado pelos filtros da arquitetura da CNN.  ViTs, por sua vez, foram projetados para datasets enormes, em que o contexto global é capturado pelo mecanismo de atenção, o que seria desnecessário ou um ``exagero de uso'' no caso do Fashion MNIST, pois demanda mais treinamento para convergir.
+
+Finalmente, Ozdemir (2024) comparou CNN, BiLSTM e o transformer BERT para classificação de notícias no dataset AG News. Nesse caso, o modelo BERT alcançou 94.42\% de acurácia, superando a CNN (91.20\%) e a BiLSTM (91.10\%). Segundo o autor, isso ocorre  porque textos de notícias possuem natureza semântica e sequencial, ao contrário de imagens, com natureza espacial. Além disso, por mais que a LSTM tenha sua arquitetura projetada para dados sequenciais, ela não possui o mecanismo de atenção, capaz de capturar correspondências não-sequenciais do contexto geral. Lembrando que o modelo BERT foi pré-treinado em bilhões de palavras.
+
+Como trabalho final da disciplina de Aprendizado de Máquina, este projeto contribui para a validação dos conceitos teóricos aprendidos na disciplina com datasets conhecidos e de fácil reprodução. O projeto apresentado apresenta um framework flexível e extensível, sendo prático de colocar novos modelos ou novos datasets. Há também o uso do MLFlow, viabilizando versionamento dos modelos e artefatos.
+
+\section{Resultados Esperados}
+
+Espera-se que os modelos discriminativos superem os modelos generativos em ambos datasets, pois otimizam a fronteira de decisão, além de permitir o uso da regularização por penalização de norma.
+
+É sabido de antemão que o Naive Bayes funciona bem para tarefas de classificação de texto e não tão bem para classificação de imagem, em razão da maior dependência e correlação entre as features de entrada.
+
+Ao final dos experimentos, deseja-se gerar um comparativo com as métricas de qualidade dos modelos em ambos os datasets, além dos hiperparâmetros que melhor ajustam os dados de treinamento.
+
+\section{Bibliografia}
+
+\begin{enumerate}
+    \item Bishop, C. M. (2006). \textit{Pattern Recognition and Machine Learning}. Springer.
+
+    \item Theodoridis, S. (2015). \textit{Machine Learning: A Bayesian and Optimization Perspective}. Academic Press.
+
+    \item Murphy, K. P. (2012). \textit{Machine Learning: A Probabilistic Perspective}. MIT Press.
+
+    \item Xiao, H., Rasul, K., \& Vollgraf, R. (2017). \textit{Fashion-MNIST: a Novel Image Dataset for Benchmarking Machine Learning Algorithms}. arXiv:1708.07747.
+
+    \item Ng, A., \& Jordan, M. (2002). On Discriminative vs. Generative Classifiers: A Comparison of Logistic Regression and Naive Bayes. In \textit{Advances in neural information processing systems} (Vol. 14).
+
+    \item Bouzidi, S., Hcini, G., Jdey, I., \& Drira, F. (2024). \textit{Convolutional neural networks and vision transformers for fashion mnist classification: A literature review}. arXiv:2406.03478.
+
+    \item Zheng, Wu, Bao, Cao, Li, \& Zhu (2023). \textit{Revisiting Discriminative vs. Generative Classifiers: Theory and Implications}. arXiv:2302.02334.
+
+    \item Ozdemir, S. (2024). \textit{News Classification with State-of-the-Art Deep Learning Methods}. In 2024 8th International Artificial Intelligence and Data Processing Symposium (IDAP) (pp. 1-5). IEEE.
+\end{enumerate}
+
+\end{document}

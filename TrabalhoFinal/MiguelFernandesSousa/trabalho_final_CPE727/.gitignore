@@ -51,8 +51,33 @@ data/
 runs/
 logs/
 checkpoints/
-outputs/
 wandb/
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Outputs (keep structure, ignore content)
+outputs/
+eda/outputs/*.png
+eda/outputs/*.jpg
+eda/outputs/*.pdf
+results/plots/*.png
+results/plots/*.jpg
+confusion_matrices_baseline/*.png
+confusion_matrices_baseline/*.jpg
+
+# Cache
+experiments/cache/
+*.json
+!pyproject.json
+!tsconfig.json
+!package.json
+
+# Temporary and debug files
+debug_env.py
+test_subprocess.py
+experiments_state.json
 
 # Jupyter
 .ipynb_checkpoints/

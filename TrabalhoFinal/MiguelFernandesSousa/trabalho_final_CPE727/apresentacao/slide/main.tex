@@ -1,0 +1,620 @@
+\documentclass{beamer}
+
+\usetheme{default}
+\usepackage[utf8]{inputenc}
+
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{frametitle}[default][center]
+
+\mode<presentation>{
+\usetheme{Dresden}
+%\setbeamercovered{transparent}
+\usecolortheme{seagull}
+}
+
+\setbeamertemplate{headline}{}
+
+\definecolor{peeblue}{RGB}{1,123,165}
+\setbeamercolor*{palette primary}{fg=black,bg=peeblue!80}
+\setbeamercolor*{palette secondary}{fg=black,bg=peeblue!80!gray!80}
+\setbeamercolor*{palette tertiary}{fg=black,bg=peeblue!100}
+\setbeamercolor*{palette quaternary}{fg=black,bg=peeblue!110}
+
+\usebackgroundtemplate
+{%
+    \begin{picture}(210,40)(-5,2)
+    \includegraphics[width=0.07\paperwidth,keepaspectratio]{imgs/pee-logo-short.png}
+    \end{picture}%
+}
+
+\title{Trabalho Final\\CPE727 -- Aprendizado Profundo}
+\author{Miguel Fernandes de Sousa}
+\date{Dezembro de 2025}
+
+\institute
+{
+  Universidade Federal do Rio de Janeiro\\
+  UFRJ/COPPE/PEE
+}
+
+
+\begin{document}
+
+{
+\usebackgroundtemplate{
+    \begin{picture}(210,55)(-5,0)
+    \includegraphics[height=0.14\paperwidth,keepaspectratio]{imgs/pee-logo.png}
+    \end{picture}%
+    \begin{picture}(210,55)(-28,2)
+    \includegraphics[height=0.14\paperwidth,keepaspectratio]{imgs/coppe-logo.pdf}
+    \end{picture}
+}
+\begin{frame}
+  \bigskip\bigskip\bigskip\bigskip
+  \titlepage
+\end{frame}
+}
+
+\begin{frame}{Sumário}
+  \tableofcontents
+\end{frame}
+
+\begin{frame}{Tokenização (AG\_NEWS)}
+  \small
+  \begin{itemize}
+  \item Word-level, vocabulário de 10.000 termos (+ \texttt{<PAD>=0}, \texttt{<UNK>=1})
+  \item Sequência fixa de 200 tokens: padding/truncamento no fim
+  \item Comprimento médio \textasciitilde40 tokens (mín. 12, máx. 183) \(\rightarrow\) \textasciitilde80\% padding
+  \item Preserva ordem das palavras; adequado para LSTM capturar dependências sequenciais
+  \end{itemize}
+\end{frame}
+\section{Introdução}
+
+\begin{frame}{Introdução}
+  \begin{itemize}
+  \item Comparativo entre modelos baseline (generativos e discriminativos) e de aprendizado profundo
+  \item Dois datasets: Fashion MNIST (imagens) e AG\_NEWS (texto)
+  \item Modelos deep: CNN (Fashion MNIST) e LSTM (AG\_NEWS)
+  \end{itemize}
+\end{frame} 
+
+\section{Datasets}
+
+\begin{frame}{Fashion MNIST}
+  \begin{itemize}
+  \item 70.000 imagens (60k treino, 10k teste)
+  \item 10 classes de vestuário
+  \item 28×28 pixels = 784 features
+  \item Normalização min-max
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{AG\_NEWS}
+  \begin{itemize}
+  \item 127.600 notícias (120k treino, 7.6k teste)
+  \item 4 classes: World, Sports, Business, Sci/Tech
+  \item TF-IDF com 10.000 features
+  \item Remoção de stop words
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Representação TF-IDF -- Vetores de Entrada}
+  \textbf{Cada documento $\rightarrow$ vetor de 10.000 dimensões:}
+  
+  \vspace{0.3cm}
+  
+  \tiny
+  \begin{verbatim}
+  Documento: "Apple launches new iPhone"
+  
+  Vocabulário (exemplo simplificado):
+    "apple" → posição 0
+    "launches" → posição 1
+    "new" → posição 2
+    "iphone" → posição 3
+    ... (até 10.000 palavras)
+  
+  Vetor TF-IDF (denso):
+  [0.234, 0.189, 0.156, 0.201, 0.0, 0.0, ..., 0.0]
+    ↑      ↑      ↑      ↑      ↑    ↑           ↑
+   apple launches new  iphone  outras palavras (zeros)
+  \end{verbatim}
+  
+  \vspace{0.2cm}
+  \small
+  
+  \textbf{Características:}
+  \begin{itemize}
+  \item Cada slot = uma palavra do vocabulário com posição fixa
+  \item Valores = scores TF-IDF são floats entre 0.0 e $\sim$1.0
+  \item Representação esparsa$\sim$98\% zeros 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Fórmula TF-IDF -- Cálculo dos Valores}
+  \textbf{TF-IDF(word, document) = TF $\times$ IDF}
+  
+  \vspace{0.2cm}
+  
+  \begin{equation*}
+  \text{TF}(w, d) = \begin{cases}
+    1 + \log(\text{count}(w, d)) & \text{se count}(w, d) > 0 \\
+    0 & \text{caso contrário}
+  \end{cases}
+  \end{equation*}
+  
+  \begin{equation*}
+  \text{IDF}(w) = \log\left(\frac{N + 1}{df(w) + 1}\right) + 1
+  \end{equation*}
+  
+  \vspace{0.1cm}
+  
+  \small
+  \textbf{Onde:}
+  \begin{itemize}
+  \item $\text{count}(w, d)$ = frequência da palavra $w$ no documento $d$
+  \item $N$ = número total de documentos (120.000 no treino AG\_NEWS)
+  \item $df(w)$ = número de documentos que contêm a palavra $w$
+  \end{itemize}
+  
+  \vspace{0.2cm}
+  
+  \tiny
+  \textbf{Faixa de valores:} Após normalização L2, cada documento tem norma = 1, com valores individuais tipicamente entre 0 e 0.5.
+  
+  \normalsize
+\end{frame}
+
+\section{Análise Exploratória -- Fashion MNIST}
+
+\begin{frame}{Distribuição de Amostras}
+  \centering
+  \includegraphics[width=0.75\textwidth]{../../eda/outputs/fashion_mnist/samples_per_class.png}
+\end{frame}
+
+
+\begin{frame}{Imagens Médias por Classe}
+  \centering
+  \includegraphics[width=0.9\textwidth]{../../eda/outputs/fashion_mnist/average_images.png}
+\end{frame}
+
+
+
+\begin{frame}{Variância: Roupas vs Calçados}
+  \centering
+  \includegraphics[width=0.85\textwidth]{../../eda/outputs/fashion_mnist/pixel_variance_clothing_vs_footwear.png}
+\end{frame}
+
+
+\begin{frame}{Matriz de Separabilidade entre Classes}
+  \centering
+  \includegraphics[width=0.78\textwidth]{../../eda/outputs/fashion_mnist/matrix.png}
+\end{frame}
+
+
+
+
+\section{Análise Exploratória -- AG\_NEWS}
+
+
+
+\begin{frame}{Mapa de Calor -- Termos Mais Frequentes}
+  \centering
+  \includegraphics[width=0.50\textwidth]{../../eda/outputs/ag_news/top_terms_heatmap.png}
+\end{frame}
+
+\begin{frame}{Esparsidade da Matriz TF-IDF}
+  \centering
+  \includegraphics[width=0.85\textwidth]{../../eda/outputs/ag_news/tfidf_sparsity.png}
+\end{frame}
+
+
+\section{Metodologia}
+
+\begin{frame}{Modelos Implementados}
+  \textbf{Generativos:}
+  \begin{itemize}
+  \item \textbf{Naive Bayes} (3 variantes):
+    \begin{itemize}
+    \item GaussianNB: distribuição normal (features contínuas)
+    \item BernoulliNB: distribuição binomial (features binárias)
+    \item MultinomialNB: distribuição multinomial (contagem/frequência)
+    \end{itemize}
+  \item \textbf{GMM}: 1-4 componentes por classe
+    \begin{itemize}
+    \item Covariância: completa (Fashion MNIST) / diagonal (AG\_NEWS)
+    \item 5 inicializações, max 100-200 iterações
+    \end{itemize}
+  \end{itemize}
+
+  \textbf{Discriminativos:}
+  \begin{itemize}
+  \item \textbf{Regressão Logística}: norma L2, parâmetro C
+    \begin{itemize}
+    \item Softmax (multinomial)
+    \item One-vs-Rest (OvR)
+    \end{itemize}
+  \item \textbf{Random Forest}: ensemble de árvores de decisão
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Otimização de Hiperparâmetros -- Setup}
+  \begin{itemize}
+  \item Grid Search com validação cruzada estratificada
+  \item Fashion MNIST: 5-fold CV
+  \item AG\_NEWS: 2-3-fold CV (dataset maior)
+  \item Métrica: Accuracy (com registro de Precision, Recall, F1)
+  \item MLFlow para rastreamento de experimentos
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Otimização}
+  \begin{itemize}
+  \item Grid search em 2 estágios: amostra pequena  para finalizar mais rápido, em seguida com amostra maior.
+  \item CNN (Fashion MNIST): variação de lr, dropout, batch\_size, conv\_channels, kernel, padding, uso de batchnorm, FC
+  \item LSTM (AG\_NEWS): variação de lr, embedding\_dim, hidden\_dim, dropout, bidirecionalidade, batch\_size
+  \item MLflow para rastreamento de métricas, curvas e matrizes de confusão
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Hiperparâmetros Finais (Deep)}
+  \textbf{CNN (Fashion MNIST)}\\
+  lr=0.001, dropout=0.4, batch=32, epochs=20, conv\_channels=(32,64), kernel=3, padding=same, FC=128, batchnorm=True, loss: CrossEntropy\\[6pt]
+  \textbf{LSTM (AG\_NEWS)}\\
+  lr=0.005, embedding\_dim=100, hidden\_dim=128, dropout=0.4, bidirectional=True, batch=32, epochs=20, max\_seq=200, vocab=10k, loss: CrossEntropy
+\end{frame}
+
+\begin{frame}{Melhores Hiperparâmetros (Fashion MNIST)}
+  \textbf{Configurações ótimas encontradas:}
+
+  \vspace{0.3cm}
+  \tiny
+  \begin{table}
+  \begin{tabular}{ll}
+  \hline
+  \textbf{Modelo} & \textbf{Melhores Hiperparâmetros} \\
+  \hline
+  Naive Bayes Gaussiano & var\_smoothing = 1e-09 (F1 CV: 0.5065) \\
+  GMM & n\_components = 1, covariance\_type = `diag' \\
+  Logistic Softmax & C = 1.0 (Accuracy CV: $\sim$84\%) \\
+  Logistic OvR & C = 0.1 (Accuracy CV: $\sim$83\%) \\
+  Random Forest & n\_estimators = 200, max\_depth = None, \\
+                & min\_samples\_split = 2, max\_features = `sqrt' \\
+                & (Accuracy CV: 88.05\%) \\
+  \hline
+  \end{tabular}
+  \end{table}
+
+  \vspace{0.2cm}
+  \normalsize
+  \textbf{Observação:} Algoritmo EM da GMM com convergência instável em algumas execuções
+\end{frame}
+
+\begin{frame}{Melhores Hiperparâmetros (AG\_NEWS)}
+  \textbf{Configurações ótimas encontradas:}
+
+  \vspace{0.3cm}
+  \tiny
+  \begin{table}
+  \begin{tabular}{ll}
+  \hline
+  \textbf{Modelo} & \textbf{Melhores Hiperparâmetros} \\
+  \hline
+  NB Gaussiano & var\_smoothing = 1e-05 (Acc CV: 80.31\%) \\
+  NB Bernoulli & alpha = 0.1, binarize = 0.0 (Acc CV: 89.17\%) \\
+  NB Multinomial & alpha = 0.01 (Acc CV: 87.92\%) \\
+  GMM & n\_components = 1, covariance\_type = `diag', \\
+      & n\_init = 5, max\_iter = 100 Acc CV: 80.97\%) \\
+  Logistic Softmax & C = 1.0, max\_iter = 1000 (Acc CV: 89.90\%) \\
+  Logistic OvR & C = 10.0, max\_iter = 1000 (Acc CV: 89.76\%) \\
+  Random Forest & n\_estimators = 300, max\_depth = None, \\
+                & min\_samples\_split = 5, max\_features = `log2' \\
+                & (Acc CV: 87.70\%) \\
+  \hline
+  \end{tabular}
+  \end{table}
+\end{frame}
+
+\section{Resultados}
+
+\begin{frame}{Resultados -- Fashion MNIST}
+  \begin{table}
+  \tiny
+  \begin{tabular}{lcccc}
+  \hline
+  \textbf{Modelo} & \textbf{Acc} & \textbf{Prec} & \textbf{Rec} & \textbf{F1} \\
+  \hline
+  Random Forest & \textbf{87.84\%} & 87.70\% & 87.84\% & 87.70\% \\
+  Logistic OvR & 83.50\% & 83.74\% & 83.85\% & 83.78\% \\
+  Logistic Softmax & 83.40\% & 83.85\% & 83.75\% & 83.76\% \\
+  NB Multinomial & 65.55\% & 65.42\% & 65.55\% & 62.76\% \\
+  NB Bernoulli & 64.82\% & 66.58\% & 64.82\% & 63.98\% \\
+  NB Gaussiano & 59.10\% & 62.03\% & 58.40\% & 55.74\% \\
+  \hline
+  \end{tabular}
+  \end{table}
+  
+  \vspace{0.5cm}
+  
+\end{frame}
+
+\begin{frame}{Resultados Deep -- CNN (Fashion MNIST)}
+  \begin{itemize}
+  \item Acurácia de teste: \textbf{92.29\%}
+  \item Precision macro: \textbf{0.9230}, Recall macro: \textbf{0.9229}, F1 macro: \textbf{0.9228}
+  \item Melhor que todos os baselines, inclusive Random Forest com 87.84\%
+  \end{itemize}
+  \vspace{0.3cm}
+  \centering
+  \includegraphics[width=1.00\textwidth]{../../results/plots/training_curves_cnn_final_new.png}
+\end{frame}
+
+
+\begin{frame}{Resultados Deep -- CNN (Fashion MNIST)}
+  \centering
+  \includegraphics[width=0.66\textwidth]{../../results/plots/confusion_matrix_cnn_final_new.png}\\
+  \end{frame}
+
+
+
+% \begin{frame}{Resultados -- AG\_NEWS (Validação Cruzada)}
+%   \begin{table}
+%   \tiny
+%   \begin{tabular}{lcc}
+%   \hline
+%   \textbf{Modelo} & \textbf{CV Accuracy} & \textbf{CV F1-Score} \\
+%   \hline
+%   Logistic Softmax & 89.90\% ± 0.10\% & 89.86\% \\
+%   Logistic OvR & 89.76\% ± 0.15\% & 89.71\% \\
+%   NB Bernoulli & 89.17\% ± 0.00\% & 89.12\% \\
+%   NB Multinomial & 87.92\% ± 0.52\% & 87.91\% \\
+%   Random Forest & 87.70\% ± 0.69\% & 87.64\% \\
+%   NB Gaussiano & 80.31\% & 80.18\% \\
+%   GMM & 80.97\% & 80.73\% \\
+%   \hline
+%   \end{tabular}
+%   \end{table}
+  
+  
+% \end{frame}
+
+\begin{frame}{Resultados -- AG\_NEWS (Conjunto de Teste)}
+  \begin{table}
+  \tiny
+  \begin{tabular}{lcccc}
+  \hline
+  \textbf{Modelo} & \textbf{Acc} & \textbf{Prec} & \textbf{Rec} & \textbf{F1} \\
+  \hline
+  Logistic OvR & \textbf{91.34\%} & 91.32\% & 91.34\% & 91.32\% \\
+  Logistic Softmax & \textbf{91.24\%} & 91.22\% & 91.24\% & 91.22\% \\
+  Random Forest & 90.96\% & 90.94\% & 90.96\% & 90.92\% \\
+  NB Multinomial & 89.66\% & 89.61\% & 89.66\% & 89.62\% \\
+  NB Bernoulli & 89.36\% & 89.31\% & 89.36\% & 89.31\% \\
+  GMM & 86.89\% & 86.91\% & 86.89\% & 86.90\% \\
+  NB Gaussiano & 86.64\% & 86.68\% & 86.64\% & 86.64\% \\
+  \hline
+  \end{tabular}
+  \end{table}
+  
+  \vspace{0.3cm}
+  
+  O gap entre os discriminativos e o naive bayes diminuiu bastante.
+\end{frame}
+\begin{frame}{Resultados Deep -- LSTM (AG\_NEWS)}
+  \begin{itemize}
+  \item Acurácia de teste: \textbf{0.8917}
+  \item Precision macro: \textbf{0.8930}, Recall macro: \textbf{0.8917}, F1 macro: \textbf{0.8919}
+  \item Margem menor vs. baselines: Logistic OvR 91.34\% vs LSTM 89.17\%
+  \end{itemize}
+  \vspace{0.3cm}
+  \centering
+  \includegraphics[width=1.100\textwidth]{../../results/plots/training_curves_lstm_final.png}
+\end{frame}
+
+
+\begin{frame}{Resultados Deep -- LSTM (AG\_NEWS)}
+  \centering
+  \includegraphics[width=0.66\textwidth]{../../results/plots/confusion_matrix_lstm_final.png}\\
+  \end{frame}
+
+
+\begin{frame}{Comparação: Naive Bayes}
+  
+  \begin{columns}
+  \column{0.5\textwidth}
+  \textbf{Fashion MNIST:}
+  \begin{table}
+  \tiny
+  \begin{tabular}{lc}
+  \hline
+  \textbf{Variant} & \textbf{Acc}  \\
+  \hline
+  Multinomial & 65.55\%  \\
+  Bernoulli & 64.82\% \\
+  Gaussiano & 59.10\%  \\
+  \hline
+  \end{tabular}
+  \end{table}
+  
+  \column{0.5\textwidth}
+  \textbf{AG\_NEWS:}
+  \begin{table}
+  \tiny
+  \begin{tabular}{lc}
+  \hline
+  \textbf{Variant} & \textbf{Acc}  \\
+  \hline
+  Multinomial & 89.66\%  \\
+  Bernoulli & 89.36\% \\
+  Gaussiano & 86.64\%  \\
+  \hline
+  \end{tabular}
+  \end{table}
+  \end{columns}
+  
+  \vspace{0.3cm}
+  
+  \textbf{Observação:} Multinomial $>$ Bernoulli $>$ Gaussiano em ambos datasets
+\end{frame}
+
+\section{Análise Comparativa}
+
+\begin{frame}{Gap Generativo vs. Discriminativo}
+  \begin{table}
+  \begin{tabular}{lcc}
+  \hline
+  \textbf{Dataset} & \textbf{Gap} & \textbf{Possível motivo} \\
+  \hline
+  Fashion MNIST & \textbf{22.29\%} & Pixels muito correlacionados \\
+  AG\_NEWS & \textbf{1.68\%} & TF-IDF gera vetor esparso \\
+  \hline
+  \end{tabular}
+  \end{table}
+  
+  \vspace{0.3cm}
+  \tiny
+  Gap = Melhor Discriminativo - Melhor Generativo\\
+  Fashion: RF (87.84\%) - NB Multinomial (65.55\%) = 22.29\%\\
+  AG\_NEWS: Logistic OvR (91.34\%) - NB Multinomial (89.66\%) = 1.68\%
+  
+  \vspace{0.3cm}
+  \normalsize
+  
+  \begin{itemize}
+  \item A modalide dos dados pode ter influenciado.
+  \item Features densas e correlacionadas como imagens violam suposição de independência do Naive Bayes
+  \item Features esparsas e menos correlacionadas são mais adequadas para modelos generativos justamente por supor a independência
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Modelos por Dataset}
+  \begin{columns}
+  \column{0.5\textwidth}
+  \textbf{Fashion MNIST (Imagens):}
+  \begin{enumerate}
+  \item Random Forest: 87.84\%
+  \item Logistic OvR: 83.50\%
+  \item Logistic Softmax: 83.40\%
+  \item NB Multinomial: 65.55\%
+  \item NB Bernoulli: 64.82\%
+  \item NB Gaussiano: 59.10\%
+  \end{enumerate}
+  
+  
+  \column{0.5\textwidth}
+  \textbf{AG\_NEWS (Texto):}
+  \begin{enumerate}
+  \item Logistic OvR: 91.34\%
+  \item Logistic Softmax: 91.24\%
+  \item Random Forest: 90.96\%
+  \item NB Multinomial: 89.66\%
+  \item NB Bernoulli: 89.36\%
+  \item NB Gaussiano: 86.64\%
+  \end{enumerate}
+  
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Problema no Paralelismo da Validação Cruzada}
+  \textbf{Problema:} Random Forest no AG\_NEWS consumiu \textbf{96 GB RAM}
+  
+  \vspace{0.3cm}
+  
+  Paralelismo da Validação Cruzada exigiu memória RAM demais
+  \begin{itemize}
+  \item GridSearchCV(n\_jobs=-1): 16 workers
+  \item Cada worker cria uma RandomForest, sendo que cada RandomForest também cria 16 workers
+  \item Total: 16 × 16 = 256 processos paralelos
+  \item Cada um dos 256 modelos copia os dados em memória
+  \end{itemize}
+  
+  \vspace{0.3cm}
+  
+  \textbf{Solução:} RandomForest(n\_jobs=1), sem paralelismo interno
+  \begin{itemize}
+  \item GridSearchCV ainda paralelo
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Estratégia de Otimização em Duas Fases}
+  \begin{table}
+  \tiny
+  \begin{tabular}{lccc}
+  \hline
+  \textbf{Tipo} & \textbf{Samples} & \textbf{CV} & \textbf{Tempo} \\
+  \hline
+   Inviável & 96k & 3 & 8-12h \\
+  Exploração inicial & 5k & 2 & 10 min \\
+  Validação Cruzada final & 30k & 2 & 40 min \\
+  \hline
+  \end{tabular}
+  \end{table}
+  
+  \vspace{0.3cm}
+  
+  A estimativa cai de 8h-12h para 50min. A exploração inicial é útil para estimar quanto tempo será necessário para a validação cruzada final, além de identificar hiperparâmetros persistentes.
+\end{frame}
+
+\section{Conclusões}
+
+\begin{frame}{Conclusões Principais}
+  \begin{enumerate}
+  \item Modalidade parece ter influenciado: Gap de 22.29\% (imagens) vs 1.68\% (texto)
+  
+  \item Em ambos datasets, MultinomialNB $\approx$ BernoulliNB $>$ GaussianNB
+  
+  \item Não-linearidade do Random Forest foi melhor para imagens. Classificação de texto, por ser esparso e de alta dimensionalidade, facilitaria a separabilidade no espaço com separadores lineares.
+  
+  \end{enumerate}
+\end{frame}
+
+% \begin{frame}{Conclusões -- Validação Teórica}
+%   \textbf{Confirmação de Ng \& Jordan (2002):}
+%   \begin{itemize}
+%   \item Discriminativos superam generativos com muitos dados
+%   \item Confirmado em ambos datasets (48k e 96k amostras)
+%   \end{itemize}
+%
+%   \vspace{0.3cm}
+%
+%   \textbf{Comparação com Estado da Arte:}
+%   \begin{itemize}
+%   \item Fashion MNIST: 87.84\% vs 99.18\% (CNN) = -11.34 pp
+%   \item AG\_NEWS: 91.34\% vs 94.42\% (BERT) = -3.08 pp
+%   \item Métodos clássicos competitivos, especialmente para texto
+%   \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Limitações e Trabalhos Futuros}
+%   \textbf{Limitações:}
+%   \begin{itemize}
+%   \item Sem embeddings pré-treinados (Word2Vec, BERT)
+%   \item Sem deep learning (CNNs, Transformers)
+%   \item Subset strategy: hiperparâmetros potencialmente subótimos
+%   \end{itemize}
+%
+%   \vspace{0.3cm}
+%
+%   \textbf{Trabalhos Futuros:}
+%   \begin{itemize}
+%   \item Embeddings contextualizados (BERT, RoBERTa)
+%   \item CNNs e Vision Transformers para Fashion MNIST
+%   \item Técnicas de feature selection (Mutual Information, Chi-Square)
+%   \item Interpretabilidade (LIME, SHAP)
+%   \item Outros datasets (20 Newsgroups, CIFAR-10)
+%   \end{itemize}
+% \end{frame}
+
+
+\begin{frame}
+  \centering
+  \Huge{Dúvidas?}
+
+  \vspace{1cm}
+
+  \normalsize
+  Miguel Fernandes de Sousa\\
+  PEE/COPPE/UFRJ
+\end{frame}
+
+\end{document}
