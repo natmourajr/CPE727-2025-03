@@ -1,4 +1,4 @@
-# Comparação de Modelos de Deep Learning para Detecção Precoce de Anomalias em Poços de Petróleo
+# Comparação de Modelos de Deep Learning para Detecção de Anomalias em Poços de Petróleo
 
 Este repositório contém o código e os experimentos para comparar modelos de aprendizado profundo na detecção precoce de anomalias em poços de petróleo, utilizando o banco de dados 3W.
 
