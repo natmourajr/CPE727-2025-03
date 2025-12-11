@@ -140,9 +140,10 @@ def download_shenzhen_dataset(output_dir='./data'):
         for idx, source in enumerate(DATASET_SOURCES, 1):
             print(f"\n{'='*70}")
             print(f"📡 Tentativa {idx}/{len(DATASET_SOURCES)}: {source['name']}")
-            print(f"URL: {source['url']}")
+            print(f"Name: {source['name']}")
+            if "url" in source:
+                print(f"URL: {source['url']}")
             print(f"{'='*70}\n")
-            
             try:
                 if source['type'] == 'kaggle':
                     # Tentar importar kaggle
