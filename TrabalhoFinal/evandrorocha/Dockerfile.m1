@@ -2,7 +2,7 @@
 FROM --platform=linux/arm64 python:3.10-slim
 
 # Metadados
-LABEL maintainer="Evandro Rocha, Miguel Fernandes, Rockson Gomes"
+LABEL maintainer="Evandro Rocha"
 LABEL description="Deep Learning para Detecção de Tuberculose - Apple Silicon"
 
 # Definir diretório de trabalho
@@ -32,6 +32,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Atualizar pip
 RUN pip install --upgrade pip setuptools wheel
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Instalar PyTorch para Apple Silicon (CPU/MPS)
 RUN pip install --no-cache-dir \

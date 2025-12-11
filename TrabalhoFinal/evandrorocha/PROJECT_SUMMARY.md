@@ -203,8 +203,6 @@ Este projeto faz parte do curso CPE727-2025-03 e demonstra:
 
 ## 👥 Autores
 - Evandro Rocha
-- Miguel Fernandes
-- Rockson Gomes
 
 ---
 
