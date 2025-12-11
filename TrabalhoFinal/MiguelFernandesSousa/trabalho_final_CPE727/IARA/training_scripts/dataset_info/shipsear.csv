@@ -1,0 +1,91 @@
+ID,Name,Ship ID,SHIPTYPE,Class
+6,Mar de Cangas,1011,Passengers,C
+7,Mar de Cangas,1011,Passengers,C
+8,Mar de Onza,1013,Passengers,C
+9,Mar de Onza,1013,Passengers,C
+10,Mar de Onza,1013,Passengers,C
+11,Minho Uno,1015,Passengers,C
+12,Minho Uno,1015,Passengers,C
+13,Pirata de Cies,1022,Passengers,C
+14,Pirata de Cies,1022,Passengers,C
+15,Rada Uno,1024,Tugboat,A
+16,MSC Opera,1018,Ocean liner,D
+17,Mar de Mouro,1012,Passengers,C
+18,Autopride,1004,RORO,D
+19,Autopride,1004,RORO,D
+20,Autopride,1004,RORO,D
+21,Motorboat,1017,Motorboat,B
+22,Adventure of the seas,1002,Ocean liner,D
+23,Adventure of the seas,1002,Ocean liner,D
+24,Adventure of the seas,1002,Ocean liner,D
+25,Adventure of the seas,1002,Ocean liner,D
+26,Motorboat,1017,Motorboat,B
+27,Motorboat,1017,Motorboat,B
+28,Nuevo ria Aldan,1020,Trawler,A
+29,Pilot ship,1021,Pilot ship,B
+30,Pilot ship,1021,Pilot ship,B
+31,Tugboat,1028,Tugboat,A
+32,Arroios,1003,Passengers,C
+33,Duda,1007,Motorboat,B
+34,Mar de Onza,1013,Passengers,C
+35,Mar de Onza,1013,Passengers,C
+36,Minho Uno,1015,Passengers,C
+37,Sailboat,1025,Sailboat,B
+38,Arroios,1003,Passengers,C
+39,Duda,1007,Motorboat,B
+40,Mar de Cangas,1011,Passengers,C
+41,Minho Uno,1015,Passengers,C
+42,Pirata de Cies,1022,Passengers,C
+43,Pirata de Cies,1022,Passengers,C
+45,Yacht,1030,Motorboat,B
+46,Mussel boat,1019,Mussel boat,A
+47,Mussel boat,1019,Mussel boat,A
+48,Mussel boat,1019,Mussel boat,A
+49,Mussel boat,1019,Mussel boat,A
+50,Motorboat,1017,Motorboat,B
+51,Motorboat,1017,Motorboat,B
+52,Motorboat,1017,Motorboat,B
+53,Pirata de Salvora,1023,Passengers,C
+54,Pirata de Salvora,1023,Passengers,C
+55,Pirata de Salvora,1023,Passengers,C
+56,Sailboat,1025,Sailboat,B
+57,Sailboat,1025,Sailboat,B
+58,Eimskip Reefer,1008,RORO,D
+59,Mar de Mouro,1012,Passengers,C
+60,Mar de Cangas,1011,Passengers,C
+61,Mar de Cangas,1011,Passengers,C
+62,Mar de Cangas,1011,Passengers,C
+63,Mar de Onza,1013,Passengers,C
+64,Mar de Onza,1013,Passengers,C
+65,Minho Uno,1015,Passengers,C
+66,Fishboat,1009,Mussel boat,A
+67,Pirata de Cies,1022,Passengers,C
+68,Sailboat,1025,Sailboat,B
+69,Costa Voyager,1005,Ocean liner,D
+70,Small yacht,1027,Motorboat,B
+71,Discovery UK,1006,Ocean liner,D
+72,Motorboat,1017,Motorboat,B
+73,Mari Carmen fishboat,1014,Fishboat,A
+74,Saladino Primero,1026,Fishboat,A
+75,Fishboat,1009,Fishboat,A
+76,Fishboat,1009,Fishboat,A
+77,High speed motorboat,1010,Motorboat,B
+78,Viking Chance,1029,RORO,D
+79,Zodiac,1031,Motorboat,B
+80,Adricristuy,1001,Dredger,A
+81,Maximum Flow, - ,Natural ambient noise,E
+82,Maximum rain, - ,Natural ambient noise,E
+83,Maximum wave, - ,Natural ambient noise,E
+84,Maximum wind, - ,Natural ambient noise,E
+85,Natural ambient noise, - ,Natural ambient noise,E
+86,Natural ambient noise, - ,Natural ambient noise,E
+87,Natural ambient noise, - ,Natural ambient noise,E
+88,Natural ambient noise, - ,Natural ambient noise,E
+89,Natural ambient noise, - ,Natural ambient noise,E
+90,Natural ambient noise, - ,Natural ambient noise,E
+91,Natural ambient noise, - ,Natural ambient noise,E
+92,Natural ambient noise, - ,Natural ambient noise,E
+93,Moanha,1016,Dredger,A
+94,Moanha,1016,Dredger,A
+95,Moanha,1016,Dredger,A
+96,Moanha,1016,Dredger,A

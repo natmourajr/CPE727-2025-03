@@ -228,6 +228,8 @@ Seminarios/6 - RNN/tsdiffusion.pt
 # tmp
 tmp/
 
-Results/
+data/
 
 *.sif
+
+results/
