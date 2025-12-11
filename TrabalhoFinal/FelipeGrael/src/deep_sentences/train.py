@@ -98,6 +98,8 @@ def train_rnn(
     experiment_name: Optional[str] = None,
     checkpoint_monitor: str = 'val_loss',
     checkpoint_mode: str = 'min',
+    pretrained_embeddings: Optional[torch.Tensor] = None,
+    freeze_embeddings: bool = False,
 ):
     """
     Train a Siamese RNN model for text similarity.
@@ -185,6 +187,8 @@ def train_rnn(
         'seed': seed,
         'checkpoint_monitor': checkpoint_monitor,
         'checkpoint_mode': checkpoint_mode,
+        'pretrained_embeddings': pretrained_embeddings is not None,
+        'freeze_embeddings': freeze_embeddings,
     }
 
     hyperparameters_file = output_path / 'hyperparameters.yaml'
@@ -223,6 +227,8 @@ def train_rnn(
         bidirectional=bidirectional,
         padding_idx=padding_idx,
         similarity_threshold=similarity_threshold,
+        pretrained_embeddings=pretrained_embeddings,
+        freeze_embeddings=freeze_embeddings,
     )
 
     checkpoint_callback = L.pytorch.callbacks.ModelCheckpoint(
@@ -282,6 +288,8 @@ def train_cnn(
     experiment_name: Optional[str] = None,
     checkpoint_monitor: str = 'val_loss',
     checkpoint_mode: str = 'min',
+    pretrained_embeddings: Optional[torch.Tensor] = None,
+    freeze_embeddings: bool = False,
 ):
     """
     Train a Siamese CNN model for text similarity.
@@ -369,6 +377,8 @@ def train_cnn(
         'seed': seed,
         'checkpoint_monitor': checkpoint_monitor,
         'checkpoint_mode': checkpoint_mode,
+        'pretrained_embeddings': pretrained_embeddings is not None,
+        'freeze_embeddings': freeze_embeddings,
     }
 
     hyperparameters_file = output_path / 'hyperparameters.yaml'
@@ -406,6 +416,8 @@ def train_cnn(
         padding_idx=padding_idx,
         similarity_threshold=similarity_threshold,
         pooling_strategy=pooling_strategy,
+        pretrained_embeddings=pretrained_embeddings,
+        freeze_embeddings=freeze_embeddings,
     )
 
     checkpoint_callback = L.pytorch.callbacks.ModelCheckpoint(

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import lightning as L
 from torchmetrics import Accuracy, F1Score, PearsonCorrCoef
-from typing import List
+from typing import List, Optional
 
 
 class RNNSiamese(L.LightningModule):
@@ -22,6 +22,8 @@ class RNNSiamese(L.LightningModule):
         bidirectional: bool = True,
         padding_idx: int = 0,
         similarity_threshold: float = 3.0,
+        pretrained_embeddings: Optional[torch.Tensor] = None,
+        freeze_embeddings: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -36,6 +38,12 @@ class RNNSiamese(L.LightningModule):
         self.similarity_threshold = similarity_threshold
 
         self.embeddings = nn.Embedding(n_tokens, embedding_dim, padding_idx=padding_idx)
+
+        # Initialize with pre-trained embeddings if provided
+        if pretrained_embeddings is not None:
+            self.embeddings.weight.data.copy_(pretrained_embeddings)
+            if freeze_embeddings:
+                self.embeddings.weight.requires_grad = False
 
         if rnn_type == 'lstm':
             rnn_cls = nn.LSTM
@@ -178,6 +186,8 @@ class CNNSiamese(L.LightningModule):
         padding_idx: int = 0,
         similarity_threshold: float = 3.0,
         pooling_strategy: str = 'max',
+        pretrained_embeddings: Optional[torch.Tensor] = None,
+        freeze_embeddings: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -197,6 +207,12 @@ class CNNSiamese(L.LightningModule):
         self.pooling_strategy = pooling_strategy
 
         self.embeddings = nn.Embedding(n_tokens, embedding_dim, padding_idx=padding_idx)
+
+        # Initialize with pre-trained embeddings if provided
+        if pretrained_embeddings is not None:
+            self.embeddings.weight.data.copy_(pretrained_embeddings)
+            if freeze_embeddings:
+                self.embeddings.weight.requires_grad = False
 
         # Multiple convolutional layers with different kernel sizes
         self.convs = nn.ModuleList([

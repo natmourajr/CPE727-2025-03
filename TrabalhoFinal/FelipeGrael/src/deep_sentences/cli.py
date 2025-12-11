@@ -87,6 +87,8 @@ def train_rnn_model(
     devices: int = typer.Option(1, "--devices", help="Number of devices"),
     gradient_clip_val: float = typer.Option(1.0, "--gradient-clip", help="Gradient clipping value"),
     seed: int = typer.Option(202512, "--seed", help="Random seed for reproducibility"),
+    embedding_path: Optional[Path] = typer.Option(None, "--embedding-path", "-e", help="Path to FastText .bin file for pre-trained embeddings"),
+    freeze_embeddings: bool = typer.Option(False, "--freeze-embeddings/--finetune-embeddings", help="Freeze pre-trained embeddings (no training) or allow fine-tuning"),
 ):
     """
     Train Siamese RNN model on a specific fold of the STSB dataset.
@@ -119,6 +121,44 @@ def train_rnn_model(
     n_tokens = tokenizer.get_vocab_size()
     padding_idx = tokenizer.token_to_id("<PAD>")
     typer.echo(f"Tokenizer trained. Vocabulary size: {n_tokens}, Padding index: {padding_idx}")
+
+    # Load pre-trained embeddings if provided
+    pretrained_embeddings = None
+    if embedding_path is not None:
+        if not embedding_path.exists():
+            typer.echo(f"Error: Embedding file '{embedding_path}' not found", err=True)
+            raise typer.Exit(code=1)
+
+        typer.echo(f"Loading FastText embeddings from {embedding_path}...")
+        try:
+            from .embeddings import (
+                load_fasttext_model,
+                create_embedding_matrix,
+                get_fasttext_dimension
+            )
+
+            # Check dimension compatibility
+            fasttext_dim = get_fasttext_dimension(str(embedding_path))
+            if fasttext_dim != embedding_dim:
+                typer.echo(
+                    f"Warning: FastText dimension ({fasttext_dim}) doesn't match "
+                    f"--embedding-dim ({embedding_dim}). Using FastText dimension.",
+                    err=True
+                )
+                embedding_dim = fasttext_dim
+
+            # Load model and create matrix
+            ft_model = load_fasttext_model(str(embedding_path))
+            pretrained_embeddings = create_embedding_matrix(
+                tokenizer, ft_model, embedding_dim, padding_idx
+            )
+
+            freeze_status = "frozen" if freeze_embeddings else "trainable"
+            typer.echo(f"Loaded embeddings with dimension {embedding_dim} ({freeze_status})")
+
+        except Exception as e:
+            typer.echo(f"Error loading embeddings: {e}", err=True)
+            raise typer.Exit(code=1)
 
     output_dir = experiment_dir / f"fold_{fold:02d}"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -159,6 +199,8 @@ def train_rnn_model(
         seed=seed,
         output_dir=str(output_dir),
         experiment_name=f"fold_{fold:02d}",
+        pretrained_embeddings=pretrained_embeddings,
+        freeze_embeddings=freeze_embeddings,
     )
 
     typer.echo(f"Training complete! Results saved to {output_dir}")
@@ -185,6 +227,8 @@ def train_cnn_model(
     devices: int = typer.Option(1, "--devices", help="Number of devices"),
     gradient_clip_val: float = typer.Option(1.0, "--gradient-clip", help="Gradient clipping value"),
     seed: int = typer.Option(202512, "--seed", help="Random seed for reproducibility"),
+    embedding_path: Optional[Path] = typer.Option(None, "--embedding-path", "-e", help="Path to FastText .bin file for pre-trained embeddings"),
+    freeze_embeddings: bool = typer.Option(False, "--freeze-embeddings/--finetune-embeddings", help="Freeze pre-trained embeddings (no training) or allow fine-tuning"),
 ):
     """
     Train Siamese CNN model on a specific fold of the STSB dataset.
@@ -221,6 +265,44 @@ def train_cnn_model(
     n_tokens = tokenizer.get_vocab_size()
     padding_idx = tokenizer.token_to_id("<PAD>")
     typer.echo(f"Tokenizer trained. Vocabulary size: {n_tokens}, Padding index: {padding_idx}")
+
+    # Load pre-trained embeddings if provided
+    pretrained_embeddings = None
+    if embedding_path is not None:
+        if not embedding_path.exists():
+            typer.echo(f"Error: Embedding file '{embedding_path}' not found", err=True)
+            raise typer.Exit(code=1)
+
+        typer.echo(f"Loading FastText embeddings from {embedding_path}...")
+        try:
+            from .embeddings import (
+                load_fasttext_model,
+                create_embedding_matrix,
+                get_fasttext_dimension
+            )
+
+            # Check dimension compatibility
+            fasttext_dim = get_fasttext_dimension(str(embedding_path))
+            if fasttext_dim != embedding_dim:
+                typer.echo(
+                    f"Warning: FastText dimension ({fasttext_dim}) doesn't match "
+                    f"--embedding-dim ({embedding_dim}). Using FastText dimension.",
+                    err=True
+                )
+                embedding_dim = fasttext_dim
+
+            # Load model and create matrix
+            ft_model = load_fasttext_model(str(embedding_path))
+            pretrained_embeddings = create_embedding_matrix(
+                tokenizer, ft_model, embedding_dim, padding_idx
+            )
+
+            freeze_status = "frozen" if freeze_embeddings else "trainable"
+            typer.echo(f"Loaded embeddings with dimension {embedding_dim} ({freeze_status})")
+
+        except Exception as e:
+            typer.echo(f"Error loading embeddings: {e}", err=True)
+            raise typer.Exit(code=1)
 
     output_dir = experiment_dir / f"fold_{fold:02d}"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -260,6 +342,8 @@ def train_cnn_model(
         seed=seed,
         output_dir=str(output_dir),
         experiment_name=f"fold_{fold:02d}",
+        pretrained_embeddings=pretrained_embeddings,
+        freeze_embeddings=freeze_embeddings,
     )
 
     typer.echo(f"Training complete! Results saved to {output_dir}")
@@ -282,13 +366,15 @@ def tune_rnn_model(
     devices: int = typer.Option(1, "--devices", help="Number of devices"),
     timeout: Optional[int] = typer.Option(None, "--timeout", help="Timeout in seconds for the study"),
     seed: int = typer.Option(202512, "--seed", help="Random seed for reproducibility"),
+    embedding_path: Optional[Path] = typer.Option(None, "--embedding-path", "-e", help="Path to FastText .bin file for pre-trained embeddings"),
+    freeze_embeddings: bool = typer.Option(False, "--freeze-embeddings/--finetune-embeddings", help="Freeze pre-trained embeddings during tuning"),
 ):
     """
     Tune RNN hyperparameters using Optuna on a specific fold.
 
     This will search for optimal values of:
     - learning_rate, weight_decay, dropout
-    - n_hidden, n_fc_hidden, embedding_dim
+    - n_hidden, n_fc_hidden, embedding_dim (unless using pre-trained embeddings)
     - gradient_clip_val
 
     Fixed parameters: batch_size=128
@@ -322,6 +408,39 @@ def tune_rnn_model(
     padding_idx = tokenizer.token_to_id("<PAD>")
     typer.echo(f"Tokenizer trained. Vocabulary size: {n_tokens}, Padding index: {padding_idx}")
 
+    # Load pre-trained embeddings if provided
+    pretrained_embeddings = None
+    if embedding_path is not None:
+        if not embedding_path.exists():
+            typer.echo(f"Error: Embedding file '{embedding_path}' not found", err=True)
+            raise typer.Exit(code=1)
+
+        typer.echo(f"Loading FastText embeddings from {embedding_path}...")
+        try:
+            from .embeddings import (
+                load_fasttext_model,
+                create_embedding_matrix,
+                get_fasttext_dimension
+            )
+
+            # Get FastText dimension
+            fasttext_dim = get_fasttext_dimension(str(embedding_path))
+            typer.echo(f"FastText model has dimension: {fasttext_dim}")
+
+            # Load model and create matrix
+            ft_model = load_fasttext_model(str(embedding_path))
+            pretrained_embeddings = create_embedding_matrix(
+                tokenizer, ft_model, fasttext_dim, padding_idx
+            )
+
+            freeze_status = "frozen" if freeze_embeddings else "trainable"
+            typer.echo(f"Loaded embeddings with dimension {fasttext_dim} ({freeze_status})")
+            typer.echo("Note: embedding_dim will NOT be tuned when using pre-trained embeddings")
+
+        except Exception as e:
+            typer.echo(f"Error loading embeddings: {e}", err=True)
+            raise typer.Exit(code=1)
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     tokenizer_path = output_dir / "tokenizer.json"
@@ -354,6 +473,8 @@ def tune_rnn_model(
         devices=devices,
         study_name=f"fold_{fold:02d}_tuning",
         timeout=timeout,
+        pretrained_embeddings=pretrained_embeddings,
+        freeze_embeddings=freeze_embeddings,
     )
 
     typer.echo(f"\n{'='*60}")
@@ -378,13 +499,15 @@ def tune_cnn_model(
     devices: int = typer.Option(1, "--devices", help="Number of devices"),
     timeout: Optional[int] = typer.Option(None, "--timeout", help="Timeout in seconds for the study"),
     seed: int = typer.Option(202512, "--seed", help="Random seed for reproducibility"),
+    embedding_path: Optional[Path] = typer.Option(None, "--embedding-path", "-e", help="Path to FastText .bin file for pre-trained embeddings"),
+    freeze_embeddings: bool = typer.Option(False, "--freeze-embeddings/--finetune-embeddings", help="Freeze pre-trained embeddings during tuning"),
 ):
     """
     Tune CNN hyperparameters using Optuna on a specific fold.
 
     This will search for optimal values of:
     - learning_rate, weight_decay, dropout
-    - n_filters, n_fc_hidden, embedding_dim
+    - n_filters, n_fc_hidden, embedding_dim (unless using pre-trained embeddings)
     - pooling_strategy, kernel_sizes
 
     Fixed parameters: batch_size=128
@@ -418,6 +541,39 @@ def tune_cnn_model(
     padding_idx = tokenizer.token_to_id("<PAD>")
     typer.echo(f"Tokenizer trained. Vocabulary size: {n_tokens}, Padding index: {padding_idx}")
 
+    # Load pre-trained embeddings if provided
+    pretrained_embeddings = None
+    if embedding_path is not None:
+        if not embedding_path.exists():
+            typer.echo(f"Error: Embedding file '{embedding_path}' not found", err=True)
+            raise typer.Exit(code=1)
+
+        typer.echo(f"Loading FastText embeddings from {embedding_path}...")
+        try:
+            from .embeddings import (
+                load_fasttext_model,
+                create_embedding_matrix,
+                get_fasttext_dimension
+            )
+
+            # Get FastText dimension
+            fasttext_dim = get_fasttext_dimension(str(embedding_path))
+            typer.echo(f"FastText model has dimension: {fasttext_dim}")
+
+            # Load model and create matrix
+            ft_model = load_fasttext_model(str(embedding_path))
+            pretrained_embeddings = create_embedding_matrix(
+                tokenizer, ft_model, fasttext_dim, padding_idx
+            )
+
+            freeze_status = "frozen" if freeze_embeddings else "trainable"
+            typer.echo(f"Loaded embeddings with dimension {fasttext_dim} ({freeze_status})")
+            typer.echo("Note: embedding_dim will NOT be tuned when using pre-trained embeddings")
+
+        except Exception as e:
+            typer.echo(f"Error loading embeddings: {e}", err=True)
+            raise typer.Exit(code=1)
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     tokenizer_path = output_dir / "tokenizer.json"
@@ -447,6 +603,8 @@ def tune_cnn_model(
         devices=devices,
         study_name=f"fold_{fold:02d}_cnn_tuning",
         timeout=timeout,
+        pretrained_embeddings=pretrained_embeddings,
+        freeze_embeddings=freeze_embeddings,
     )
 
     typer.echo(f"\n{'='*60}")

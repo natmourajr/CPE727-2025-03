@@ -23,6 +23,7 @@ def create_trial_model_and_loaders(
     n_tokens: int,
     padding_idx: int,
     fixed_params: Dict[str, Any],
+    pretrained_embeddings: Optional[torch.Tensor] = None,
 ):
     """
     Create model and data loaders with hyperparameters suggested by Optuna trial.
@@ -54,7 +55,13 @@ def create_trial_model_and_loaders(
     n_hidden = trial.suggest_categorical("n_hidden", [32, 64, 128, 256])
     n_fc_hidden = trial.suggest_categorical("n_fc_hidden", [32, 64, 128, 256])
     gradient_clip_val = trial.suggest_float("gradient_clip_val", 0.5, 5.0)
-    embedding_dim = trial.suggest_categorical("embedding_dim", [50, 100, 200, 300])
+
+    # Only suggest embedding_dim if not using pre-trained embeddings
+    if pretrained_embeddings is None:
+        embedding_dim = trial.suggest_categorical("embedding_dim", [50, 100, 200, 300])
+    else:
+        # Use dimension from pre-trained embeddings
+        embedding_dim = pretrained_embeddings.shape[1]
 
     # Get fixed parameters with defaults
     n_layers = fixed_params.get("n_layers", 1)
@@ -64,6 +71,7 @@ def create_trial_model_and_loaders(
     batch_size = fixed_params.get("batch_size", 128)
     num_workers = fixed_params.get("num_workers", 4)
     accelerator = fixed_params.get("accelerator", "auto")
+    freeze_embeddings = fixed_params.get("freeze_embeddings", False)
 
     # Create data loaders
     train_loader = DataLoader(
@@ -98,6 +106,8 @@ def create_trial_model_and_loaders(
         bidirectional=bidirectional,
         padding_idx=padding_idx,
         similarity_threshold=similarity_threshold,
+        pretrained_embeddings=pretrained_embeddings,
+        freeze_embeddings=freeze_embeddings,
     )
 
     hyperparameters = {
@@ -128,6 +138,7 @@ def objective_rnn(
     max_epochs: int,
     devices: int,
     accelerator: str,
+    pretrained_embeddings: Optional[torch.Tensor] = None,
 ) -> float:
     """
     Optuna objective function for RNN hyperparameter optimization.
@@ -159,7 +170,7 @@ def objective_rnn(
         Validation loss (metric to minimize)
     """
     model, train_loader, val_loader, hyperparameters = create_trial_model_and_loaders(
-        trial, train_dataset, val_dataset, n_tokens, padding_idx, fixed_params
+        trial, train_dataset, val_dataset, n_tokens, padding_idx, fixed_params, pretrained_embeddings
     )
 
     # Create pruning callback
@@ -202,6 +213,8 @@ def tune_rnn(
     devices: int = 1,
     study_name: Optional[str] = None,
     timeout: Optional[int] = None,
+    pretrained_embeddings: Optional[torch.Tensor] = None,
+    freeze_embeddings: bool = False,
 ) -> Dict[str, Any]:
     """
     Tune RNN hyperparameters using Optuna.
@@ -260,6 +273,7 @@ def tune_rnn(
         "batch_size": batch_size,
         "num_workers": num_workers,
         "accelerator": accelerator,
+        "freeze_embeddings": freeze_embeddings,
     }
 
     # Create study
@@ -289,6 +303,7 @@ def tune_rnn(
             max_epochs,
             devices,
             accelerator,
+            pretrained_embeddings,
         ),
         n_trials=n_trials,
         timeout=timeout,
@@ -347,6 +362,7 @@ def create_trial_cnn_model_and_loaders(
     n_tokens: int,
     padding_idx: int,
     fixed_params: Dict[str, Any],
+    pretrained_embeddings: Optional[torch.Tensor] = None,
 ):
     """
     Create CNN model and data loaders with hyperparameters suggested by Optuna trial.
@@ -377,8 +393,14 @@ def create_trial_cnn_model_and_loaders(
     dropout = trial.suggest_float("dropout", 0.3, 0.7)
     n_filters = trial.suggest_categorical("n_filters", [64, 128, 256, 512])
     n_fc_hidden = trial.suggest_categorical("n_fc_hidden", [32, 64, 128, 256])
-    embedding_dim = trial.suggest_categorical("embedding_dim", [128, 256, 300])
     pooling_strategy = trial.suggest_categorical("pooling_strategy", ["max", "mean", "both"])
+
+    # Only suggest embedding_dim if not using pre-trained embeddings
+    if pretrained_embeddings is None:
+        embedding_dim = trial.suggest_categorical("embedding_dim", [128, 256, 300])
+    else:
+        # Use dimension from pre-trained embeddings
+        embedding_dim = pretrained_embeddings.shape[1]
 
     # Suggest kernel sizes configuration
     kernel_config = trial.suggest_categorical("kernel_config", ["small", "medium", "large", "mixed"])
@@ -395,6 +417,7 @@ def create_trial_cnn_model_and_loaders(
     batch_size = fixed_params.get("batch_size", 128)
     num_workers = fixed_params.get("num_workers", 4)
     accelerator = fixed_params.get("accelerator", "auto")
+    freeze_embeddings = fixed_params.get("freeze_embeddings", False)
 
     # Create data loaders
     train_loader = DataLoader(
@@ -428,6 +451,8 @@ def create_trial_cnn_model_and_loaders(
         padding_idx=padding_idx,
         similarity_threshold=similarity_threshold,
         pooling_strategy=pooling_strategy,
+        pretrained_embeddings=pretrained_embeddings,
+        freeze_embeddings=freeze_embeddings,
     )
 
     hyperparameters = {
@@ -457,6 +482,7 @@ def objective_cnn(
     max_epochs: int,
     devices: int,
     accelerator: str,
+    pretrained_embeddings: Optional[torch.Tensor] = None,
 ) -> float:
     """
     Optuna objective function for CNN hyperparameter optimization.
@@ -488,7 +514,7 @@ def objective_cnn(
         Validation loss (metric to minimize)
     """
     model, train_loader, val_loader, hyperparameters = create_trial_cnn_model_and_loaders(
-        trial, train_dataset, val_dataset, n_tokens, padding_idx, fixed_params
+        trial, train_dataset, val_dataset, n_tokens, padding_idx, fixed_params, pretrained_embeddings
     )
 
     # Create pruning callback
@@ -527,6 +553,8 @@ def tune_cnn(
     devices: int = 1,
     study_name: Optional[str] = None,
     timeout: Optional[int] = None,
+    pretrained_embeddings: Optional[torch.Tensor] = None,
+    freeze_embeddings: bool = False,
 ) -> Dict[str, Any]:
     """
     Tune CNN hyperparameters using Optuna.
@@ -576,6 +604,7 @@ def tune_cnn(
         "batch_size": batch_size,
         "num_workers": num_workers,
         "accelerator": accelerator,
+        "freeze_embeddings": freeze_embeddings,
     }
 
     # Create study
@@ -605,6 +634,7 @@ def tune_cnn(
             max_epochs,
             devices,
             accelerator,
+            pretrained_embeddings,
         ),
         n_trials=n_trials,
         timeout=timeout,
