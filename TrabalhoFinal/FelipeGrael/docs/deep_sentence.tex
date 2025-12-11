@@ -1,0 +1,235 @@
+\documentclass{beamer}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usepackage{tikz}
+\usepackage[portuguese]{babel}
+\usetikzlibrary{arrows.meta,calc, positioning}
+\usetheme{sintef}
+
+\newcommand{\testcolor}[1]{\colorbox{#1}{\textcolor{#1}{test}}~\texttt{#1}}
+
+\usefonttheme[onlymath]{serif}
+
+\titlebackground*{assets/background}
+
+% adicionar o numero na lista final da apresentação
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+% --- Remove subtítulos de frames ---
+\makeatletter
+  \def\beamer@checkframetitle{\@ifnextchar\bgroup\beamer@inlineframetitle{}}
+\makeatother
+
+
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+
+\title{Similaridade de Sentenças com Embeddings e Redes Siamesas}
+\subtitle{}
+\course{CPE 727 - Aprendizado de Profundo}
+\author{Felipe Fink Grael}
+\begin{document}
+\maketitle
+
+
+\begin{frame}{Introdução}
+
+  \begin{block}{}
+    \begin{center}
+    ``O cachorro está correndo na praça'' \\
+    \vspace{2ex}
+    ``O cão corre no parque''
+    \end{center}
+  \end{block}
+
+  \vspace{4ex}
+
+  \begin{itemize}
+    \item Como medir a similaridade \textbf{semântica} entre essas sentenças?
+    \item Métodos esparsos, como TF-IDF são insuficientes, especialmente em textos curtos.
+    \item \textbf{Objetivo}: usar métodos de Deep Learning para aprender representações semânticas e medir similaridade entre sentenças.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Trabalhos Relacionados}
+
+  \begin{itemize}
+    \item Métodos de Word Embeddings, como Word2Vec \cite{mikolov2013} e FastText \cite{bojanowski2016}, são eficazes para capturar similaridade semântica entre palavras.
+    \item Redes Recorrentes são amplamente utilizadas em diversas tarefas de NLP, de classificação a tradução automática \cite{demulder2015}
+    \item Arquitetura TextCNN aplica redes convolucionais para tarefas de classificação de texto \cite{kim2014}
+    \item Arquitetura de redes siamesas para comparação de sentenças \cite{neculoiu2016}
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Redes Siamesas}
+
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{assets/SiameseLSTM.png}
+  \end{figure}
+
+\end{frame}
+
+
+\begin{frame}{Arquitetura TextCNN}
+
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{assets/TextCNN.png}
+  \end{figure}
+
+\end{frame}
+
+
+\begin{frame}{Semantic Textual Similarity Benchmark}
+
+  \begin{itemize}
+    \item Conjunto de dados STS-B \cite{cer2017} desenvolvido para o SemEval 2017.
+    \item contém pares de sentenças anotados com similaridade semântica em uma escala de 0 a 5.
+    \item Utilizado para treinar e avaliar modelos de similaridade de sentenças.
+    \item Métrica de avaliação: Correlação de Pearson entre as similaridades previstas e anotadas.
+    \item 7249 pares para treino e validação, 1379 para teste.
+    \item Tipicamente avaliado com Correlação de Pearson.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Baselines}
+
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \textbf{TF-IDF}
+      \end{center}
+      \begin{itemize}
+        \item 2000 tokens mais frequentes no conjunto de dados.
+        \item Similaridade de Cosseno entre sentenças
+      \end{itemize}
+      $$r = 0.62$$
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \textbf{Autoencoder}
+      \end{center}
+      \begin{itemize}
+        \item Parte da mesma tokenização do TF-IDF.
+        \item Vetores com norma unitária
+        \item Encoder (2000, 300, 100)
+        \item Similaridade de Cosseno representações latentes
+      \end{itemize}
+      $$r = 0.49$$
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{Método}
+
+  \begin{itemize}
+    \item Redes Siamesas LSTM e CNN
+    \item Validação cruzada k-fold, k=5
+    \item Combinação dos segmentos de rede é a concatenação de:
+      \begin{itemize}
+        \item Cada uma das representações
+        \item Diferença absoluta entre as representações
+        \item Produto elemento a elemento entre as representações
+      \end{itemize}
+    \item Rede final Fully Connected:
+      \begin{itemize}
+        \item Entrada tem dimensão 4x a dimensão da representação de cada rede
+        \item Uma camada escondida com função de ativação ReLU
+        \item Camada de saída com ativação linear prevendo similaridade
+      \end{itemize}
+    \item Embeddings FastText pré-treinados, mas ajustados durante o treinamento
+    \item Exploração de hiperparâmetros com Optuna \cite{akiba2019}
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Arquiteturas Usadas}
+
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \textbf{LSTM Siamesa}
+      \end{center}
+      \begin{itemize}
+        \item 2 camadas de LSTM bidirecional, 32 unidades cada
+        \item Dimensão 128 na camada escondida da fully connected
+        \item Learning rate de 8.5e-3
+        \item Dropout de 0.7
+        \item Weight Decay de 1e-3
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \textbf{CNN Siamesa}
+      \end{center}
+      \begin{itemize}
+        \item Kernels de tamanho 3, 4 e 5
+        \item 512 filtros por kernel
+        \item Pooling: max
+        \item Dimensão 256 na camada escondida da fully connected
+        \item Learning rate de 1.2e-4
+        \item Dropout de 0.41
+        \item Weight Decay de 4.7e-6
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+
+\begin{frame}{Resultados}
+
+  \begin{center}
+    \begin{tabular}{l c}
+      \hline
+      \textbf{Método} & \textbf{Correlação de Pearson (r)} \\
+      \hline
+      TF-IDF (baseline) & $ \mathbf{0.62} $ \\
+      Autoencoder (baseline) & $ 0.49 $ \\
+      LSTM Siamesa & $ 0.46 \pm 0.019 $ \\
+      CNN Siamesa & $ 0.41 \pm 0.013 $ \\
+      \hline
+    \end{tabular}
+
+    \vspace{4ex}
+
+    Médias e desvios para conjunto de validação (5-fold cross-validation).
+  \end{center}
+\end{frame}
+
+
+\begin{frame}{Discussão}
+
+  \begin{itemize}
+    \item Método é bastante sensível a features na concatenação final e hiperparâmetros
+    \item Modelo TF-IDF, mesmo com limitações, captura boa parte da similaridade neste dataset
+    \item Técnicas modernas superam o baseline, mas usam modelos de larga escala
+    \item Trabalhos futuros:
+    \begin{itemize}
+      \item Explorar pre-treino com mais dados
+      \item Explorar função custo contrastiva
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}[allowframebreaks]
+    \frametitle{Referências Bibliográficas}
+    \bibliographystyle{ieeetr}
+    \bibliography{presentation_bib.bib}
+\end{frame}
+
+
+
+\end{document}
