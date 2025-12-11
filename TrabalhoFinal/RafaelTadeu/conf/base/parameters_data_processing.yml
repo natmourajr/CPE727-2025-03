@@ -1,0 +1,19 @@
+# Data processing parameters
+
+# Dev/Test split
+train_test_split:
+  dev_ratio: 0.8
+  # test_ratio: 0.20 (implicit)
+  seed: 42
+
+# Cross-validation
+cross_validation:
+  n_splits: 5
+  shuffle: true
+  seed: 42
+
+# Data loaders
+data_loaders:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true

@@ -1,0 +1,6 @@
+# Visualization parameters
+visualization:
+  confusion_matrix: true
+  roc_curves: true
+  feature_maps: true
+  attention_maps: true  # For ViT only

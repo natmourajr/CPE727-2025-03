@@ -1,0 +1,12 @@
+# Evaluation parameters
+evaluation:
+  best_models_csv: "data/08_reporting/best_models.csv"
+  metrics:
+    - "accuracy"
+    - "f1_score"
+    - "precision"
+    - "recall"
+  inference_runs: 100  # Number of runs for inference time measurement
+  visualization:
+    num_samples: 16  # Number of samples to show in prediction visualization
+    figsize: [16, 16]

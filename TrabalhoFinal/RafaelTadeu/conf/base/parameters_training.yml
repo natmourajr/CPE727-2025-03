@@ -1,0 +1,19 @@
+# Training parameters
+training:
+  epochs: 50
+  weight_decay: 0.0001
+  cv_folds: 5
+  device: "cuda"
+  early_stopping:
+    patience: 10
+    min_delta: 0.001
+
+# Optimizer
+optimizer:
+  type: "Adam"
+  betas: [0.9, 0.999]
+  eps: 1.0e-08
+
+# Loss function
+loss:
+  type: "CrossEntropyLoss"

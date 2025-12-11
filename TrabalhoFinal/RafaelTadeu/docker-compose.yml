@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  eurosat-dl-comparison:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: eurosat-dl-comparison:latest
+    container_name: eurosat-dl-comparison
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      # Mount data directory
+      - ./data:/app/data
+      # Mount configuration
+      - ./conf:/app/conf
+      # Mount notebooks for interactive work
+      - ./notebooks:/app/notebooks
+      # Mount logs
+      - ./logs:/app/logs
+    ports:
+      # Kedro Viz
+      - "4141:4141"
+      # Tensorboard
+      - "6006:6006"
+      # Jupyter (if needed)
+      - "8888:8888"
+    command: kedro run
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

@@ -1,0 +1,48 @@
+# MLFlow configuration
+mlflow:
+  experiment_name: "eurosat_dl_comparison"
+  evaluation_experiment_name: "eurosat_dl_comparison_final_evaluation"
+  tracking_uri: "file:./mlruns"
+
+# Model architectures and gridsearch parameters
+models:
+  mlp:
+    num_classes: 10
+    input_size: 224
+    gridsearch:
+      hidden_layers: [[512, 256]]
+      dropout: [0.3]
+      learning_rate: [0.001]
+      batch_size: [64]
+
+  vgg16:
+    name: "vgg16"
+    pretrained: true
+    weights: "IMAGENET1K_V1"
+    num_classes: 10
+    gridsearch:
+      freeze_backbone: [true]
+      dropout: [0.3, 0.5]
+      learning_rate: [0.0001]
+      batch_size: [64]
+
+  resnet50:
+    name: "resnet50"
+    pretrained: true
+    weights: "DEFAULT"
+    num_classes: 10
+    gridsearch:
+      freeze_backbone: [true]
+      learning_rate: [0.0001, 0.00001]
+      batch_size: [64, 128]
+
+  vit_b_16:
+    name: "vit_b_16"
+    pretrained: true
+    weights: "IMAGENET1K_SWAG_E2E_V1"
+    num_classes: 10
+    image_size: 224
+    gridsearch:
+      freeze_backbone: [true]
+      learning_rate: [0.00001, 0.000001]
+      batch_size: [64]
