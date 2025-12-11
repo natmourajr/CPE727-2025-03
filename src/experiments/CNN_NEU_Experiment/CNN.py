@@ -207,7 +207,7 @@ def generate_cam_maps(model, dataloader, device, class_names, save_dir):
     else:
         selected_correct = random.sample(correct_samples, num_wrong)
 
-    print(f"🖼  Gerando CAM para {len(selected_correct)} corretos e "
+    print(f" Gerando CAM para {len(selected_correct)} corretos e "
           f"{len(selected_wrong)} errados (holdout).")
 
     for idx, (img_cpu, label, pred_class) in enumerate(selected_wrong):
@@ -391,7 +391,7 @@ def main():
     # --------Incertezas --------
     accs, precs, recs, f1s = zip(*metrics_summary)
 
-    print("\n📊 Resumo K-Fold (10 folds) com incertezas (validação):")
+    print("\n Resumo K-Fold (10 folds) com incertezas (validação):")
     acc_stats = summarize_uncertainty(accs, "Accuracy")
     prec_stats = summarize_uncertainty(precs, "Precision")
     rec_stats = summarize_uncertainty(recs, "Recall")
@@ -406,7 +406,7 @@ def main():
             "F1": f1s,
         }
     )
-    df_folds.to_csv(os.path.join(save_dir, "metrics_kfold_folds.csv"), index=False)
+    df_folds.to_csv(os.path.join(save_dir, "metrics_kfold_folds_CNN.csv"), index=False)
 
     df_unc = pd.DataFrame(
         {
@@ -417,7 +417,7 @@ def main():
             "CI95_high": [acc_stats[3], prec_stats[3], rec_stats[3], f1_stats[3]],
         }
     )
-    df_unc.to_csv(os.path.join(save_dir, "metrics_kfold_uncertainty.csv"), index=False)
+    df_unc.to_csv(os.path.join(save_dir, "metrics_kfold_uncertainty_CNN.csv"), index=False)
 
     info = {
         "best_fold": best_fold,
@@ -426,7 +426,7 @@ def main():
     with open(os.path.join(save_dir, "best_fold_info.json"), "w") as f:
         json.dump(info, f, indent=4)
 
-    print(f"\n🏆 Melhor Fold: {best_fold} com F1_val={best_f1_global*100:.2f}%")
+    print(f"\n Melhor Fold: {best_fold} com F1_val={best_f1_global*100:.2f}%")
 
     # -------- melhor fold --------
     plot_loss_and_f1(
@@ -436,7 +436,7 @@ def main():
     )
 
     # --------HOLDOUT --------
-    print("\n🔎 Avaliando o melhor fold no conjunto de TESTE (holdout externo)...")
+    print("\n Avaliando o melhor fold no conjunto de TESTE (holdout externo)...")
     best_model = CNN_NEU().to(device)
     best_model.load_state_dict(best_model_state)
 
@@ -445,7 +445,7 @@ def main():
         best_model, test_loader, criterion, device
     )
 
-    print("\n📊 Resultados no TESTE (Holdout):")
+    print("\n Resultados no TESTE (Holdout):")
     print(f"Accuracy = {test_acc:.2f}%")
     print(f"Precision (macro) = {test_prec*100:.2f}%")
     print(f"Recall (macro) = {test_rec*100:.2f}%")
@@ -469,7 +469,7 @@ def main():
             "F1": test_f1,
         }]
     )
-    df_test.to_csv(os.path.join(save_dir, "metrics_test_holdout.csv"), index=False)
+    df_test.to_csv(os.path.join(save_dir, "metrics_test_holdout_CNN.csv"), index=False)
 
     print(f"\nResultados salvos em: {save_dir}")
 
