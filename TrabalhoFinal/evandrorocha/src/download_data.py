@@ -14,16 +14,17 @@ SHENZHEN_URL = "https://lhncbc.nlm.nih.gov/LHC-downloads/downloads.html#tubercul
 # Fontes de download (em ordem de prioridade)
 # Fontes de download (em ordem de prioridade)
 DATASET_SOURCES = [
+   
+    {
+        'name': 'NIH OpenI (Original)',
+        'url': 'https://openi.nlm.nih.gov/imgs/collections/ChinaSet_AllFiles.zip',
+        'type': 'direct'
+    },
     {
         'name': 'Kaggle (Prioridade)',
         'type': 'kaggle',
         'id': 'raddar/tuberculosis-chest-xrays-shenzhen'
     },
-    {
-        'name': 'NIH OpenI (Original)',
-        'url': 'https://openi.nlm.nih.gov/imgs/collections/ChinaSet_AllFiles.zip',
-        'type': 'direct'
-    }
 ]
 
 def download_file(url, destination, resume=True):
