@@ -65,8 +65,11 @@ class RNNSiamese(L.LightningModule):
 
         encoder_output_size = n_hidden * 2 if bidirectional else n_hidden
 
+        # Feature combination: concat + abs_diff + element_wise_product = 4x encoder size
+        combined_size = encoder_output_size * 4
+
         self.fc = nn.Sequential(
-            nn.Linear(encoder_output_size, n_fc_hidden),
+            nn.Linear(combined_size, n_fc_hidden),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(n_fc_hidden, 1),
@@ -96,7 +99,12 @@ class RNNSiamese(L.LightningModule):
         encoded1 = self.encode_sentence(sentence1)
         encoded2 = self.encode_sentence(sentence2)
 
-        combined = torch.abs(encoded1 - encoded2)
+        # Rich feature combination
+        concat = torch.cat([encoded1, encoded2], dim=1)
+        abs_diff = torch.abs(encoded1 - encoded2)
+        element_wise_product = encoded1 * encoded2
+
+        combined = torch.cat([concat, abs_diff, element_wise_product], dim=1)
 
         similarity = self.fc(combined)
 
@@ -231,8 +239,11 @@ class CNNSiamese(L.LightningModule):
         pooling_multiplier = 2 if pooling_strategy == 'both' else 1
         encoder_output_size = n_filters * len(kernel_sizes) * pooling_multiplier
 
+        # Feature combination: concat + abs_diff + element_wise_product = 4x encoder size
+        combined_size = encoder_output_size * 4
+
         self.fc = nn.Sequential(
-            nn.Linear(encoder_output_size, n_fc_hidden),
+            nn.Linear(combined_size, n_fc_hidden),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(n_fc_hidden, 1),
@@ -278,7 +289,12 @@ class CNNSiamese(L.LightningModule):
         encoded1 = self.encode_sentence(sentence1)
         encoded2 = self.encode_sentence(sentence2)
 
-        combined = torch.abs(encoded1 - encoded2)
+        # Rich feature combination
+        concat = torch.cat([encoded1, encoded2], dim=1)
+        abs_diff = torch.abs(encoded1 - encoded2)
+        element_wise_product = encoded1 * encoded2
+
+        combined = torch.cat([concat, abs_diff, element_wise_product], dim=1)
 
         similarity = self.fc(combined)
 
