@@ -1,0 +1,326 @@
+\documentclass{beamer}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usetheme{sintef}
+\usepackage{tabularx,booktabs}
+\usepackage{tikz}
+\usepackage[most]{tcolorbox}
+\usetikzlibrary{shapes,arrows,positioning, fit}
+
+\definecolor{normalColor}{RGB}{102,194,165}     % verde-azulado
+\definecolor{transientColor}{RGB}{252,141,98}   % laranja
+\definecolor{faultColor}{RGB}{141,160,203}      % azul
+\definecolor{normalClassColor}{RGB}{171,221,164}
+\definecolor{faultClassColor}{RGB}{253,174,97}
+
+
+
+\newcommand{\testcolor}[1]{\colorbox{#1}{\textcolor{#1}{test}}~\texttt{#1}}
+
+\usefonttheme[onlymath]{serif}
+
+\titlebackground*{assets/background}
+
+% adicionar o numero na lista final da apresentação
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\newcommand{\hrefcol}[2]{\textcolor{cyan}{\href{#1}{#2}}}
+
+\title{Comparação de Modelos de Deep Learning para Detecção de Anomalias em Poços de Petróleo
+}
+\course{CPE 727 - Deep Learning}
+\author{Ana Clara Loureiro Cruz}
+\IDnumber{%
+  \href{mailto:anaclaralcruz@poli.ufrj.br}{anaclaralcruz@poli.ufrj.br}
+}
+
+\begin{document}
+
+\maketitle
+
+\section{Introdução}
+
+\begin{frame}{Descrição do problema}
+
+  \begin{itemize}
+    \item Grandes volumes de dados de processo na indústria de óleo e gás (pressão, vazão, temperatura, etc.)
+    \item Necessidade de monitoramento dos dados
+    \item Dificuldade de identificar anomalias no processo
+          
+  \end{itemize}
+  \begin{block}{Questão central}
+            Modelos de \textit{deep learning} podem melhorar a detecção precoce de
+            anomalias em poços de petróleo?
+          \end{block}
+\end{frame}
+
+
+%------------------------------------------------
+\begin{frame}{Motivação}
+
+  \begin{itemize}
+    \item Falhas em poços e linhas de produção podem resultar em:
+          \begin{itemize}
+            \item perdas significativas de produção;
+            \item aumento de custos de manutenção corretiva;
+            \item riscos à segurança operacional e ao meio ambiente.
+          \end{itemize}
+    \item Modelos de aprendizado de máquina clássicos podem não capturar adequadamente padrões temporais complexos e relações não lineares entre sensores.
+  \end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Objetivo}
+
+\begin{itemize}
+  \item Selecionar e implementar 3 arquiteturas de \textit{deep learning}
+        adequadas à modelagem de séries temporais de poços.
+  \item Comparar os resultados e propor melhorias para os sistemas de detecção de anomalias em séries temporais.
+\end{itemize}
+
+\end{frame}
+
+
+\section{Revisão bibliográfica}
+
+\begin{frame}{Métodos propostos}
+
+\small
+
+\textbf{RF com atributos estatísticos \cite{Marins2021}}
+\begin{itemize}
+    \item Método: extração de estatísticas em janelas deslizantes das séries de poços,
+          normalização e classificador \textit{Random Forest} (RF) para detecção e
+          classificação de falhas na base 3W \cite{Vargas2019}.
+    \item Resultado: \textit{balanced accuracy} de aproximadamente $94{,}2\%$ no
+          classificador multiclasses.\,
+\end{itemize}
+
+\medskip
+
+\textbf{SWT + arquitetura modular \cite{Dias2024}}
+\begin{itemize}
+    \item Método: proposta de um sistema modular e extração de atributos
+          baseados em decomposição \textit{stationary wavelet transform} (SWT),
+          combinados a atributos estatísticos, para classificar eventos da base 3W.
+    \item Resultado: \textit{balanced accuracy} de $98{,}6\%$ no problema
+          multiclasses.
+\end{itemize}
+
+\medskip
+
+
+\end{frame}
+
+
+\begin{frame}{ThreeWToolkit \cite{toolkit}}
+    \begin{itemize}
+        \item Pacote em Python 3 para experimentos com o 3W Dataset.
+        \item Focado em detecção e classificação de eventos indesejáveis em poços offshore.
+        \item Ferramentas:
+          \begin{itemize}
+            \item Dataloaders para 3W Dataset;
+            \item Pre-processors for 3W Dataset;
+            \item Modelo MLP configurável;
+          \end{itemize}
+    \end{itemize}
+\end{frame}
+
+
+\section{Metodologia}
+
+\begin{frame}{Descrição do Dataset}
+\begin{itemize}
+    \item Classificação de séries temporais multivariadas
+    \item Séries temporais anotadas divididas em 10 classes
+\end{itemize}
+
+No escopo deste trabalho: subset de 3 classes
+Janelamento de passo 1 e tamanho 100
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{imagens/serie_temporal.png} 
+    \caption{Exemplo de série temporal anotada (Imagem retirada de \cite{Marins2021}).}
+    \label{fig:serie_temporal}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Estratégia de comparação}
+
+\begin{columns}[T] % alinhar topo (Top)
+    \begin{column}{0.54\textwidth}
+        \textbf{Modelos escolhidos}
+        \begin{itemize}
+            \item Multi-layer Perceptron (MLP) implementado em \cite{toolkit} (baseline)
+            \item MLP com regularização (dropout)
+            \item Convolutional Neural Network (CNN) \cite{cnn}
+            \item Temporal Convolutional Network (TCN) \cite{tcn}
+        \end{itemize}
+    \end{column}
+
+    \begin{column}{0.44\textwidth}
+        \textbf{Métricas de avaliação}
+        \begin{itemize}
+            \item Acurácia
+            \item Precisão
+            \item Recall
+            \item F1-Score
+            \item Tempo de execução
+        \end{itemize}
+    \end{column}
+\end{columns}
+
+\end{frame}
+
+
+\begin{frame}{Padronização das pipelines}
+\begin{block}{Hiperparâmetros de treinamento \cite{toolkit}}
+\begin{itemize}
+    \item Otimizador: Adam
+    \item Função de perda: Cross-entropy
+    \item Taxa de aprendizado: 0{,}0005
+    \item Batch size: 64
+    \item Cross-validation: ativado
+    \item 70\% treino 15\% teste 15\% validação
+\end{itemize}
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Padronização das pipelines}
+\begin{block}{Pré-processamento \cite{toolkit}}
+\begin{itemize}
+    \item Imputação de dados faltantes:
+    \begin{itemize}
+        \item Estratégia: média (\textit{mean})
+        \item Aplicado a todas as colunas
+    \end{itemize}
+    \item Normalização:
+    \begin{itemize}
+        \item Tipo: norma L2
+    \end{itemize}
+    \item Janela temporal:
+    \begin{itemize}
+        \item Tamanho da janela: 100 amostras
+    \end{itemize}
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}{Hiperparâmetros dos Modelos}
+
+\begin{block}{MLP (com e sem regularização)}
+    Dados de entrada: Extração de dados estatísticos da janela temporal 
+\begin{itemize}
+    \item Tipo: MLP totalmente conectado
+    \item Camadas escondidas: (128, 64, 32)
+    \item Tamanho da saída: 3 classes (0, 1, 2)
+    \item Função de ativação: ReLU
+    \color{red} {\item Regularização: L2}
+\end{itemize}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Hiperparâmetros dos Modelos}
+
+\begin{block}{CNN 1D e TCN}
+    \begin{itemize}
+    \item Número de canais de entrada: 1
+    \item Filtros por camada: (32, 64, 128)
+    \item Tamanho do kernel: 3
+    \item Função de ativação: ReLU
+    \item Taxa de dropout: 0.1
+\end{itemize}
+
+\end{block}
+
+\end{frame}
+
+\section{Resultados}
+
+\begin{frame}{Comparação dos modelos}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lccccc}
+\hline
+Modelo & Acurácia balanceada & Precisão & Recall & F1 & Tempo (s) \\
+\hline
+MLP puro & 0.9395 & 0.9743 & 0.9744 & 0.9742 & 1479\\
+MLP com regularização & 0.9413 & 0.9733 & 0.9733 & 0.9733 & 1513 \\
+CNN & 0.8824 &  0.9539 & 0.9541 & 0.9538 & 1654 \\
+TCN & 0.9147 & 0.9884 & 0.9472 & 0.9474 & 605
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}{Exemplos de evolução da função-custo}
+\begin{figure}[h!]
+    \centering
+
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{imagens/MLP_sem_regularizacao.png}
+        \caption{Exemplo de evolução da função-custo no MLP puro}
+        \label{fig:imagem1}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{imagens/MLP_com_regularizacao.png}
+        \caption{Exemplo de evolução da função-custo no MLP com dropout}
+        \label{fig:imagem2}
+    \end{minipage}
+\end{figure}
+
+\end{frame}
+
+
+\begin{frame}{Exemplos de evolução da função-custo}
+\begin{figure}[h!]
+    \centering
+
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{imagens/CNN.png}
+        \caption{Exemplo de evolução da função-custo na CNN}
+        \label{fig:imagem1}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{imagens/TCN.png}
+        \caption{Exemplo de evolução da função-custo na TCN}
+        \label{fig:imagem2}
+    \end{minipage}
+\end{figure}
+
+\end{frame}
+
+
+
+\section{Conclusão}
+
+\begin{frame}{Discussão dos resultados}
+\begin{itemize}
+    \item Os MLP baseado em características estatísticas não foi superado pelos modelos convolucionais
+    \item A CNN talvez se beneficiaria de mais poder computacional
+    \item A TCN mostrou bons resultados no trade-of entre desempenho e custo
+    \item Aumentar o subset para obter melhores resultados
+\end{itemize}
+\end{frame}
+
+
+\section{Referências} 
+\begin{frame}[allowframebreaks]
+        \frametitle{Bibliography} 
+        \bibliographystyle{ieeetr}
+        \bibliography{assets/presentation_bib.bib}
+\end{frame}
+
+
+\backmatter
+\end{document}
