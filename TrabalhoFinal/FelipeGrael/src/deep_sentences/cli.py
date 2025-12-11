@@ -4,11 +4,11 @@ from typing import Optional
 import lightning as L
 from .xval import create_kfold_splits as _create_kfold_splits, get_split_info, load_split
 from .dataloaders.stsb import STSBDataset
-from .train import train_rnn
+from .train import train_rnn, train_cnn
 from .tune import tune_rnn, tune_cnn
 from .tokenizer import train_tokenizer, tokenize_dataset
 
-app = typer.Typer(help="Deep Sentences CLI - Tools for text similarity with Siamese LSTM")
+app = typer.Typer(help="Deep Sentences CLI - Tools for text similarity with Siamese RNN and CNN")
 
 
 @app.command()
@@ -66,7 +66,7 @@ def split_info(
 
 
 @app.command()
-def train(
+def train_rnn_model(
     split_file: Path = typer.Argument(..., help="Path to HDF5 file containing k-fold splits"),
     fold: int = typer.Argument(..., help="Fold number to train on"),
     experiment_dir: Path = typer.Argument(..., help="Directory to save experiment outputs"),
@@ -92,7 +92,7 @@ def train(
     Train Siamese RNN model on a specific fold of the STSB dataset.
 
     Example:
-        deep-sentences train splits.h5 0 experiments/exp1 --max-epochs 100
+        deep-sentences train-rnn splits.h5 0 experiments/exp1 --max-epochs 100
     """
     # Set random seed for reproducibility
     L.seed_everything(seed, workers=True)
@@ -150,6 +150,107 @@ def train(
         bidirectional=bidirectional,
         padding_idx=padding_idx,
         similarity_threshold=similarity_threshold,
+        batch_size=batch_size,
+        max_epochs=max_epochs,
+        num_workers=num_workers,
+        accelerator=accelerator,
+        devices=devices,
+        gradient_clip_val=gradient_clip_val,
+        seed=seed,
+        output_dir=str(output_dir),
+        experiment_name=f"fold_{fold:02d}",
+    )
+
+    typer.echo(f"Training complete! Results saved to {output_dir}")
+
+
+@app.command()
+def train_cnn_model(
+    split_file: Path = typer.Argument(..., help="Path to HDF5 file containing k-fold splits"),
+    fold: int = typer.Argument(..., help="Fold number to train on"),
+    experiment_dir: Path = typer.Argument(..., help="Directory to save experiment outputs"),
+    embedding_dim: int = typer.Option(300, "--embedding-dim", help="Embedding dimension"),
+    kernel_sizes: str = typer.Option("3,4,5", "--kernel-sizes", help="Comma-separated kernel sizes (e.g., '3,4,5')"),
+    n_filters: int = typer.Option(128, "--n-filters", help="Number of filters per kernel size"),
+    n_fc_hidden: int = typer.Option(128, "--n-fc-hidden", help="Fully connected hidden size"),
+    dropout: float = typer.Option(0.5, "--dropout", help="Dropout rate"),
+    learning_rate: float = typer.Option(1e-3, "--lr", help="Learning rate"),
+    weight_decay: float = typer.Option(1e-5, "--weight-decay", help="Weight decay"),
+    pooling_strategy: str = typer.Option("max", "--pooling", help="Pooling strategy: max, mean, or both"),
+    similarity_threshold: float = typer.Option(3.0, "--similarity-threshold", help="Threshold for binary metrics"),
+    batch_size: int = typer.Option(32, "--batch-size", help="Batch size"),
+    max_epochs: int = typer.Option(50, "--max-epochs", help="Maximum number of epochs"),
+    num_workers: int = typer.Option(4, "--num-workers", help="Number of data loading workers"),
+    accelerator: str = typer.Option("auto", "--accelerator", help="Accelerator type (auto, gpu, cpu)"),
+    devices: int = typer.Option(1, "--devices", help="Number of devices"),
+    gradient_clip_val: float = typer.Option(1.0, "--gradient-clip", help="Gradient clipping value"),
+    seed: int = typer.Option(202512, "--seed", help="Random seed for reproducibility"),
+):
+    """
+    Train Siamese CNN model on a specific fold of the STSB dataset.
+
+    Example:
+        deep-sentences train-cnn splits.h5 0 experiments/exp1 --max-epochs 100
+    """
+    # Set random seed for reproducibility
+    L.seed_everything(seed, workers=True)
+    typer.echo(f"Random seed set to: {seed}")
+
+    if not split_file.exists():
+        typer.echo(f"Error: Split file '{split_file}' not found", err=True)
+        raise typer.Exit(code=1)
+
+    # Parse kernel sizes
+    kernel_sizes_list = [int(k.strip()) for k in kernel_sizes.split(',')]
+    typer.echo(f"Using kernel sizes: {kernel_sizes_list}")
+
+    typer.echo(f"Loading split from {split_file}, fold {fold}...")
+    train_idx, val_idx = load_split(str(split_file), fold)
+    typer.echo(f"Train samples: {len(train_idx)}, Validation samples: {len(val_idx)}")
+
+    typer.echo("Loading STSB dataset...")
+    dl = STSBDataset()
+    full_dataset = dl.dataset['dev']
+
+    train_dataset = full_dataset.select(train_idx)
+    val_dataset = full_dataset.select(val_idx)
+    typer.echo("Datasets prepared")
+
+    typer.echo("Training tokenizer on training set...")
+    tokenizer = train_tokenizer(train_dataset)
+    n_tokens = tokenizer.get_vocab_size()
+    padding_idx = tokenizer.token_to_id("<PAD>")
+    typer.echo(f"Tokenizer trained. Vocabulary size: {n_tokens}, Padding index: {padding_idx}")
+
+    output_dir = experiment_dir / f"fold_{fold:02d}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    tokenizer_path = output_dir / "tokenizer.json"
+    tokenizer.save(str(tokenizer_path))
+    typer.echo(f"Tokenizer saved to: {tokenizer_path}")
+
+    typer.echo("Tokenizing datasets...")
+    train_dataset = tokenize_dataset(train_dataset, tokenizer)
+    val_dataset = tokenize_dataset(val_dataset, tokenizer)
+    typer.echo("Datasets tokenized")
+
+    typer.echo(f"Output directory: {output_dir}")
+
+    typer.echo("Starting training...")
+    model = train_cnn(
+        train_dataset=train_dataset,
+        val_dataset=val_dataset,
+        n_tokens=n_tokens,
+        embedding_dim=embedding_dim,
+        kernel_sizes=kernel_sizes_list,
+        n_filters=n_filters,
+        n_fc_hidden=n_fc_hidden,
+        dropout=dropout,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        padding_idx=padding_idx,
+        similarity_threshold=similarity_threshold,
+        pooling_strategy=pooling_strategy,
         batch_size=batch_size,
         max_epochs=max_epochs,
         num_workers=num_workers,

@@ -9,7 +9,7 @@ import numpy as np
 import yaml
 import os
 
-from .models import RNNSiamese
+from .models import RNNSiamese, CNNSiamese
 
 # Disable tokenizers parallelism to avoid warnings with DataLoader workers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -239,6 +239,189 @@ def train_rnn(
     logger = L.pytorch.loggers.TensorBoardLogger(
         save_dir=output_path / 'logs',
         name=experiment_name or 'rnn',
+    )
+
+    trainer = L.Trainer(
+        max_epochs=max_epochs,
+        accelerator=accelerator,
+        devices=devices,
+        callbacks=[checkpoint_callback, metrics_logger],
+        logger=logger,
+        log_every_n_steps=10,
+        enable_progress_bar=True,
+        gradient_clip_val=gradient_clip_val,
+    )
+
+    trainer.fit(model, train_loader, val_loader)
+
+    return model
+
+
+def train_cnn(
+    train_dataset: DatasetDict,
+    val_dataset: DatasetDict,
+    n_tokens: int,
+    embedding_dim: int = 300,
+    kernel_sizes: list = None,
+    n_filters: int = 128,
+    n_fc_hidden: int = 128,
+    dropout: float = 0.5,
+    learning_rate: float = 1e-3,
+    weight_decay: float = 1e-5,
+    padding_idx: int = 0,
+    similarity_threshold: float = 3.0,
+    pooling_strategy: str = 'max',
+    batch_size: int = 32,
+    max_epochs: int = 50,
+    num_workers: int = 4,
+    accelerator: str = 'auto',
+    devices: int = 1,
+    gradient_clip_val: float = 1.0,
+    seed: int = 202512,
+    output_dir: str = 'outputs',
+    experiment_name: Optional[str] = None,
+    checkpoint_monitor: str = 'val_loss',
+    checkpoint_mode: str = 'min',
+):
+    """
+    Train a Siamese CNN model for text similarity.
+
+    Parameters
+    ----------
+    train_dataset : DatasetDict
+        HuggingFace dataset for training with columns: sentence1_ids, sentence2_ids, score
+    val_dataset : DatasetDict
+        HuggingFace dataset for validation with columns: sentence1_ids, sentence2_ids, score
+    n_tokens : int
+        Vocabulary size
+    embedding_dim : int, default=300
+        Dimension of word embeddings
+    kernel_sizes : list, default=None
+        List of kernel sizes for convolutional layers (default: [3, 4, 5])
+    n_filters : int, default=128
+        Number of filters for each convolutional layer
+    n_fc_hidden : int, default=128
+        Hidden size of fully connected classifier
+    dropout : float, default=0.5
+        Dropout rate
+    learning_rate : float, default=1e-3
+        Learning rate for AdamW optimizer
+    weight_decay : float, default=1e-5
+        Weight decay for AdamW optimizer
+    padding_idx : int, default=0
+        Padding token index
+    similarity_threshold : float, default=3.0
+        Threshold for binary classification metrics
+    pooling_strategy : str, default='max'
+        Pooling strategy: 'max', 'mean', or 'both'
+    batch_size : int, default=32
+        Batch size for training
+    max_epochs : int, default=50
+        Maximum number of training epochs
+    num_workers : int, default=4
+        Number of workers for data loading
+    accelerator : str, default='auto'
+        Accelerator type (auto, gpu, cpu, etc.)
+    devices : int, default=1
+        Number of devices to use
+    gradient_clip_val : float, default=1.0
+        Gradient clipping value
+    seed : int, default=202512
+        Random seed for reproducibility
+    output_dir : str, default='outputs'
+        Directory to save outputs (checkpoints, logs)
+    experiment_name : str or None, default=None
+        Name for the experiment (used in logging)
+    checkpoint_monitor : str, default='val_loss'
+        Metric to monitor for checkpointing
+    checkpoint_mode : str, default='min'
+        Mode for checkpointing ('min' or 'max')
+
+    Returns
+    -------
+    CNNSiamese
+        Trained model
+    """
+    if kernel_sizes is None:
+        kernel_sizes = [3, 4, 5]
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    hyperparameters = {
+        'n_tokens': n_tokens,
+        'embedding_dim': embedding_dim,
+        'kernel_sizes': kernel_sizes,
+        'n_filters': n_filters,
+        'n_fc_hidden': n_fc_hidden,
+        'dropout': dropout,
+        'learning_rate': learning_rate,
+        'weight_decay': weight_decay,
+        'padding_idx': padding_idx,
+        'similarity_threshold': similarity_threshold,
+        'pooling_strategy': pooling_strategy,
+        'batch_size': batch_size,
+        'max_epochs': max_epochs,
+        'num_workers': num_workers,
+        'accelerator': accelerator,
+        'devices': devices,
+        'gradient_clip_val': gradient_clip_val,
+        'seed': seed,
+        'checkpoint_monitor': checkpoint_monitor,
+        'checkpoint_mode': checkpoint_mode,
+    }
+
+    hyperparameters_file = output_path / 'hyperparameters.yaml'
+    with open(hyperparameters_file, 'w') as f:
+        yaml.dump(hyperparameters, f, default_flow_style=False, sort_keys=False)
+    print(f"Hyperparameters saved to: {hyperparameters_file}")
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+        pin_memory=True if accelerator == 'gpu' else False,
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+        pin_memory=True if accelerator == 'gpu' else False,
+    )
+
+    model = CNNSiamese(
+        n_tokens=n_tokens,
+        embedding_dim=embedding_dim,
+        kernel_sizes=kernel_sizes,
+        n_filters=n_filters,
+        n_fc_hidden=n_fc_hidden,
+        dropout=dropout,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        padding_idx=padding_idx,
+        similarity_threshold=similarity_threshold,
+        pooling_strategy=pooling_strategy,
+    )
+
+    checkpoint_callback = L.pytorch.callbacks.ModelCheckpoint(
+        dirpath=output_path / 'checkpoints',
+        filename=f'{experiment_name or "cnn"}-{{epoch:02d}}-{{val_loss:.4f}}',
+        monitor=checkpoint_monitor,
+        mode=checkpoint_mode,
+        save_top_k=1,
+        save_last=True,
+    )
+
+    metrics_logger = MetricsLogger(output_path)
+
+    logger = L.pytorch.loggers.TensorBoardLogger(
+        save_dir=output_path / 'logs',
+        name=experiment_name or 'cnn',
     )
 
     trainer = L.Trainer(
