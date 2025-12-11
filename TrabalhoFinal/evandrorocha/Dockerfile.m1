@@ -1,0 +1,87 @@
+# Dockerfile otimizado para Apple Silicon (M1/M2/M3)
+FROM --platform=linux/arm64 python:3.10-slim
+
+# Metadados
+LABEL maintainer="Evandro Rocha"
+LABEL description="Deep Learning para Detecção de Tuberculose - Apple Silicon"
+
+# Definir diretório de trabalho
+WORKDIR /workspace
+
+# Variáveis de ambiente
+ENV PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    TZ=America/Sao_Paulo
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata \
+    build-essential \
+    wget \
+    git \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Atualizar pip
+RUN pip install --upgrade pip setuptools wheel
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Instalar PyTorch para Apple Silicon (CPU/MPS)
+RUN pip install --no-cache-dir \
+    torch==2.1.0 \
+    torchvision==0.16.0
+
+# Instalar dependências científicas básicas
+RUN pip install --no-cache-dir \
+    numpy \
+    pandas \
+    matplotlib \
+    seaborn \
+    scikit-learn \
+    scipy
+
+# Instalar Jupyter
+RUN pip install --no-cache-dir \
+    jupyter \
+    jupyterlab \
+    ipywidgets
+
+# Instalar outras dependências
+RUN pip install --no-cache-dir \
+    Pillow \
+    opencv-python-headless \
+    tqdm \
+    requests \
+    pyyaml \
+    tensorboard
+
+# Instalar bibliotecas de deep learning
+RUN pip install --no-cache-dir \
+    timm \
+    albumentations
+
+# Criar diretórios necessários
+RUN mkdir -p data models notebooks results src
+
+# Configurar Jupyter
+RUN jupyter lab --generate-config && \
+    echo "c.ServerApp.ip = '0.0.0.0'" >> ~/.jupyter/jupyter_lab_config.py && \
+    echo "c.ServerApp.allow_root = True" >> ~/.jupyter/jupyter_lab_config.py && \
+    echo "c.ServerApp.token = ''" >> ~/.jupyter/jupyter_lab_config.py && \
+    echo "c.ServerApp.password = ''" >> ~/.jupyter/jupyter_lab_config.py
+
+# Expor porta do Jupyter
+EXPOSE 8888
+
+# Comando padrão
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]

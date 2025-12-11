@@ -1,0 +1,706 @@
+\documentclass{beamer}
+
+\usetheme{default}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{tikz}
+\usepackage{tabularx}
+\usetikzlibrary{positioning}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amssymb}
+
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{frametitle}[default][center]
+
+\mode<presentation>{
+\usetheme{Dresden}
+\usecolortheme{seagull}
+}
+
+\setbeamertemplate{headline}{}
+
+\definecolor{peeblue}{RGB}{1,123,165}
+\setbeamercolor*{palette primary}{fg=black,bg=peeblue!80}
+\setbeamercolor*{palette secondary}{fg=black,bg=peeblue!80!gray!80}
+\setbeamercolor*{palette tertiary}{fg=black,bg=peeblue!100}
+\setbeamercolor*{palette quaternary}{fg=black,bg=peeblue!110}
+
+\usebackgroundtemplate
+{%
+    \begin{picture}(210,40)(-5,2)
+    \includegraphics[width=0.07\paperwidth,keepaspectratio]{imgs/pee-logo-short.png}
+    \end{picture}%
+}
+
+% \AtBeginSection[]
+%   {
+%     \begin{frame}
+%       \centering
+%       \huge\insertsectionhead
+%     \end{frame}
+%   }
+
+\title{Detecção de Tuberculose em Radiografias de Tórax}
+\subtitle{Utilizando Deep Learning e Transfer Learning}
+\author{Evandro Rocha}
+\date{\today}
+
+\institute
+{
+  Universidade Federal do Rio de Janeiro\\
+  UFRJ/COPPE/PEE
+}
+
+\begin{document}
+
+{
+\usebackgroundtemplate{
+    \begin{picture}(210,55)(-5,0)
+    \includegraphics[height=0.14\paperwidth,keepaspectratio]{imgs/pee-logo.png}
+    \end{picture}%
+    \begin{picture}(210,55)(-28,2)
+    \includegraphics[height=0.14\paperwidth,keepaspectratio]{imgs/coppe-logo.pdf}
+    \end{picture}
+}
+\begin{frame}
+  \bigskip\bigskip\bigskip\bigskip
+  \titlepage
+\end{frame}
+}
+
+\begin{frame}{Agenda}
+  \begin{enumerate}
+      \item \hyperref[sec:intro]{Introdução}
+      \item \hyperref[sec:problem]{Problema Abordado}
+      \item \hyperref[sec:method]{Método Proposto}
+      \item \hyperref[sec:results]{Resultados Obtidos}
+        \begin{itemize}
+            \item \hyperref[sec:results]{Comparação de Desempenho}
+            \item \hyperref[sec:interp]{Interpretabilidade (Grad-CAM)}
+        \end{itemize}
+      \item \hyperref[sec:concl]{Conclusões e Recomendação}
+  \end{enumerate}
+\end{frame}
+
+%===========================================
+% 1. INTRODUÇÃO
+%===========================================
+\section{Introdução}
+\begin{frame}
+    \centering
+    \huge Introdução
+    \label{sec:intro}
+\end{frame}
+
+\begin{frame}{Contexto}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Tuberculose: Um Problema Global}
+        \begin{itemize}
+            \item 10 milhões de casos/ano (OMS, 2022) [9]
+            \item 1,5 milhões de mortes/ano
+            \item Principal causa de morte por doença infecciosa
+            \item Diagnóstico precoce é crucial
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Desafios do Diagnóstico}
+        \begin{itemize}
+            \item Escassez de radiologistas
+            \item Variabilidade inter-observador
+            \item Tempo de análise
+            \item Custo elevado
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Motivação}
+    \begin{block}{Por que Deep Learning?}
+        \begin{itemize}
+            \item Capacidade de aprender características complexas
+            \item Alto desempenho em tarefas de visão computacional
+            \item Potencial para auxiliar diagnóstico médico [1][3]
+            \item Redução de tempo e custo
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \begin{alertblock}{Objetivo do Trabalho}
+        Desenvolver e avaliar modelos de Deep Learning para detecção automática de tuberculose em radiografias de tórax do dataset Shenzhen Hospital.
+    \end{alertblock}
+\end{frame}
+
+%===========================================
+% 2. PROBLEMA ABORDADO
+%===========================================
+\section{Problema Abordado}
+\begin{frame}
+    \centering
+    \huge Problema Abordado
+    \label{sec:problem}
+\end{frame}
+
+\begin{frame}{Definição do Problema}
+    \begin{block}{Problema de Classificação Binária}
+        Dado uma radiografia de tórax (raio-X), classificar como:
+        \begin{itemize}
+            \item \textbf{Classe 0:} Normal (sem tuberculose)
+            \item \textbf{Classe 1:} Tuberculose (presença da doença)
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Desafios Técnicos:}
+        \begin{itemize}
+            \item Variabilidade nas imagens
+            \item Sutileza dos padrões
+            \item Dataset limitado (662 imagens)
+            \item Desbalanceamento de classes
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Requisitos:}
+        \begin{itemize}
+            \item Alta sensibilidade (recall)
+            \item Alta especificidade
+            \item Interpretabilidade
+            \item Eficiência computacional
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Dataset Shenzhen Hospital}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \textbf{Características do Dataset:}
+        \begin{itemize}
+            \item \textbf{Total:} 662 radiografias
+            \item \textbf{Normal:} 326 imagens
+            \item \textbf{Tuberculose:} 336 imagens
+            \item \textbf{Formato:} PNG, grayscale
+            \item \textbf{Resolução:} Variável
+            \item \textbf{Fonte:} NIH/NLM
+        \end{itemize}
+        
+        \column{0.4\textwidth}
+        \textbf{Divisão dos Dados:}
+        \begin{table}
+            \small
+            \begin{tabular}{lc}
+                \toprule
+                \textbf{Conjunto} & \textbf{\%} \\
+                \midrule
+                Treino & 70\% \\
+                Validação & 15\% \\
+                Teste & 15\% \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        
+        \vspace{0.3cm}
+        \textbf{Balanceamento:} 1.03 (quase perfeito)
+    \end{columns}
+\end{frame}
+
+%===========================================
+% 3. MÉTODO PROPOSTO
+%===========================================
+\section{Método Proposto}
+\begin{frame}
+    \centering
+    \huge Método Proposto
+    \label{sec:method}
+\end{frame}
+
+\begin{frame}{Pipeline de Processamento (CNNs Pré-treinadas)}
+    \begin{enumerate}
+        \item \textbf{Pré-processamento}
+        \begin{itemize}
+            \item Redimensionamento: 224×224 pixels
+            \item Normalização ImageNet: $\mu=[0.485, 0.456, 0.406]$, $\sigma=[0.229, 0.224, 0.225]$
+            \item Conversão para RGB (3 canais)
+        \end{itemize}
+        
+        \item \textbf{Data Augmentation (apenas treino)}
+        \begin{itemize}
+            \item Horizontal flip (p=0.5)
+            \item Random brightness/contrast (p=0.3)
+            \item Rotation/scale/shift (p=0.5, $\pm15°$)
+        \end{itemize}
+        
+        \item \textbf{Transfer Learning [4]}
+        \begin{itemize}
+            \item Backbone congelado (feature extraction)
+            \item Apenas classificador treinado
+            \item Reduz overfitting em datasets pequenos
+        \end{itemize}
+    \end{enumerate}
+    
+    \vspace{0.2cm}
+    
+    \begin{alertblock}{Nota}
+        CNN Baseline usa mesmo pré-processamento, mas \textbf{sem transfer learning} (treinada do zero)
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Transfer Learning: Feature Extraction}
+    \begin{block}{Estratégia Adotada}
+        \begin{itemize}
+            \item \textbf{Backbone:} Pesos pré-treinados no ImageNet (congelados)
+            \item \textbf{Classificador:} Treinado do zero para TB vs Normal
+            \item \textbf{Parâmetros treináveis:} 527K--1.05M (ResNet: 1.05M, DenseNet: 527K, EfficientNet: 658K)
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Vantagens:}
+        \begin{itemize}
+            \item Evita overfitting
+            \item Treina mais rápido
+            \item Usa menos memória GPU
+            \item Aproveita features do ImageNet
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Treinamento:}
+        \begin{itemize}
+            \item Otimizador: Adam
+            \item Learning rate: $10^{-4}$
+            \item Batch size: 16
+            \item Early stopping: patience=10
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Técnicas de Regularização}
+    \scriptsize
+    \begin{block}{Prevenção de Overfitting}
+        Múltiplas técnicas aplicadas para generalização com dataset pequeno (662 imagens)
+    \end{block}
+    
+    \vspace{0.2cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{CNNs Pré-treinadas:}
+        \begin{itemize}
+            \item Dropout: 0.5
+            \item Batch Normalization
+            \item Data Augmentation
+            \item Early Stopping (p=10)
+            \item Weight Decay: $10^{-5}$
+            \item Transfer Learning
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{CNN Baseline:}
+        \begin{itemize}
+            \item Dropout: 0.4
+            \item Batch Normalization
+            \item Data Augmentation
+            \item Early Stopping (p=10)
+            \item Weight Decay: $10^{-4}$
+            \item Init: Kaiming (He) [5]
+        \end{itemize}
+    \end{columns}
+    
+    \vspace{0.2cm}
+    
+    \begin{alertblock}{Nota Metodológica}
+        Hiperparâmetros otimizados individualmente para cada abordagem (prática padrão em transfer learning)
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{CNN Baseline: Arquitetura Tradicional}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Arquitetura:}
+        \begin{itemize}
+            \item CNN treinada do zero
+            \item 4 blocos convolucionais
+            \item 1.2M parâmetros
+            \item Sem pré-treinamento
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        
+        \textbf{Objetivo:}
+        \begin{itemize}
+            \item Servir como baseline
+            \item Demonstrar valor do transfer learning
+            \item Comparação justa
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Estrutura:}
+        \begin{enumerate}
+            \item Conv2D (32 filtros)
+            \item Conv2D (64 filtros)
+            \item Conv2D (128 filtros)
+            \item Conv2D (256 filtros)
+            \item Global Average Pooling
+            \item Classificador (2 classes)
+        \end{enumerate}
+        
+        \vspace{0.3cm}
+        
+        \begin{alertblock}{Limitações}
+            Dataset pequeno (662 imagens) dificulta treinamento do zero
+        \end{alertblock}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Por que CNN Baseline?}
+    \begin{block}{Justificativa Acadêmica}
+        \begin{itemize}
+            \item \textbf{Comparação justa}: Mesma tarefa, mesmos dados
+            \item \textbf{Demonstra valor}: Transfer learning vs treinar do zero
+            \item \textbf{Baseline tradicional}: CNN sem conhecimento prévio
+            \item \textbf{Evidência empírica}: Quantifica ganho do ImageNet
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{CNN Baseline (do zero):}
+        \begin{itemize}
+            \item Aprende tudo do zero
+            \item Precisa de mais épocas
+            \item Risco de overfitting
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Pré-treinadas (ImageNet):}
+        \begin{itemize}
+            \item Já conhecem features básicas
+            \item Convergem em menos épocas
+            \item Menor risco de overfitting
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Modelos Avaliados}
+    \begin{table}
+        \small
+        \begin{tabular}{lccc}
+            \toprule
+            \textbf{Modelo} & \textbf{Parâmetros} & \textbf{Pretrained} & \textbf{Características} \\
+            \midrule
+            CNN Baseline & 1.2M & --- & 4 blocos, treinada do zero \\
+            \midrule
+            ResNet-50 [5] & 25.6M & ImageNet & Skip connections, 50 camadas \\
+            DenseNet-121 [6] & 8.0M & ImageNet & Dense connections \\
+            EfficientNet-B0 [7] & 5.3M & ImageNet & Compound scaling \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    
+    \vspace{0.3cm}
+    
+    \begin{block}{Figuras de Mérito}
+        \begin{itemize}
+            \item \textbf{Sensibilidade:} Detectar casos de TB
+            \item \textbf{Especificidade:} Identificar casos normais
+            \item \textbf{AUC-ROC:} Capacidade discriminativa
+            \item \textbf{F1-Score:} Balanço geral
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+%===========================================
+% 4. RESULTADOS
+%===========================================
+\section{Resultados Obtidos}
+\begin{frame}
+    \centering
+    \huge Resultados Obtidos
+    \label{sec:results}
+\end{frame}
+
+
+
+\begin{frame}{Comparação Completa dos Modelos}
+    \begin{table}
+        \tiny
+        \begin{tabular}{lccccc}
+            \toprule
+            \textbf{Figura de Mérito} & \textbf{CNN Baseline} & \textbf{ResNet50} & \textbf{DenseNet121} & \textbf{EfficientNet-B0} & \textbf{Melhor} \\
+            \midrule
+            Sensibilidade & 80.00\% & \textbf{90.00\%} & 82.00\% & 80.00\% & ResNet50 \\
+            Especificidade & 90.00\% & 92.00\% & 88.00\% & \textbf{94.00\%} & EfficientNet \\
+            AUC-ROC & 90.64\% & \textbf{96.04\%} & 86.32\% & 89.48\% & ResNet50 \\
+            Acurácia & 85.00\% & \textbf{91.00\%} & 85.00\% & 87.00\% & ResNet50 \\
+            Precisão & 88.89\% & 91.84\% & 87.23\% & \textbf{93.02\%} & EfficientNet \\
+            F1-Score & 84.21\% & \textbf{90.91\%} & 84.54\% & 86.02\% & ResNet50 \\
+            \midrule
+            Parâmetros & \textbf{1.2M} & 25.6M & 8.0M & \textbf{5.3M} & Baseline \\
+            Épocas & 33 & 25 & \textbf{13} & 16 & DenseNet \\
+            FN (Falsos Neg.) & 10 & \textbf{5} & 9 & 10 & ResNet50 \\
+            FP (Falsos Pos.) & 5 & 4 & 6 & \textbf{3} & EfficientNet \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    
+    \vspace{0.2cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \scriptsize
+        \textbf{Análise:}
+        \begin{itemize}
+            \item \textbf{ResNet50}: Melhor performance
+            \item \textbf{EfficientNet}: Melhor especificidade
+            \item \textbf{DenseNet}: Convergiu em menos épocas
+            \item \textbf{Baseline}: Menor complexidade
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \scriptsize
+        \textbf{Trade-offs:}
+        \begin{itemize}
+            \item Performance vs Eficiência
+            \item Sensibilidade vs Especificidade
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Matrizes de Confusão (Comparação Visual)}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.85\textwidth]{imgs/all_confusion_matrices.png}
+        \caption{Matrizes de confusão dos 4 modelos avaliados}
+    \end{figure}
+\end{frame}
+
+
+\begin{frame}{Análise Detalhada: Pontos Fortes e Fracos}
+    \tiny
+    \begin{table}
+        \begin{tabular}{lll}
+            \toprule
+            \textbf{Modelo} & \textbf{Pontos Fortes} & \textbf{Pontos Fracos} \\
+            \midrule
+            \textbf{CNN Baseline} & $\bullet$ Simplicidade arquitetural & $\bullet$ AUC-ROC: 90.64\% \\
+             & $\bullet$ Serve como referência & $\bullet$ Sensibilidade: 80\% \\
+             & $\bullet$ Sem dependências externas & $\bullet$ Sem transfer learning \\
+            \midrule
+            \textbf{ResNet-50} & $\checkmark$ Melhor AUC-ROC: 96.04\% & $\bullet$ 25.6M parâmetros \\
+             & $\checkmark$ Melhor sensibilidade: 90\% & $\bullet$ 25 épocas \\
+             & $\checkmark$ Especificidade: 92\% & $\bullet$ Custo computacional alto \\
+             & $\checkmark$ Menos falsos negativos (5) & \\
+            \midrule
+            \textbf{DenseNet-121} & $\checkmark$ Convergência rápida (13 épocas) & $\bullet$ AUC-ROC: 86.32\% (pior) \\
+             & $\checkmark$ Eficiente (8M params) & $\bullet$ Sensibilidade: 82\% \\
+             & $\checkmark$ Performance aceitável & $\bullet$ Mais falsos negativos (9) \\
+            \midrule
+            \textbf{EfficientNet-B0} & $\checkmark$ Mais leve (5.3M params) & $\bullet$ Sensibilidade: 80\% \\
+             & $\checkmark$ Melhor especificidade: 94\% & $\bullet$ AUC-ROC: 89.48\% \\
+             & $\checkmark$ Alta precisão: 93.02\% & $\bullet$ Mais falsos negativos (10) \\
+             & $\checkmark$ Menos falsos positivos (3) & \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    
+    \vspace{0.1cm}
+    
+    \begin{exampleblock}{Conclusão}
+        \footnotesize
+        \textbf{ResNet-50}: melhor performance clínica. \textbf{EfficientNet-B0}: melhor custo-benefício. \textbf{DenseNet-121}: convergência rápida. \textbf{CNN Baseline}: Serve como referência.
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Evolução do Treinamento (F1-Score)}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \includegraphics[width=\textwidth]{imgs/f1_score_comparison.png}
+        
+        \column{0.4\textwidth}
+        \footnotesize
+        \textbf{Interpretação:}
+        \begin{itemize}
+            \item \textbf{Eixo Y:} F1-Score (quanto maior, melhor). Harmonia entre Precisão e Sensibilidade.
+            \item \textbf{Convergência:} A \textcolor{orange}{DenseNet} (laranja) sobe muito rápido, aprendendo cedo.
+            \item \textbf{Performance:} A \textcolor{blue}{ResNet} (azul) atinge o pico mais alto.
+            \item \textbf{Baseline:} A \textcolor{red}{CNN Simples} (vermelho) tem desempenho inferior e oscila mais.
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Evolução do Treinamento (AUC-ROC)}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \includegraphics[width=\textwidth]{imgs/auc_per_epoch_comparison.png}
+        
+        \column{0.4\textwidth}
+        \footnotesize
+        \textbf{Interpretação:}
+        \begin{itemize}
+            \item \textbf{Eixo Y:} Área sob a Curva ROC (Capacidade discriminativa).
+            \item \textbf{ResNet-50:} Liderança consistente ($>0.96$).
+            \item \textbf{DenseNet-121 (Nota):}
+            \begin{itemize}
+                \item AUC continuou subindo até a Época 23.
+                \item O treinamento parou (Early Stop) porque o \textbf{F1-Score} (prioridade de equilíbrio) parou de melhorar na Época 13.
+            \end{itemize}
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+%===========================================
+% 5. INTERPRETABILIDADE
+%===========================================
+\subsection{Interpretabilidade}
+
+\begin{frame}{Metodologia de Comparação Visual}
+    \label{sec:interp}
+    \begin{block}{O que é Grad-CAM?}
+        Técnica que destaca os pixels da imagem que mais influenciaram a decisão da rede neural (Gradient-weighted Class Activation Mapping) [8].
+    \end{block}
+
+    \vspace{0.3cm}
+
+    \begin{alertblock}{Cenário de Consenso}
+        Para garantir uma comparação justa entre as arquiteturas, selecionamos uma amostra onde \textbf{todos os 4 modelos} classificaram corretamente a Tuberculose (Probabilidade $> 50\%$).
+    \end{alertblock}
+
+    \vspace{0.3cm}
+    \footnotesize
+    \textbf{Objetivo:} Analisar se redes mais complexas (ex: ResNet, EfficientNet) focam em áreas mais precisas da lesão comparadas à Baseline.
+\end{frame}
+
+\begin{frame}{Grad-CAM (CNN Baseline)}
+    \begin{figure}
+        \centering
+        \includegraphics[width=1.0\textwidth]{imgs/simplecnn_gradcam_tb.png}
+        \caption{Grad-CAM na camada Conv4 da SimpleCNN. A rede identifica as opacidades, apresentando áreas de ativação dispersas sobre a região pulmonar.}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Grad-CAM (ResNet-50) vs Baseline}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{imgs/resnet50_gradcam_tb.png}
+        \caption{Mapa de atenção (Grad-CAM) da ResNet-50. Note como o foco é mais concentrado e menos ruidoso em comparação à Baseline.}
+    \end{figure}
+    
+    \footnotesize
+\end{frame}
+
+\begin{frame}{Grad-CAM (Outras Arquiteturas)}
+    \begin{columns}
+        \begin{column}{0.48\textwidth}
+            \centering
+            \textbf{DenseNet121}\\
+            \includegraphics[width=\textwidth]{imgs/densenet121_gradcam_tb.png}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \centering
+            \textbf{EfficientNet-B0}\\
+            \includegraphics[width=\textwidth]{imgs/efficientnet_b0_gradcam_tb.png}
+        \end{column}
+    \end{columns}
+    \vspace{0.2cm}
+    \scriptsize
+    \textbf{Síntese da Comparação Visual:}
+    \begin{itemize}
+        \item \textbf{ResNet-50 (Slide anterior):} Foco mais intenso e contínuo (correlaciona com maior Sensibilidade).
+        \item \textbf{EfficientNet-B0:} Foco mais recortado e conservador (correlaciona com maior Especificidade).
+        \item \textbf{DenseNet-121:} Foco mais granular e disperso (atenção a detalhes de textura).
+    \end{itemize}
+\end{frame}
+
+%===========================================
+% 5. CONCLUSÕES
+%===========================================
+\section{Conclusões}
+\begin{frame}
+    \centering
+    \huge Conclusões
+    \label{sec:concl}
+\end{frame}
+
+\begin{frame}{Conclusões e Recomendação}
+    \begin{block}{Recomendação Principal: \textbf{ResNet-50}}
+        \begin{itemize}
+            \item \textbf{Maior Sensibilidade (90\%):} Melhor modelo para \textbf{triagem}, minimizando Falsos Negativos (crítico em saúde).
+            \item \textbf{Maior AUC-ROC (96\%):} Melhor capacidade geral de separação entre classes.
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.2cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Alternativas (Trade-offs):}
+        \begin{itemize}
+            \item \textbf{EfficientNet:} Máxima Especificidade (94\%). Ideal para confirmação / reduzir falsos alarmes.
+            \item \textbf{DenseNet:} Aprendizado mais rápido, mas instável no final.
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \begin{itemize}
+            \item \textbf{Transfer Learning:} Provou reduzir drasticamente o ruído visual (visto no Grad-CAM) comparado à CNN do zero.
+            \item \textbf{Generalização:} Modelos pré-treinados evitaram o overfitting severo, comum em datasets pequenos.
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}[standout]
+    \Huge Obrigado!
+    
+    \vspace{1cm}
+    
+    \Large Perguntas?
+    
+    \vspace{1cm}
+    
+\end{frame}
+
+\begin{frame}{Referências}
+    \scriptsize
+    \begin{thebibliography}{99}
+        \bibitem{lakhani2017}
+        Lakhani, P., \& Sundaram, B. (2017). Deep learning at chest radiography: automated classification of pulmonary tuberculosis by using convolutional neural networks. \textit{Radiology}, 284(2), 574-582. [1]
+        
+        \bibitem{rajaraman2018}
+        Rajaraman, S., et al. (2018). Pre-trained convolutional neural networks as feature extractors toward improved malaria parasite detection in thin blood smear images. \textit{PeerJ}, 6, e4568. [2]
+        
+        \bibitem{hwang2016}
+        Hwang, S., et al. (2016). A novel approach for tuberculosis screening based on deep convolutional neural networks. \textit{Medical Imaging 2016: Computer-Aided Diagnosis}. [3]
+        
+        \bibitem{pan2010}
+        Pan, S. J., \& Yang, Q. (2010). A survey on transfer learning. \textit{IEEE Transactions on Knowledge and Data Engineering}, 22(10), 1345-1359. [4]
+        
+        \bibitem{he2016}
+        He, K., et al. (2016). Deep residual learning for image recognition. \textit{CvPR}. [5]
+        
+        \bibitem{huang2017}
+        Huang, G., et al. (2017). Densely connected convolutional networks. \textit{CVPR}. [6]
+        
+        \bibitem{tan2019}
+        Tan, M., \& Le, Q. (2019). EfficientNet: Rethinking model scaling for CNNs. \textit{ICML}. [7]
+        
+        \bibitem{selvaraju2017}
+        Selvaraju, R. R., et al. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based localization. \textit{ICCV}. [8]
+        
+        \bibitem{who2022}
+        World Health Organization. (2022). \textit{Global tuberculosis report 2022}. WHO. [9]
+    \end{thebibliography}
+\end{frame}
+
+
+
+\end{document}

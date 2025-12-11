@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Serviço para Mac M1/M2/M3/... (Apple Silicon - ARM64)
+  tuberculosis-detection-m1:
+    build:
+      context: .
+      dockerfile: Dockerfile.m1
+    container_name: tb_detection_m1
+    platform: linux/arm64
+    profiles: ["m1", "arm64", "apple-silicon"]
+    volumes:
+      - ./data:/workspace/data
+      - ./src:/workspace/src
+      - ./models:/workspace/models
+      - ./notebooks:/workspace/notebooks
+      - ./results:/workspace/results
+      - ./runs:/workspace/runs
+    ports:
+      - "8888:8888"
+      - "6006:6006"  # TensorBoard
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - PYTORCH_ENABLE_MPS_FALLBACK=1
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+    restart: unless-stopped
+
+  # Serviço para Intel/AMD com GPU NVIDIA
+  tuberculosis-detection-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tb_detection_gpu
+    profiles: ["gpu", "intel", "nvidia"]
+    volumes:
+      - ./data:/workspace/data
+      - ./src:/workspace/src
+      - ./models:/workspace/models
+      - ./notebooks:/workspace/notebooks
+      - ./results:/workspace/results
+      - ./runs:/workspace/runs
+    ports:
+      - "8888:8888"
+      - "6006:6006"  # TensorBoard
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+    restart: unless-stopped
+
+  # Serviço para Intel/AMD sem GPU (CPU apenas)
+  tuberculosis-detection-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tb_detection_cpu
+    profiles: ["cpu", "intel-cpu"]
+    volumes:
+      - ./data:/workspace/data
+      - ./src:/workspace/src
+      - ./models:/workspace/models
+      - ./notebooks:/workspace/notebooks
+      - ./results:/workspace/results
+      - ./runs:/workspace/runs
+    ports:
+      - "8888:8888"
+      - "6006:6006"  # TensorBoard
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+    restart: unless-stopped
