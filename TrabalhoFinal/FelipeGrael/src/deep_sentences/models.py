@@ -24,6 +24,7 @@ class RNNSiamese(L.LightningModule):
         similarity_threshold: float = 3.0,
         pretrained_embeddings: Optional[torch.Tensor] = None,
         freeze_embeddings: bool = False,
+        max_epochs: int = 50,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -36,6 +37,7 @@ class RNNSiamese(L.LightningModule):
         self.weight_decay = weight_decay
         self.padding_idx = padding_idx
         self.similarity_threshold = similarity_threshold
+        self.max_epochs = max_epochs
 
         self.embeddings = nn.Embedding(n_tokens, embedding_dim, padding_idx=padding_idx)
 
@@ -155,19 +157,15 @@ class RNNSiamese(L.LightningModule):
             weight_decay=self.weight_decay,
         )
 
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            mode='min',
-            factor=0.5,
-            patience=3,
+            T_max=self.max_epochs,
+            eta_min=1e-6,
         )
 
         return {
             'optimizer': optimizer,
-            'lr_scheduler': {
-                'scheduler': scheduler,
-                'monitor': 'val_loss',
-            }
+            'lr_scheduler': scheduler,
         }
 
 
@@ -188,6 +186,7 @@ class CNNSiamese(L.LightningModule):
         pooling_strategy: str = 'max',
         pretrained_embeddings: Optional[torch.Tensor] = None,
         freeze_embeddings: bool = False,
+        max_epochs: int = 50,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -205,6 +204,7 @@ class CNNSiamese(L.LightningModule):
         self.weight_decay = weight_decay
         self.similarity_threshold = similarity_threshold
         self.pooling_strategy = pooling_strategy
+        self.max_epochs = max_epochs
 
         self.embeddings = nn.Embedding(n_tokens, embedding_dim, padding_idx=padding_idx)
 
@@ -339,17 +339,13 @@ class CNNSiamese(L.LightningModule):
             weight_decay=self.weight_decay,
         )
 
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            mode='min',
-            factor=0.5,
-            patience=3,
+            T_max=self.max_epochs,
+            eta_min=1e-6,
         )
 
         return {
             'optimizer': optimizer,
-            'lr_scheduler': {
-                'scheduler': scheduler,
-                'monitor': 'val_loss',
-            }
+            'lr_scheduler': scheduler,
         }

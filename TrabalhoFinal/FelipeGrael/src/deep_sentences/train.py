@@ -229,6 +229,7 @@ def train_rnn(
         similarity_threshold=similarity_threshold,
         pretrained_embeddings=pretrained_embeddings,
         freeze_embeddings=freeze_embeddings,
+        max_epochs=max_epochs,
     )
 
     checkpoint_callback = L.pytorch.callbacks.ModelCheckpoint(
@@ -418,6 +419,7 @@ def train_cnn(
         pooling_strategy=pooling_strategy,
         pretrained_embeddings=pretrained_embeddings,
         freeze_embeddings=freeze_embeddings,
+        max_epochs=max_epochs,
     )
 
     checkpoint_callback = L.pytorch.callbacks.ModelCheckpoint(

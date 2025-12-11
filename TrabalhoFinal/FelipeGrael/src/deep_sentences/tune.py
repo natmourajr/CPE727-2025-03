@@ -24,6 +24,7 @@ def create_trial_model_and_loaders(
     padding_idx: int,
     fixed_params: Dict[str, Any],
     pretrained_embeddings: Optional[torch.Tensor] = None,
+    max_epochs: int = 20,
 ):
     """
     Create model and data loaders with hyperparameters suggested by Optuna trial.
@@ -108,6 +109,7 @@ def create_trial_model_and_loaders(
         similarity_threshold=similarity_threshold,
         pretrained_embeddings=pretrained_embeddings,
         freeze_embeddings=freeze_embeddings,
+        max_epochs=max_epochs,
     )
 
     hyperparameters = {
@@ -170,7 +172,7 @@ def objective_rnn(
         Validation loss (metric to minimize)
     """
     model, train_loader, val_loader, hyperparameters = create_trial_model_and_loaders(
-        trial, train_dataset, val_dataset, n_tokens, padding_idx, fixed_params, pretrained_embeddings
+        trial, train_dataset, val_dataset, n_tokens, padding_idx, fixed_params, pretrained_embeddings, max_epochs
     )
 
     # Create pruning callback
@@ -363,6 +365,7 @@ def create_trial_cnn_model_and_loaders(
     padding_idx: int,
     fixed_params: Dict[str, Any],
     pretrained_embeddings: Optional[torch.Tensor] = None,
+    max_epochs: int = 20,
 ):
     """
     Create CNN model and data loaders with hyperparameters suggested by Optuna trial.
@@ -394,6 +397,7 @@ def create_trial_cnn_model_and_loaders(
     n_filters = trial.suggest_categorical("n_filters", [64, 128, 256, 512])
     n_fc_hidden = trial.suggest_categorical("n_fc_hidden", [32, 64, 128, 256])
     pooling_strategy = trial.suggest_categorical("pooling_strategy", ["max", "mean", "both"])
+    gradient_clip_val = trial.suggest_float("gradient_clip_val", 0.5, 5.0)
 
     # Only suggest embedding_dim if not using pre-trained embeddings
     if pretrained_embeddings is None:
@@ -453,6 +457,7 @@ def create_trial_cnn_model_and_loaders(
         pooling_strategy=pooling_strategy,
         pretrained_embeddings=pretrained_embeddings,
         freeze_embeddings=freeze_embeddings,
+        max_epochs=max_epochs,
     )
 
     hyperparameters = {
@@ -465,6 +470,7 @@ def create_trial_cnn_model_and_loaders(
         "pooling_strategy": pooling_strategy,
         "kernel_sizes": kernel_sizes,
         "kernel_config": kernel_config,
+        "gradient_clip_val": gradient_clip_val,
         "batch_size": batch_size,
         "similarity_threshold": similarity_threshold,
     }
@@ -514,7 +520,7 @@ def objective_cnn(
         Validation loss (metric to minimize)
     """
     model, train_loader, val_loader, hyperparameters = create_trial_cnn_model_and_loaders(
-        trial, train_dataset, val_dataset, n_tokens, padding_idx, fixed_params, pretrained_embeddings
+        trial, train_dataset, val_dataset, n_tokens, padding_idx, fixed_params, pretrained_embeddings, max_epochs
     )
 
     # Create pruning callback
@@ -529,6 +535,7 @@ def objective_cnn(
         enable_progress_bar=False,
         enable_model_summary=False,
         logger=False,
+        gradient_clip_val=hyperparameters["gradient_clip_val"],
     )
 
     # Train
