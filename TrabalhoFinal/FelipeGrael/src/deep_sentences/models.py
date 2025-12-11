@@ -66,7 +66,7 @@ class RNNSiamese(L.LightningModule):
         encoder_output_size = n_hidden * 2 if bidirectional else n_hidden
 
         self.fc = nn.Sequential(
-            nn.Linear(encoder_output_size * 2, n_fc_hidden),
+            nn.Linear(encoder_output_size, n_fc_hidden),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(n_fc_hidden, 1),
@@ -96,7 +96,7 @@ class RNNSiamese(L.LightningModule):
         encoded1 = self.encode_sentence(sentence1)
         encoded2 = self.encode_sentence(sentence2)
 
-        combined = torch.cat([encoded1, encoded2], dim=1)
+        combined = torch.abs(encoded1 - encoded2)
 
         similarity = self.fc(combined)
 
@@ -232,7 +232,7 @@ class CNNSiamese(L.LightningModule):
         encoder_output_size = n_filters * len(kernel_sizes) * pooling_multiplier
 
         self.fc = nn.Sequential(
-            nn.Linear(encoder_output_size * 2, n_fc_hidden),
+            nn.Linear(encoder_output_size, n_fc_hidden),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(n_fc_hidden, 1),
@@ -278,7 +278,7 @@ class CNNSiamese(L.LightningModule):
         encoded1 = self.encode_sentence(sentence1)
         encoded2 = self.encode_sentence(sentence2)
 
-        combined = torch.cat([encoded1, encoded2], dim=1)
+        combined = torch.abs(encoded1 - encoded2)
 
         similarity = self.fc(combined)
 
