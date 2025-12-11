@@ -1,0 +1,35 @@
+[project]
+name = "deep_sentences"
+version = "0.1.0"
+description = "Similaridade de Sentenças com Embeddings e Redes Siamesas"
+readme = "README.md"
+authors = [
+    { name = "Felipe Fink Grael", email = "felipefg@gmail.com" }
+]
+requires-python = "==3.13.*"
+dependencies = [
+    "datasets>=4.4.1",
+    "gensim>=4.4.0",
+    "h5py>=3.15.1",
+    "ipywidgets>=8.1.8",
+    "jupyterlab>=4.5.0",
+    "lightning>=2.6.0",
+    "optuna>=4.6.0",
+    "optuna-integration[pytorch-lightning]>=4.6.0",
+    "pandas>=2.3.3",
+    "plotly>=6.5.0",
+    "scikit-learn>=1.8.0",
+    "tensorboard>=2.20.0",
+    "tensorboardx>=2.6.4",
+    "tokenizers>=0.22.1",
+    "torch>=2.9.1",
+    "tqdm>=4.67.1",
+    "typer>=0.20.0",
+]
+
+[project.scripts]
+deep-sentences = "deep_sentences.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
