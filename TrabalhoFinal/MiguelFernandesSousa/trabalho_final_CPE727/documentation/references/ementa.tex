@@ -1,0 +1,982 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\setstretch{1.2}
+
+\title{Lista de Exercícios I --- CPE775 \\ \large Aprendizado de Máquina}
+\author{Prof. J. B. O. Souza Filho \\ PEE/COPPE/UFRJ}
+\date{16 de outubro de 2023}
+
+\begin{document}
+\maketitle
+
+\section*{I. Conceitos Básicos de Aprendizado de Máquina}
+
+\subsection*{Questão 1}
+Considere uma amostra de 10 bolas sorteadas, de forma independente, de um cesto com bolas vermelhas e verdes. 
+A probabilidade de uma bola vermelha é $\mu$. Para $\mu = 0.05$, $\mu = 0.5$ e $\mu = 0.8$, calcule a probabilidade 
+de nenhuma bola vermelha ser sorteada ($\nu$) nos seguintes casos:
+
+\begin{enumerate}
+  \item[(a)] Quando há o sorteio de uma única amostra.
+  \item[(b)] Quando há o sorteio de 1000 amostras independentes. Compute a probabilidade de que (pelo menos) uma das amostras tenha $\nu = 0$.
+  \item[(c)] Repita (b) para 1.000.000 amostras independentes.
+\end{enumerate}
+
+\textbf{Resposta:}\\[1em]
+Pela distribuição binomial:
+
+\begin{equation*}
+P(X=k) = \binom{n}{k} p^{k} (1 - p)^{n - k}
+\end{equation*}
+em que $p$ é a probabilidade de sucesso, $n$ é o número de tentativas e $k$ é o número de sucessos.
+
+\textbf{a.} Para $k = 0$ e $n = 10$, temos a seguinte equação geral:
+
+\begin{align*}
+P(X=0) &= \binom{10}{0} p^{0} (1 - p)^{10 - 0} \\
+&= (1 - p)^{10}
+ \end{align*}
+
+Para $p$ = 0.05, 0.5 e 0.8, temos os seguintes resultados:
+\begin{align*}
+P(X=0) &= (1 - 0.05)^{10} = 0.59 \\
+P(X=0) &= (1 - 0.5)^{10} = 9.77 \times 10^{-4} \\
+P(X=0) &= (1 - 0.8)^{10} = 1.02 \times 10^{-7}
+\end{align*}
+
+\textbf{b.} No enunciado anterior, calculamos a $P(\nu = 0)$, que é a probabilidade de nenhuma bola vermelha ser sorteada.
+A probabilidade de, em uma amostra, ao menos uma bola vermelha ser sorteada é dada por $P(\nu > 0) = 1 - P(\nu = 0)$.
+
+Considerando todas as amostras, para que o evento acima ocorra ao menos uma vez, queremos $1-(P(\nu > 0))^{1000}$.
+Ou seja, a equação geral é dada por:
+\begin{equation*}
+  1 - (P(\nu > 0))^{1000} = 1 - (1 - P(\nu = 0 ))^{1000}
+\end{equation*}
+
+Para $p$ = 0.05, 0.5 e 0.8, temos os seguintes resultados:
+\begin{align*}
+\mu = 0.05 &: (1 - (1 - 0.59))^{1000}  \approx 1 \\
+\mu = 0.5 &: (1 - (1 - 9.77 \times 10^{-4})^{1000}) = 0.623 \\
+\mu = 0.8 &: (1 - (1 - 1.02 \times 10^{-7})^{1000}) = 1.02 \times 10^{-3}
+\end{align*}
+
+\textbf{c.} Para 1.000.000 amostras independentes, temos a seguinte equação geral:
+\begin{equation*}
+  1 - (P(\nu > 0))^{1000000} = 1 - (1 - P(\nu = 0 ))^{1000000}
+\end{equation*}
+
+Para $p$ = 0.05, 0.5 e 0.8, temos os seguintes resultados:
+\begin{align*}
+\mu = 0.05 &: (1 - (1 - 0.59))^{1000000}  \approx 1 \\
+\mu = 0.5 &: (1 - (1 - 9.77 \times 10^{-4})^{1000000}) \approx 1 \\
+\mu = 0.8 &: (1 - (1 - 1.02 \times 10^{-7})^{1000000}) = 0.097
+\end{align*}
+
+\subsection*{Questão 2}
+Considere uma hipótese $h$ que comete um erro com probabilidade $\mu$ ao aproximar uma função alvo determinística $f$, onde $h$ e $f$ são funções binárias. 
+Se utilizarmos a mesma função $h$ para aproximar uma versão ruidosa de $f$ dada por:
+
+\[
+P(y|x) =
+\begin{cases}
+\lambda, & y = f(x), \\
+1 - \lambda, & y \neq f(x)
+\end{cases}
+\]
+
+\begin{enumerate}
+  \item[(a)] Qual é a probabilidade de erro cometida por $h$ ao aproximar $y$?
+  \item[(b)] Para qual valor de $\lambda$ o desempenho de $h$ será independente de $\mu$?
+\end{enumerate}
+
+\textbf{Resposta:}\\[1em]
+Pela probabilidade total:
+\begin{equation*}
+  P(h(x) \neq y) = P(h(x) \neq y | y = f(x)) P(y = f(x)) + P(h(x) \neq y | y \neq f(x)) P(y \neq f(x))
+\end{equation*}
+
+Pelo enunciado, a probabilidade do rótulo ser igual à função geradora $f(x)$ é $\lambda$, logo:
+\begin{align*}
+  P(y = f(x)) &= \lambda \\
+  P(y \neq f(x)) &= 1 - \lambda
+\end{align*}
+
+Além disso, a probabilidade de erro cometida por uma hipótese $h$ ao aproximar do rótulo $y$ é dada por:
+\begin{align*}
+  P(h(x) \neq y | y = f(x)) &= \mu \\
+  P(h(x) \neq y | y \neq f(x)) &= 1 - \mu
+\end{align*}
+\textbf{a.} Substituindo na equação da probabilidade total:
+\begin{equation*}
+  P(h(x) \neq y) = \mu \lambda + (1 - \mu) (1 - \lambda)
+\end{equation*}
+
+\textbf{b.} Para que o desempenho de $h$ seja independente de $\mu$, rearranjamos a equação acima para:
+\begin{align*}
+  P(h(x) \neq y) &= \mu \lambda + 1 - \mu - \lambda + \mu \lambda \\
+  &= 1 - \lambda + \mu(2\lambda - 1)
+\end{align*}
+Ou seja, $2\lambda - 1 = 0 \Rightarrow \lambda = \frac{1}{2}$.
+
+
+
+
+
+\rule{\linewidth}{0.4pt}\\[1em]
+\rule{\linewidth}{0.4pt}\\[1em]
+\rule{\linewidth}{0.4pt}
+
+\subsection*{Questão 3}
+Assuma que $X = \{x_1, x_2, \ldots, x_N, x_{N+1}, \ldots, x_{N+M}\}$ e $Y = \{-1, +1\}$ através de uma função desconhecida $f: X \to Y$. 
+O conjunto de treinamento $D$ é $(x_1, y_1), \ldots, (x_N, y_N)$. 
+Assuma que o erro fora do conjunto de treinamento de uma hipótese $h$ com respeito a $f$ é dado por:
+
+\[
+E_{\text{off}}(h, f) = \frac{1}{M} \sum_{m=1}^{M} [[h(x_{N+m}) \neq f(x_{N+m})]]
+\]
+
+\begin{enumerate}
+  \item[(a)] Assumindo $f(x) = +1$ para todo $x$, e
+  \[
+  h(x) =
+  \begin{cases}
+  +1, & \text{para } x = x_k, k \text{ ímpar e } 1 \leq k \leq M + N,\\
+  -1, & \text{caso contrário.}
+  \end{cases}
+  \]
+  Qual é o valor de $E_{\text{off}}(h, f)$?
+
+  \item[(b)] Pode-se dizer que uma função alvo $f$ pode gerar $D$ sem ruído se $y_n = f(x_n)$ para todo $(x_n, y_n) \in D$. 
+  Para um conjunto $D$ fixo de tamanho $N$, quantos possíveis $f: X \to Y$ podem gerar $D$ sem ruído?
+
+  \item[(c)] Para uma dada hipótese $h$ e inteiro $k$ entre 0 e $M$, quantos dos $f$ em (b) satisfazem $E_{\text{off}}(h, f) = \frac{k}{m}$?
+
+  \item[(d)] Para uma dada hipótese $h$, se todos aqueles $f$ que geram $D$ sem ruído são igualmente prováveis, 
+  qual é o erro esperado fora do conjunto de treinamento $E_f[E_{\text{off}}(h, f)]$?
+\end{enumerate}
+
+\textbf{Resposta:}\\[1em]
+\textbf{a.} O erro fora do conjunto de treinamento é igual à quantidade de exemplos em que $N+m$ é par:
+
+\begin{equation*}
+  E_{\mathrm{off}}(h, f) = \begin{cases}
+    \frac{\lfloor M/2 \rfloor}{M}, & \text{se } N \text{ par} \\
+    \frac{\lceil M/2 \rceil}{M}, & \text{se } N \text{ ímpar}
+  \end{cases}
+\end{equation*}
+Por exemplo:
+\begin{itemize}
+  \item $N = 100$, $M = 10$ : $E_{\text{off}}(h, f) = \lfloor 10/2 \rfloor / 10 = 5/10 $
+  \item X \_ X \_ X \_ X \_ X \_: 5 acertos de 10, 5 erros de 10.
+  \item $N = 99$, $M = 10$ : $E_{\text{off}}(h, f) = \lceil 10/2 \rceil / 10 = 5/10 $
+  \item \_ X \_ X \_ X \_ X \_ X \_: 5 acertos de 10, 5 erros de 10.
+  \item $N = 100$, $M = 9$ : $E_{\text{off}}(h, f) = \lfloor 9/2 \rfloor / 9 = 4/9$;
+  \item X \_ X \_ X \_ X \_ X : 5 acertos de 9, \textbf{4 erros de 9}.
+  \item $N = 99$, $M = 9$ : $E_{\text{off}}(h, f) = \lceil 9/2 \rceil / 9 = 5/9$;
+  \item \_ X \_ X \_ X \_ X \_: 4 acertos de 9, \textbf{5 erros de 9}.
+\end{itemize}
+
+\textbf{b.} Para um conjunto $D$ fixo de tamanho $N$, há $2^{N}$ possíveis funções.
+
+\textbf{c.} 
+\begin{equation*}
+  E_{\text{off}}(h, f) = \frac{k}{M} = \frac{1}{M} \sum_{m=1}^{M} [[h(x_{N+m}) \neq f(x_{N+m})]] 
+\end{equation*}
+Logo:
+\begin{equation*}
+  k =  \sum_{m=1}^{M} [[h(x_{N+m}) \neq f(x_{N+m})]] 
+\end{equation*}
+o que equivale à quantidade de erros em $M$ exemplos. Essa quantidade é obtida a partir da distribuição binomial $\binom{k}{M}$.
+
+\textbf{d.} Existem $\binom{M}{k}$ funções que produzem $k$ erros em $M$ exemplos, de um total de $2^M$ funções. Logo:
+\
+\begin{equation*}
+  P(E_{\text{off}} = \frac{k}{M}) = \frac{\binom{M}{k}}{2^M} 
+\end{equation*}
+Dado que o valor esperado é dado por $\mathbb{E}[X] = \sum_{x} x P(X = x)$ e que $x = \frac{k}{M}$, temos:
+
+\begin{align}
+  \mathbb{E}[E_{\text{off}}(h, f)] = \sum_{k=0}^{M} \frac{k}{M} \frac{\binom{M}{k}}{2^M} = \frac{1}{M} \sum_{k=0}^{M} k \frac{\binom{M}{k}}{2^M}
+\end{align}
+O termo $\frac{\binom{M}{k}}{2^M}$, por definição, é a probabilidade de $k$ erros em uma distribuição binomial com $M$ tentativas e probabilidade de sucesso $\frac{1}{2}$.
+Dessa forma, a expressão no somatório equivale à equação do valor esperado da distribuição binomial:
+
+\begin{equation*}
+  \mathbb{E}[k] = \sum_{k=0}^{M} k P(k) = \sum_{k=0}^{M} k \frac{\binom{M}{k}}{2^M} 
+\end{equation*}
+Por definição, O valor esperado de uma distribuição binomial é dado por $np$, onde $n$ é o número de tentativas e $p$ é a probabilidade de sucesso. Portanto, no nosso caso:
+\begin{equation*}
+  \mathbb{E}[k] = M \cdot \frac{1}{2} = \frac{M}{2}
+\end{equation*}
+Substituindo de volta na equação do valor esperado do erro fora do conjunto de treinamento:
+
+\begin{equation*}
+  \mathbb{E}[E_{\text{off}}(h, f)] = \frac{1}{M} \cdot \frac{M}{2} = \frac{1}{2}
+\end{equation*}
+
+\subsection*{Questão 4}
+Um conjunto de dados possui 600 exemplos. Para testar apropriadamente o desempenho da hipótese final, 
+um subconjunto de 200 exemplos que nunca é utilizado na fase de aprendizado forma o conjunto de teste. 
+É utilizado um modelo de aprendizado com 1000 hipóteses, sendo selecionada a hipótese final $g$ com base em 400 exemplares de treino. 
+É desejado estimar $E_{\text{out}}(g)$. Há acesso a duas estimativas: $E_{\text{in}}(g)$, o erro de 400 amostras de treino, e $E_{\text{test}}(g)$, o erro em 200 amostras de teste.
+
+\begin{enumerate}
+  \item[(a)] Utilizando uma tolerância de erro de 5\% ($\delta = 0.05$), qual estimativa resulta numa maior barra de erro?
+  \item[(b)] Há alguma razão porque um maior número de amostras de teste não são alocadas?
+\end{enumerate}
+
+\textbf{Resposta:}\\[1em]
+A inequação de Hoeffding para um nível de tolerância $\delta$, tamanho do conjunto de hipóteses $M$ e tamanho do conjunto de treinamento $N$ é dada por:
+\begin{equation*}
+  E_{\text{out}}(g) \leq E_{\text{in}}(g) + \sqrt{\frac{1}{2N}\ln{\frac{2M}{\delta}}}
+\end{equation*}
+
+\textbf{a.} Para o conjunto de treino, temos que $\delta = 0.05$, $M = 1000$ e $N = 400$, temos:
+\begin{align*}
+\sqrt{\frac{1}{2*400}\ln{\frac{2*1000}{0.05}}} &= \sqrt{0.00125\ln{40000}} \\
+&= \sqrt{0.00125*10.5} \\
+&= \sqrt{0.01312} \\
+&= 0.1145 \\
+&= 11,45\% 
+\end{align*}
+
+
+Por sua vez, para o conjunto de teste, temos que $\delta = 0.05$, $M = 1$ (há apenas a hipótese final $g$) e $N = 200$, temos:
+
+\begin{align*}
+\sqrt{\frac{1}{2*200}\ln{\frac{2}{0.05}}} &= \sqrt{0.0025\ln{40}} \\
+&= \sqrt{0.0025*3.688} \\
+&= \sqrt{0.00922} \\
+&= 0.096 \\
+&= 9,6\%
+\end{align*}
+Ou seja, a estimativa para o erro de treinamento gera uma barra de error maior do que o erro de teste.
+
+\textbf{b.} A barra de erro é inversamente proporcional à raiz quadrada do tamanho do conjunto de dados.
+Caso, caso remova-se $L$ amostras do conjunto de treino, a barra de erro aumentará na ordem de $\sqrt{L}$. Podemos chegar a uma hipótese final $g$ que não é satisfatória nesse caso.
+
+\subsection*{Questão 5}
+Para funções alvo binárias, mostre que $P[h(x) \neq f(x)]$ pode ser escrita como o valor esperado de uma medida baseada na média de erro quadrático 
+nos seguintes casos:
+
+\begin{enumerate}
+  \item[(a)] A convenção usada para funções binárias é 0 ou 1.
+  \item[(b)] A convenção usada para funções binárias é $\pm1$.
+\end{enumerate}
+
+\textbf{Resposta:}\\[1em]
+Por definição, o valor esperado de uma variável aleatória $X$ é dado por:
+
+\begin{equation*}
+  \mathbb{E}[X] = \sum_{x} x P(X = x)
+\end{equation*}
+Para $X = [h(x) - f(x)]^2$, temos:
+
+\begin{align*}
+  \mathbb{E}[[h(x) - f(x)]^2] = \sum_{x} x P([h(x) - f(x)]^2 = x)
+\end{align*}
+\textbf{a.} Para 0 e 1, temos:
+
+\begin{equation*}
+  (h(x) - f(x))^2 = \begin{cases}
+    0, & \text{se } h(x) = f(x) \\
+    1, & \text{se } h(x) \neq f(x)
+  \end{cases}
+\end{equation*}
+Logo:
+\begin{align}
+  \mathbb{E}[[h(x) - f(x)]^2] &= 0 \cdot P(h(x) = f(x)) + 1 \cdot P(h(x) \neq f(x)) \\
+  \mathbb{E}[[h(x) - f(x)]^2] &= P[h(x) \neq f(x)]
+\end{align}
+\textbf{b.} Para $\pm1$, temos:
+\begin{equation*}
+  (h(x) - f(x))^2 = \begin{cases}
+    , & \text{se } h(x) = f(x) \\
+    1, & \text{se } h(x) \neq f(x)
+  \end{cases}
+\end{equation*}
+Logo:
+\begin{align}
+  \mathbb{E}[[h(x) - f(x)]^2] &= 0 \cdot P(h(x) = f(x)) + 1 \cdot P(h(x) \neq f(x)) \\
+  \mathbb{E}[[h(x) - f(x)]^2] &= P[h(x) \neq f(x)]
+\end{align}
+
+\subsection*{Questão 6}
+Quando há ruído nos dados, $E_{\text{out}}(g_D) = \mathbb{E}_{x,y}[(g_D(x) - y(x))^2]$, onde $y(x) = f(x) + \epsilon$. 
+Se $\epsilon$ é uma variável aleatória com variância $\sigma^2$, mostre que a decomposição viés-variância pode ser escrita na forma:
+
+\[
+\mathbb{E}_D[E_{\text{out}}(g_D)] = \sigma^2 + \text{bias} + \text{var}
+\]
+
+\textbf{Resposta:}\\[1em]
+\begin{align*}
+\mathbb{E}_D[E_{\text{out}}(g_D)]
+&= \mathbb{E}_D\big[\mathbb{E}_{x,\varepsilon}[(g_D(x) - y)^2]\big] \\
+&= \mathbb{E}_D\big[\mathbb{E}_{x,\varepsilon}[(g_D(x) - f(x) - \varepsilon)^2]\big] \\
+&= \mathbb{E}_D\big[\mathbb{E}_x[(g_D(x) - f(x))^2]\big]
+   + 2\,\underbrace{\mathbb{E}_{x,\varepsilon}[(g_D(x) - f(x))\,\varepsilon]}_{0}
+   + \underbrace{\mathbb{E}[\varepsilon^2]}_{\sigma^2} \\
+&= \mathbb{E}_D\big[\mathbb{E}_x[(g_D(x) - f(x))^2]\big] + \sigma^2,
+\end{align*}
+onde utilizamos que $\varepsilon$ tem média zero e é independente de $x$ e de $D$.
+
+Para decompor o termo restante, fixe $x$ e some e subtraia $\mathbb{E}_D[g_D(x)]$:
+\begin{align*}
+\mathbb{E}_D\big[(g_D(x) - f(x))^2\big]
+&= \mathbb{E}_D\Big[(g_D(x) - \mathbb{E}_D[g_D(x)] + \mathbb{E}_D[g_D(x)] - f(x))^2\Big] \\
+&= \big(f(x) - \mathbb{E}_D[g_D(x)]\big)^2
+   + \mathbb{E}_D\big[(g_D(x) - \mathbb{E}_D[g_D(x)])^2\big] \\
+&\quad + 2\,\mathbb{E}_D\Big[(f(x) - \mathbb{E}_D[g_D(x)])(\mathbb{E}_D[g_D(x)] - g_D(x))\Big] \\
+&= \big(f(x) - \mathbb{E}_D[g_D(x)]\big)^2
+   + \mathbb{E}_D\big[(g_D(x) - \mathbb{E}_D[g_D(x)])^2\big],
+\end{align*}
+pois o termo cruzado é nulo: o primeiro fator é constante em relação a $D$ e o segundo tem média zero por construção.
+
+Definindo
+\(\operatorname{Bias}_D[g_D(x)] \triangleq \mathbb{E}_D[g_D(x)] - f(x)\)
+e
+\(\operatorname{Var}_D[g_D(x)] \triangleq \mathbb{E}_D\big[(g_D(x) - \mathbb{E}_D[g_D(x)])^2\big]\),
+e tomando o valor esperado em relação a $x$, obtemos a forma final:
+\begin{align*}
+\mathbb{E}_D[E_{\text{out}}(g_D)]
+&= \mathbb{E}_x\Big[\operatorname{Bias}_D[g_D(x)]^{2} + \operatorname{Var}_D[g_D(x)]\Big] + \sigma^{2}.
+\end{align*}
+
+\section*{II. Teoria de Decisão Bayesiana e Classificadores Generativos}
+
+\subsection*{II.I Teóricos}
+
+Base: Theodoridis, capítulo 2; Bishop, capítulo 9.
+
+\subsection*{Questão 1}
+Mostre que em uma tarefa de classificação multiclasses, a regra de decisão Bayesiana minimiza a probabilidade de erro.
+Dica: trabalhe com a probabilidade de decisão correta.
+
+\textbf{Resposta:}\\[1em]
+Considerando $\omega_1, \omega_2, ..., \omega_M$ classes, a probabilidade de decisão correta é dada pela
+soma das probabilidades conjuntas de decisão correta para cada classe:
+\begin{equation*}
+  \sum_{i=1}^{M} P(x \in \mathcal{R}_i, \omega_i)
+\end{equation*}
+substituindo pela probabilidade condicional:
+\begin{align*}
+  \sum_{i=1}^{M} P(x \in \mathcal{R}_i, \omega_i) &= \sum_{i=1}^{M} P(x \in \mathcal{R}_i | \omega_i) P(\omega_i)\\
+  &= \sum_{i=1}^{M} \int_{\mathcal{R}_i} p(x | \omega_i) P(\omega_i) dx
+\end{align*}
+em que $\mathcal{R}_i$ é a região de decisão para a classe $\omega_i$, que ainda não
+foi definida. Para isso, é preciso identificar a região de decisão que maximiza a probabilidade para a i-ésima classe:
+\begin{equation*}
+  P(x|\omega_i)P(\omega_i) > P(x|\omega_j)P(\omega_j) \space \forall j \neq i
+\end{equation*}
+Ao maximizar para cada classe, a probabilidade geral de decisão correta também é maximizada.
+  
+
+\subsection*{Questão 2}
+Mostre como um classificador Bayesiano com decisão por critério MAP pode ser escrito como uma função logística.
+
+\textbf{Resposta:}\\[1em]
+O classificador Bayesiano com decisão por critério MAP é dado por:
+\begin{equation*}
+  \hat{y} = \arg \max_{k \in \{1, ..., K\}} p(C_k) \prod_{i=1}^{n} p(x_i | C_k)
+\end{equation*}
+em que $\hat{y}$ é a classe $C_k$ predita, $C_k$ é a $k$-ésima classe, $x_i$ é o $i$-ésimo atributo, $n$ é o número de atributos, $K$ é o número de classes e $p(C_k)$ é a probabilidade a priori da classe $C_k$ e $p(x_i | C_k)$ é a probabilidade condicional do atributo $x_i$ dado a classe $C_k$.
+
+**Para o caso binário (K = 2 classes):**
+
+
+Aplicando o Teorema de Bayes:
+$$P(C_k|x) = \frac{P(x|C_k)P(C_k)}{P(x)} \propto P(x|C_k)P(C_k)$$
+
+Podemos expressar a decisão em termos da razão:
+$$\frac{P(C_1|x)}{P(C_2|x)} = \frac{P(x|C_1)P(C_1)}{P(x|C_2)P(C_2)}$$
+
+Aplicando o logaritmo:
+$$\log \frac{P(C_1|x)}{P(C_2|x)} = \log P(x|C_1) + \log P(C_1) - \log P(x|C_2) - \log P(C_2)$$
+
+Assumindo distribuições Gaussianas para $P(x|C_1)$ e $P(x|C_2)$, temos:
+$$P(x|C_k) = \frac{1}{(2\pi)^{n/2}|\Sigma|^{1/2}} \exp\left(-\frac{1}{2}(x-\mu_k)^T\Sigma^{-1}(x-\mu_k)\right)$$
+
+$$\log P(x|C_k) = -\frac{n}{2} \log (2\pi) - \frac{1}{2} \log |\Sigma| - \frac{1}{2} (x-\mu_k)^T\Sigma^{-1}(x-\mu_k)$$
+Substituindo no log da razão:
+$$\log \frac{P(C_1|x)}{P(C_2|x)} = -\frac{1}{2}(x-\mu_1)^T\Sigma^{-1}(x-\mu_1) + \frac{1}{2}(x-\mu_2)^T\Sigma^{-1}(x-\mu_2) + \log \frac{P(C_1)}{P(C_2)}$$
+
+Expandindo e simplificando os termos quadráticos:
+$$\log \frac{P(C_1|x)}{P(C_2|x)} = x^T\Sigma^{-1}(\mu_1 - \mu_2) - \frac{1}{2}\mu_1^T\Sigma^{-1}\mu_1 + \frac{1}{2}\mu_2^T\Sigma^{-1}\mu_2 + \log \frac{P(C_1)}{P(C_2)}$$
+
+Definindo:
+$$w^T = (\mu_1 - \mu_2)^T\Sigma^{-1}$$
+$$w_0 = -\frac{1}{2}\mu_1^T\Sigma^{-1}\mu_1 + \frac{1}{2}\mu_2^T\Sigma^{-1}\mu_2 + \log \frac{P(C_1)}{P(C_2)}$$
+
+Obtemos: $\log \frac{P(C_1|x)}{P(C_2|x)} = w^Tx + w_0 = z$
+
+Como $\sum_k P(C_k|x) = 1$, temos: $P(C_1|x) + P(C_2|x) = 1$, podemos escrever:
+$$P(C_1|x) = \frac{P(C_1|x)}{P(C_1|x) + P(C_2|x)} = \frac{1}{1 + \frac{P(C_2|x)}{P(C_1|x)}} = \frac{1}{1 + e^{-z}}$$
+
+$$\boxed{P(C_1|x) = \sigma(w^Tx + w_0) = \frac{1}{1 + e^{-(w^Tx + w_0)}}}$$
+
+onde $\sigma(z) = \frac{1}{1 + e^{-z}}$ é a função logística.
+
+\subsection*{Questão 3}
+Assuma um problema de classificação de 2 classes. Determine as superfícies de decisão e as curvas de isoprobabilidade para um classificador Bayesiano ótimo, onde os vetores de características seguem distribuições Gaussianas bidimensionais com parâmetros arbitrários.
+
+\textbf{Resposta:}\\[1em]
+As parcelas que contribuem para o risco médio, no caso com duas classes, são dadas por:
+\begin{align*}
+  l_1 &= \lambda_{11} p(\mathbf{x}|\omega_1)P(\omega_1) + \lambda_{21} p(\mathbf{x}|\omega_2)P(\omega_2)\\
+  l_2 &= \lambda_{12} p(\mathbf{x}|\omega_1)P(\omega_1) + \lambda_{22} p(\mathbf{x}|\omega_2)P(\omega_2)
+\end{align*}
+Assumindo custo-zero para a classificação correta, $\lambda_{11} = \lambda_{22} = 0$. No limiar de decisão $l_1=l_2$:
+\begin{equation*}
+  \frac{p(\mathbf{x}|\omega_1)}{p(\mathbf{x}|\omega_2)} = \frac{\lambda_{21}P(\omega_2)}{\lambda_{12}P(\omega_1)}
+\end{equation*}
+A generalização da pdf da Gaussiana em um espaço de $l$ dimensões é dado por:
+\begin{equation*}
+  p(\mathbf{x}) = \frac{1}{(2\pi)^{l/2}|\Sigma|^{1/2}} \exp\left(-\frac{1}{2}(\mathbf{x}-\mu)^T\Sigma^{-1}(\mathbf{x}-\mu)\right)
+\end{equation*}
+Assumindo $p(x|w_1) \sim \mathcal{N}(\mu_1, \Sigma_1)$ e $p(x|w_2) \sim \mathcal{N}(\mu_2, \Sigma_2)$, temos:
+
+\begin{align*}
+  \frac{p(x|w_1)}{p(x|w_2)} = \frac{|\Sigma_1|^{-1/2}}{|\Sigma_2|^{-1/2}}\frac{exp(-\frac{1}{2}(\mathbf{x}-\mu_1)^T\Sigma_1^{-1}(\mathbf{x}-\mu_1))}{exp(-\frac{1}{2}(\mathbf{x}-\mu_2)^T\Sigma_2^{-1}(\mathbf{x}-\mu_2))}
+\end{align*}
+
+Aplicando o logaritmo natural em ambos os lados da condição de decisão:
+\begin{equation*}
+  \ln\left(\frac{p(\mathbf{x}|\omega_1)}{p(\mathbf{x}|\omega_2)}\right) = \ln\left(\frac{\lambda_{21}P(\omega_2)}{\lambda_{12}P(\omega_1)}\right)
+\end{equation*}
+
+Desenvolvendo o lado esquerdo:
+\begin{multline*}
+  -\frac{1}{2}\ln|\Sigma_1| + \frac{1}{2}\ln|\Sigma_2| - \frac{1}{2}(\mathbf{x}-\mu_1)^T\Sigma_1^{-1}(\mathbf{x}-\mu_1) \\
+  + \frac{1}{2}(\mathbf{x}-\mu_2)^T\Sigma_2^{-1}(\mathbf{x}-\mu_2) = \ln\left(\frac{\lambda_{21}P(\omega_2)}{\lambda_{12}P(\omega_1)}\right)
+\end{multline*}
+
+Definindo $\theta = \ln\left(\frac{\lambda_{21}P(\omega_2)}{\lambda_{12}P(\omega_1)}\right) + \frac{1}{2}\ln\frac{|\Sigma_1|}{|\Sigma_2|}$, a \textbf{superfície de decisão} é:
+\begin{equation*}
+  (\mathbf{x}-\mu_2)^T\Sigma_2^{-1}(\mathbf{x}-\mu_2) - (\mathbf{x}-\mu_1)^T\Sigma_1^{-1}(\mathbf{x}-\mu_1) = 2\theta
+\end{equation*}
+
+Quando as covariâncias são diferentes, expandindo as formas quadráticas obtemos:
+\begin{equation*}
+  \mathbf{x}^T(\Sigma_2^{-1} - \Sigma_1^{-1})\mathbf{x} + 2(\mu_1^T\Sigma_1^{-1} - \mu_2^T\Sigma_2^{-1})\mathbf{x} + \text{const} = 2\theta
+\end{equation*}
+
+Esta é uma equação \textbf{quadrática} em $\mathbf{x}$.
+
+\subsection*{Questão 4}
+Em um problema de classificação unidimensional com duas classes, as densidades de um atributo arbitrário são gaussianas dadas por: $\mathcal{N}(0, \sigma^2)$ e $\mathcal{N}(1, \sigma^2)$. Mostre que o limiar $x_0$ que minimiza o risco médio é igual a:
+
+\begin{equation*}
+x_0 = \frac{1}{2} - \sigma^2 \ln \left( \frac{\lambda_{21} P(\omega_2)}{\lambda_{12} P(\omega_1)} \right) \frac{}{}
+\end{equation*}
+
+\textbf{Resposta:}\\[1em]
+A pdf unidimensional da Gaussiana é dada por:
+\begin{equation*}
+  p(x) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)
+\end{equation*}
+
+
+No limiar de decisão $l1 = l2$:
+\begin{equation*}
+  \frac{p(x|\omega_1)}{p(x|\omega_2)} = \frac{\lambda_{21}P(\omega_2)}{\lambda_{12}P(\omega_1)}
+\end{equation*}
+Fazendo a razão das pdfs:
+\begin{equation*}
+  \frac{\exp(\frac{-x^2}{2\sigma^2})}{\exp(\frac{-(x-1)^2}{2\sigma^2})} = \exp(\frac{-x^2 + x^2 - 2x + 1}{2\sigma^2}) = \exp(\frac{-2x + 1}{2\sigma^2})
+\end{equation*}
+Aplicando o log natural:
+\begin{equation*}
+  \frac{-2x+1}{2\sigma^2} = \ln(\frac{\lambda_{21}P(\omega_2)}{\lambda_{12} P(\omega_1)})
+\end{equation*}
+Logo:
+\begin{align*}
+-2x+1 &= 2\sigma^2ln(...)\\
+x &= \frac{1 -2\sigma^2ln(...)}{2}
+\end{align*}
+
+\subsection*{Questão 5}
+Assumindo-se: $\lambda_{11} = \lambda_{22} = 0$. Considere um problema de 2 classes (equiprovável), unidimensional, com amostras distribuídas de acordo com a distribuição de Rayleigh em cada classe:
+
+\begin{equation*}
+p(x|\omega_i) = \begin{cases}
+\frac{x}{\sigma_i^2} \exp\left(-\frac{x^2}{2\sigma_i^2}\right), & x \geq 0 \\
+0, & x < 0
+\end{cases}
+\end{equation*}
+
+Calcule o ponto da fronteira de decisão.
+
+\textbf{Resposta:}\\[1em]
+\begin{align*}
+  l_{12} &= \frac{p(x|\omega_1)}{p(x|\omega_2)}\\
+   &= \frac{\sigma_2}{\sigma_1}\exp(-\frac{x^2}{2} ( \frac{1}{\sigma_1^2} - \frac{1}{\sigma_2^2}))\\
+   &= \frac{\sigma_2}{\sigma_1}\exp(-\frac{x^2}{2} ( \frac{\sigma_2^2 - \sigma_1^2}{\sigma_1^2 \sigma_2^2}))
+\end{align*}
+igualando ao limiar:
+\begin{equation*}
+   \frac{\sigma_2}{\sigma_1}\exp(-\frac{x^2}{2} ( \frac{\sigma_2^2 - \sigma_1^2}{\sigma_1^2 \sigma_2^2})) = \frac{P(\omega_2)(\lambda_{21} - \lambda_{22})}{P(\omega_1)(\lambda_{12} - \lambda_{11})} 
+\end{equation*}
+\begin{equation*}
+  -\frac{x^2(\sigma_2^2 - \sigma_1^2)}{\sigma_1^2 \sigma_2^2} = \ln(\frac{\sigma_1P(\omega_2)(\lambda_{21} - \lambda_{22})}{\sigma_2P(\omega_1)(\lambda_{12} - \lambda_{11})})
+\end{equation*}
+
+\begin{equation*}
+  x_0^2 = -\frac{2\sigma_1^2 \sigma_2^2}{\sigma_2^2 - \sigma_1^2} \ln(\frac{\sigma_1P(\omega_2)(\lambda_{21} - \lambda_{22})}{\sigma_2P(\omega_1)(\lambda_{12} - \lambda_{11})})
+\end{equation*}
+\subsection*{Questão 6}
+Em um problema bidimensional de 3 classes, os vetores de atributos são distribuídos normalmente de acordo com a seguinte matriz de covariância:
+
+\begin{equation*}
+\Sigma = \begin{bmatrix}
+1.2 & 0.4 \\
+0.4 & 1.8
+\end{bmatrix}
+\end{equation*}
+
+Os vetores médios de cada classe são $[0.1 ,\ 0.1]^T$, $[2.1 ,\ 1.9]^T$, $[-1.5 ,\ 2.0]^T$. Assumindo que as classes são equiprováveis, faça o que se pede:
+
+\begin{enumerate}
+  \item[(a)] classifique o vetor $[1.6 ,\ 1.5]^T$ de acordo com o classificador Bayesiano de erro mínimo;
+  \item[(b)] esboce curvas com distância de Mahalanobis constante em relação ao ponto $[2.1 ,\ 1.9]^T$.
+\end{enumerate}
+
+\textbf{Resposta:}\\[1em]
+\textbf{a.} A distância de Mahalanobis para a classe $C$ é dada por:
+\begin{equation*}
+  d_{M,C} = ((\mathbf{x} - \boldsymbol{\mu}_C)^T\Sigma^{-1}(\mathbf{x} - \boldsymbol{\mu}_C))^\frac{1}{2}
+\end{equation*}
+Por sua vez, o inverso da matriz de covariância é dado por:
+\begin{equation*}
+  \Sigma^{-1} = \begin{bmatrix}
+  0.9 & -0.2 \\
+  -0.2 & 0.6
+  \end{bmatrix}
+\end{equation*}
+$\mathbf{x} - \boldsymbol{\mu}_C$ para cada classe:
+\begin{align*}
+  \mathbf{x} - \boldsymbol{\mu}_1 &= [1.5 ,\ 1.4]^T\\
+  \mathbf{x} - \boldsymbol{\mu}_2 &= [-0.5 ,\ -0.4]^T\\
+  \mathbf{x} - \boldsymbol{\mu}_3 &= [3.1 ,\ 0.5]^T
+\end{align*}
+As distâncias de Mahalanobis para cada classe são:
+\begin{align*}
+  d_{M,1} &= \sqrt{2.361} = 1.537 \\
+  d_{M,2} &= \sqrt{0.241} = 0.491 \\
+  d_{M,3} &= \sqrt{8.179} = 2.860 
+\end{align*}
+Logo, o vetor pertence à classe 2.
+\textbf{b.} As curvas com distância de Mahalanobis constante em relação a um ponto são dadas pela equação da elipse.
+Os eixos principais da elipse são dados pelos autovetores e autovalores da matriz de covariância:
+\begin{equation*}
+  \det(\Sigma - \lambda I) = 0
+\end{equation*}
+\begin{equation*}
+  \det\begin{pmatrix}
+  1.2-\lambda & 0.4 \\
+  0.4 & 1.8-\lambda \\
+  \end{pmatrix} = 0
+\end{equation*}
+\begin{equation*}
+  (1.2-\lambda)(1.8-\lambda) - 0.4^2 = 0
+\end{equation*}
+\begin{equation*}
+  \lambda^2 - 3\lambda + 2 = 0 \Rightarrow \lambda_1 = 1, \lambda_2 = 2
+\end{equation*}
+Resolvendo a equação de segundo grau:
+\begin{equation*}
+  \lambda^2 - 3\lambda + 2 = 0 \Rightarrow \lambda_1 = 1, \lambda_2 = 2
+\end{equation*}
+Autovetor para $\lambda_1 = 1$:
+\begin{align*}
+  0.2v_1 + 0.4v_2 = 0 \\
+  0.4v_1 + 0.8v_2 = 0
+\end{align*}
+\begin{equation*}
+  v_1 = -2v_2 \Rightarrow \mathbf{v}_1 = [-2, 1]^T
+\end{equation*}
+Normalizando:
+\begin{align*}
+  |\mathbf{v}_1| = \sqrt{(-2)^2 + 1^2} = \sqrt{5}\\
+   \Rightarrow \mathbf{v}_1 = \frac{[-2, 1]^T}{\sqrt{5}}
+\end{align*}
+Autovetor para $\lambda_2 = 2$:
+\begin{align*}
+  -0.8v_1 + 0.4v_2 = 0 \\
+  0.4v_1  -0.2v_2 = 0
+\end{align*}
+\begin{equation*}
+  -2v_1 = v_2 \Rightarrow \mathbf{v}_2 = [-1, 2]^T
+\end{equation*}
+Normalizando:
+\begin{align*}
+  |\mathbf{v}_2| = \sqrt{(-1)^2 + 2^2} = \sqrt{5}\\
+  \Rightarrow \mathbf{v}_2 = \frac{[-1, 2]^T}{\sqrt{5}}
+\end{align*}
+
+\subsection*{Questão 7}
+Em um problema tridimensional de 2 classes, os vetores de atributos de cada classe são distribuídos normalmente de acordo com a matriz de covariância:
+
+\begin{equation*}
+\Sigma = \begin{bmatrix}
+0.3 & 0.1 & 0.1 \\
+0.1 & 0.3 & -0.1 \\
+0.1 & -0.1 & 0.3
+\end{bmatrix}
+\end{equation*}
+
+Os vetores médios são, respectivamente, $[0 \ 0 \ 0]^T$ e $[0.5 \ 0.5 \ 0.5]^T$. Derive a função discriminante linear correspondente, bem como as equações que descrevem a superfície de decisão.
+
+\textbf{Resposta:}\\[1em]
+No caso em que as classes tem a mesma matriz de covariância, a função discriminante linear é dada por:
+\begin{align*}
+  g_i(\mathbf{x}) &= \mathbf{w}_i^T\mathbf{x} + w_{i0}\\
+  \mathbf{w}_i &= \Sigma^{-1}\boldsymbol{\mu}_i \\
+  w_{i0} &= \ln P(w_i) - \frac{1}{2}\boldsymbol{\mu}_i^T\Sigma^{-1}\boldsymbol{\mu}_i
+\end{align*}
+A inversa matriz é igual a:
+\begin{equation*}
+  \Sigma^{-1} = \begin{bmatrix}
+  5 & -2.5 & -2.5 \\
+  -2.5 & 5 & 2.5 \\
+  -2.5 & 2.5 & 5
+  \end{bmatrix}
+\end{equation*}
+Para a classe 1, o vetor médio na origem simplifica sua função discriminante:
+\begin{equation*}
+  g_1(\mathbf{x}) = \ln P(w_1)
+\end{equation*}
+Para a classe 2:
+\begin{align*}
+  \mathbf{w}_2 &= [0, 2.5, 2.5]^T \\
+  w_{20} &= \ln P(w_2) - 1.25 \\
+  g_2(\mathbf{x}) &= 2.5x_2 + 2.5x_3 + \ln P(w_2) - 1.25
+\end{align*}
+A superfície de decisão é dada por:
+\begin{equation*}
+  g_1(\mathbf{x}) = g_2(\mathbf{x}) \therefore g_1(\mathbf{x}) - g_2(\mathbf{x}) = 0
+\end{equation*}
+\begin{equation*}
+  \ln P(w_1) - 2.5x_2 - 2.5x_3 - \ln P(w_2) - 1.25 = 0
+\end{equation*}
+Caso as classes sejam equiprováveis:
+\begin{equation*}
+  2.5x_2 + 2.5x_3 + 1.25 = 0
+\end{equation*}
+
+\subsection*{Questão 8}
+Em um problema de duas classes equiprovável, os vetores de características de cada classe são normalmente distribuídos com uma matriz de covariância $\Sigma$ e vetores médios $\boldsymbol{\mu}_1$ e $\boldsymbol{\mu}_2$. Mostre que para o classificador Bayesiano de erro mínimo, a probabilidade de erro é dada por:
+
+\begin{equation*}
+P_B = \int_{(1/2)d_m}^{+\infty} \frac{1}{\sqrt{2\pi}} \exp(-z^2/2) \, dz
+\end{equation*}
+
+onde $d_m$ é a distância de Mahalanobis entre os dois vetores médios. Observe que se trata de uma função decrescente de $d_m$.
+
+\textbf{Dica:} calcule o logaritmo da razão de verossimilhança ($u = \log p(\mathbf{x}|\omega_1) - \log p(\mathbf{x}|\omega_2)$). Observe que $u$ é uma variável aleatória normalmente distribuída segundo $\mathcal{N}((1/2)d_m^2, d_m^2)$, se $\mathbf{x} \in \omega_1$; e, $\mathcal{N}(-(1/2)d_m^2, d_m^2)$, se $\mathbf{x} \in \omega_2$. Use esta informação para calcular a probabilidade de erro.
+
+\textbf{Resposta:}\\[1em]
+O limiar de decisão dado por $l_1 = l_2$ é dado por:
+\begin{equation*}
+  \frac{p(x|\omega_1)}{p(x|\omega_2)} = \frac{\lambda_{21}P(\omega_2)}{\lambda_{12}P(\omega_1)}
+\end{equation*}
+Para classes equiprováveis $P(\omega_1) = P(\omega_2) = \frac{1}{2}$ e custo unitário:
+
+\begin{equation*}
+  \frac{p(x|\omega_1)}{p(x|\omega_2)} = 1
+\end{equation*}
+Aplicando o logaritmo natural:
+\begin{equation*}
+  \ln p(x|\omega_1) - \ln p(x|\omega_2) = 0
+\end{equation*}
+Aplicando a distribuição normal em cada uma das pdf condicionais e seguindo a dica:
+\begin{align*}
+  u &= \ln \left( \frac{1}{(2\pi)^{k/2}|\Sigma|^{1/2}} \exp\left(-\frac{1}{2}(\mathbf{x}-\mu_1)^T\Sigma^{-1}(\mathbf{x}-\mu_1)\right) \right) \\ &- \ln \left( \frac{1}{(2\pi)^{k/2}|\Sigma|^{1/2}} \exp\left(-\frac{1}{2}(\mathbf{x}-\mu_2)^T\Sigma^{-1}(\mathbf{x}-\mu_2)\right) \right) \\
+  &= \ln \left(\frac{
+    \frac{1}{(2\pi)^{k/2}|\Sigma|^{1/2}} \exp\left(-\frac{1}{2}(\mathbf{x}-\mu_1)^T\Sigma^{-1}(\mathbf{x}-\mu_1)\right)
+  }{
+    \frac{1}{(2\pi)^{k/2}|\Sigma|^{1/2}} \exp\left(-\frac{1}{2}(\mathbf{x}-\mu_2)^T\Sigma^{-1}(\mathbf{x}-\mu_2)\right) 
+  } \right)\\
+  &= -\frac{1}{2}(\mathbf{x}-\mu_1)^T\Sigma^{-1}(\mathbf{x}-\mu_1) + \frac{1}{2}(\mathbf{x}-\mu_2)^T\Sigma^{-1}(\mathbf{x}-\mu_2)
+\end{align*}
+Abrindo a pseudoinversa:
+\begin{align*}
+  u &= -\frac{1}{2}(\mathbf{x}^T\Sigma^{-1}\mathbf{x} - 2\mu_1^T\Sigma^{-1}\mathbf{x} + \mu_1^T\Sigma^{-1}\mu_1 - \mathbf{x}^T\Sigma^{-1}\mathbf{x} + 2\mu_2^T\Sigma^{-1}\mathbf{x} - \mu_2^T\Sigma^{-1}\mu_2)\\
+  u &= (\mu_1 - \mu_2)^T\Sigma^{-1}\mathbf{x} - \frac{1}{2}\mu_1^T\Sigma^{-1}\mu_1 +\frac{1}{2}\mu_2^T\Sigma^{-1}\mu_2
+\end{align*}
+Tomando o valor esperado...
+
+
+\subsection*{Questão 9}
+Mostre que estimativas de máxima verossimilhança para a média $\boldsymbol{\mu}$ e a matriz de covariância $\Sigma$ de uma distribuição gaussiana multivariada são dadas por:
+
+\begin{align*}
+\hat{\boldsymbol{\mu}} &= \frac{1}{N} \sum_{k=1}^{N} \mathbf{x}_k \\
+\hat{\Sigma} &= \frac{1}{N} \sum_{k=1}^{N} (\mathbf{x}_k - \hat{\boldsymbol{\mu}})(\mathbf{x}_k - \hat{\boldsymbol{\mu}})^T
+\end{align*}
+
+Prove ainda que tais estimativas podem ser calculadas recursivamente como:
+
+\begin{align*}
+\hat{\boldsymbol{\mu}}_{N+1} &= \hat{\boldsymbol{\mu}}_N + \frac{1}{N+1}(\mathbf{x}_{N+1} - \hat{\boldsymbol{\mu}}_N) \\
+\hat{\Sigma}_{N+1} &= \frac{N}{N+1}\hat{\Sigma}_N + \frac{N}{(N+1)^2}(\mathbf{x}_{N+1} - \hat{\boldsymbol{\mu}}_N)(\mathbf{x}_{N+1} - \hat{\boldsymbol{\mu}}_N)^T
+\end{align*}
+
+onde o subescrito $N$ nas estimativas anteriores representa o número de amostras utilizadas no cálculo.
+
+\textbf{Resposta:}\\[1em]
+O estimador de máxima verossimilhança, assumindo independência entre as amostras, é dado por:
+\begin{align*}
+  L(\theta) &= \ln \prod_{i=1}^{N} p(\mathbf{x}_i;  \theta) \\
+  \frac{\partial}{\partial \theta} L(\theta) &= \sum_{i=1}^{N} \frac{\partial}{\partial \theta} \ln p(\mathbf{x}_i; \theta) = \sum_{i=1}^{N} \frac{1}{p(\mathbf{x}_i; \theta)} \frac{\partial}{\partial \theta} p(\mathbf{x}_i; \theta) = 0
+\end{align*}
+a distribuição da gaussiana é dada por:
+\begin{equation*}
+  p(\mathbf{x}_i; \mu, \Sigma) = \frac{1}{(2\pi)^{k/2}|\Sigma|^{1/2}} \exp\left(-\frac{1}{2}(\mathbf{x}_i - \boldsymbol{\mu})^T\Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu})\right)
+\end{equation*}
+Cujo logaritmo neperiano é dado por:
+\begin{equation*}
+  \ln p(\mathbf{x}_i; \mu, \Sigma) = -\frac{k}{2} \ln (2\pi) - \frac{1}{2} \ln |\Sigma| - \frac{1}{2}(\mathbf{x}_i - \boldsymbol{\mu})^T\Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu})
+\end{equation*}
+\begin{equation*}
+  = -\frac{1}{2} \ln (2\pi^k|\Sigma|) - \frac{1}{2}(\mathbf{x}_i - \boldsymbol{\mu})^T\Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu})
+\end{equation*}
+Logo, a log-likelihood é dada por:
+\begin{equation*}
+  L(\mu, \Sigma) = -\frac{N}{2} \ln (2\pi^k |\Sigma|)- \frac{1}{2} \sum_{i=1}^{N} (\mathbf{x}_i - \boldsymbol{\mu})^T\Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu})
+\end{equation*}
+
+A fórmula geral da derivada de um vetor em relação a $\mathbf{v}$ é dada por:
+\begin{equation*}
+  \frac{\partial}{\partial \mathbf{v}} \mathbf{v}^T\mathbf{A}\mathbf{v} = (\mathbf{A} + \mathbf{A}^T)\mathbf{v}
+\end{equation*}
+Ou ainda:
+\begin{equation*}
+  \frac{\partial}{\partial \mathbf{v}} \mathbf{v}^T\mathbf{A} = \mathbf{A}
+\end{equation*}
+No caso particular em que $\mathbf{A}$ é uma matriz simétrica e $\Sigma^{-1} = (\Sigma^{-1})^{-T}$ por ser matriz de covariância, temos:
+\begin{equation*}
+  \frac{\partial}{\partial \mathbf{v}} \mathbf{v}^T\Sigma^{-1}\mathbf{v} = 2\Sigma^{-1}\mathbf{v}
+\end{equation*}
+Dessa forma, a derivada de $L$ em relação a $\boldsymbol{\mu}$ é dada pela parcela com o somatório. Expandindo os termos da pseudoinversa, equivale a $x^T_i\Sigma^{-1}\mathbf{x}_i - 2\boldsymbol{\mu}^T_i\Sigma^{-1}\mathbf{x}_i + \boldsymbol{\mu}^T_i\Sigma^{-1}\boldsymbol{\mu}_i$. Dessa forma, a derivada de $L$ em relação a $\boldsymbol{\mu}$, para cada um dos termos, é dada por:
+\begin{itemize}
+  \item $\frac{\partial}{\partial \boldsymbol{\mu}} (\mathbf{x}_i - \boldsymbol{\mu})^T\Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu}) = 0$
+  \item $\frac{\partial}{\partial \boldsymbol{\mu}} (-2\boldsymbol{\mu}^T\Sigma^{-1}\mathbf{x}_i) = -2\Sigma^{-1}\mathbf{x}_i$
+  \item $\frac{\partial}{\partial \boldsymbol{\mu}} (\boldsymbol{\mu}^T\Sigma^{-1}\boldsymbol{\mu}) = 2\Sigma^{-1}\boldsymbol{\mu}$
+\end{itemize}
+Logo:
+\begin{equation*}
+  \frac{\partial}{\partial \boldsymbol{\mu}} L(\mu, \Sigma) = \sum_{i=1}^{N} \Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu}) = 0
+\end{equation*}
+Como $\Sigma^{-1}$ é invertível, podemos multiplicar ambos os lados por $\Sigma$ e obter:
+\begin{align*}
+  \sum_{i=1}^{N} (\mathbf{x}_i - \boldsymbol{\mu}) = 0 \\
+  N\boldsymbol{\mu} = \sum_{i=1}^{N} \mathbf{x}_i \therefore \boldsymbol{\mu} = \frac{1}{N}\sum_{i=1}^{N} \mathbf{x}_i
+\end{align*}
+
+Para o cálculo da derivada de $L$ em relação a $\Sigma^-1$, tomamos $M = \Sigma^{-1}$. Lembrando que $\det(\Sigma^{-1}) = (\det(\Sigma))^{-1}$. Reescrevendo a log-likelihood em função de $M$, temos:
+\begin{equation*}
+  L(M) = -\frac{N}{2} \ln (2\pi^k) + \frac{N}{2}\ln(|M|)- \frac{1}{2} \sum_{i=1}^{N} (\mathbf{x}_i - \boldsymbol{\mu})^T M(\mathbf{x}_i - \boldsymbol{\mu})
+\end{equation*}
+Para o cálculo da derivada, é necessário aplicar a derivada da função logarítmica da determinante de $M$ relação a $M$, dado por:
+\begin{equation*}
+  \frac{\partial}{\partial M} \ln(|M|) = (M^{-1})^T = (M^{T})^{-1} = M^{-1}
+\end{equation*}
+dado que $M$ e $M^-1$ são simétricas.
+
+Além disso, há a seguinte derivada:
+\begin{equation*}
+  \frac{\partial}{\partial M} (a^T M b) = a b^T
+\end{equation*}
+A partir das duas propriedades acima, temos que a derivada de $L$ em relação a $M$ é dada por:
+\begin{equation*}
+  \frac{\partial}{\partial M} L(M) =  \frac{N}{2}M^{-1} - \frac{1}{2} \sum_{i=1}^{N} (\mathbf{x}_i - \boldsymbol{\mu})(\mathbf{x}_i - \boldsymbol{\mu})^T = 0
+\end{equation*}
+Colocando o $M^-1$ em evidência:
+\begin{equation*}
+  M^{-1} = \Sigma = \frac{1}{N} \sum_{i=1}^{N} (\mathbf{x}_i - \boldsymbol{\mu})(\mathbf{x}_i - \boldsymbol{\mu})^T
+\end{equation*}
+
+
+\subsection*{Questão 10}
+Considere um modelo gaussiano de mistura, cuja distribuição marginal $p(\mathbf{z})$ para a variável latente é dada por: $p(\mathbf{z}) = \prod_{k=1}^{K} \pi_k^{z_k}$, enquanto a distribuição condicional para a variável observada é dada por: $p(\mathbf{x}|\mathbf{z}) = \prod_{k=1}^{K} \mathcal{N}(\mathbf{x}|\boldsymbol{\mu}_k, \Sigma_k)^{z_k}$. Mostre que a distribuição marginal de $p(\mathbf{x})$, obtida pela sumarização de $p(\mathbf{z})p(\mathbf{x}|\mathbf{z})$ para todos valores possíveis de $\mathbf{z}$, é uma mistura Gaussiana na forma:
+
+\begin{equation*}
+p(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \mathcal{N}(\mathbf{x}|\boldsymbol{\mu}_k, \Sigma_k)
+\end{equation*}
+
+\textbf{Resposta:}\\[1em]
+% 1. fazer p(x) em função de p(x|z), usando a integral ou o somatorio
+Temos que $p(x)$ é dado pela integral da probabilidade condicional, integrando sobre todos os valores possíveis de $\mathbf{z}$:
+\begin{equation*}
+  p(\mathbf{x}) = \int p(\mathbf{x}|\mathbf{z})p(\mathbf{z})d\mathbf{z}
+\end{equation*}
+Substituindo as distribuições condicionais e marginais:
+\begin{equation*}
+  p(\mathbf{x}) = \int \prod_{k=1}^{K} \mathcal{N}(\mathbf{x}|\boldsymbol{\mu}_k, \Sigma_k)^{z_k} \prod_{k=1}^{K} \pi_k^{z_k}d\mathbf{z}
+\end{equation*}
+Na prática, a codificação em $z_k$ funciona como um one-hot encoding. Quando $z_k$ não ``casa'' com o da distribuição gaussiana, seu valor zera a parcela de $\pi_k$. Dessa forma, a expressão simplifica para um somatório das gaussianas com seu respectivo $\pi_k$:
+\begin{equation*}
+  p(\mathbf{x}) = \int_{Z} \pi_k \mathcal{N}(\mathbf{x}|\boldsymbol{\mu}_k, \Sigma_k)d\mathbf{z_k}
+\end{equation*}
+Ou, na expressão discreta:
+\begin{equation*}
+  p(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \mathcal{N}(\mathbf{x}|\boldsymbol{\mu}_k, \Sigma_k)
+\end{equation*}
+
+\subsection*{Questão 11}
+Considere o caso especial do modelo de Mistura Gaussianas em que as matrizes $\Sigma_k$ de todas as componentes são restritas a possuir um valor comum $\Sigma$. Derive as equações EM para maximização da função de verossimilhança associada a este modelo.
+
+\textbf{Resposta:}\\[1em]
+Por definição, a log-likelihood de variáveis i.i.d. é dada por:
+\begin{equation*}
+  L = \ln \prod_{i=1}^{N} p(\mathbf{x}_i; \theta) = \sum_{i=1}^{N} \ln p(\mathbf{x}_i; \theta)
+\end{equation*}
+Dessa forma, a log-likelihood da distribuição gaussiana é dada por:
+\begin{equation*}
+  L = \sum_{i=1}^{N} \ln \left( \sum_{k=1}^{K} \pi_k \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_k, \Sigma_k) \right)
+\end{equation*}
+Na equação acima, uma singularidade ocorre caso uma gaussiana de um único dado $x = \mu$ acarreta em $sigma = 0$, o que faria a pdf tender a infinito.
+Por isso, é preciso uma solução iterativa: é preciso derivar a equação em relação à média em um momento, e em relação à covariância em outro.
+
+A derivada da log-likelihood em relação à k-ésima média é dada por (lembrando que a  derivada do log é a derivada da função dividida pela função):
+\begin{equation*}
+  \frac{\partial}{\partial \boldsymbol{\mu}_k} L = \sum_{i=1}^{N} \frac{1}{\sum_{k=1}^{K} \pi_k \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_k, \Sigma_k)} \frac{\partial}{\partial \boldsymbol{\mu}_k} \left( \sum_{k=1}^{K} \pi_k \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_k, \Sigma_k) \right)
+\end{equation*}
+Quando $k \neq i$, a derivada é zero, então o somatório se reduz a apenas um termo:
+\begin{equation*}
+  \frac{\partial}{\partial \boldsymbol{\mu}_k} L = \sum_{i=1}^{N} \frac{1}{\sum_{j}^{K} \pi_k \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_k, \Sigma_k)} \frac{\partial}{\partial \boldsymbol{\mu}_k} \left( \pi_k \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_k, \Sigma_k) \right)
+\end{equation*}
+A derivada da gaussiana multivariada em relação à média é dada por:
+\begin{equation*}
+  \frac{\partial}{\partial \boldsymbol{\mu}} \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}, \Sigma) = \frac{\partial}{\partial \boldsymbol{\mu}} \left( \frac{1}{(2\pi)^{d/2}|\Sigma|^{1/2}} \exp\left(-\frac{1}{2}(\mathbf{x}_i - \boldsymbol{\mu})^T\Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu})\right) \right)
+\end{equation*}
+\begin{equation*}
+  \frac{\partial}{\partial \boldsymbol{\mu}} \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}, \Sigma) = \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}, \Sigma) \Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu}) 
+\end{equation*}
+Logo:
+\begin{equation*}
+  0 = -\sum_{i=1}^{N} \frac{\pi_k \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_k, \Sigma_k)}{\sum_{j} \pi_j \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_j, \Sigma_j)} \Sigma^{-1}(\mathbf{x}_i - \boldsymbol{\mu}_k)
+\end{equation*}
+O termo com a razão da gaussiana normalizada pelas demais é chamado de responsabilidade:
+\begin{equation*}
+  \gamma(z_{ik}) = \frac{\pi_k \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_k, \Sigma_k)}{\sum_{j} \pi_j \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_j, \Sigma_j)}
+\end{equation*}
+Finalmente, a média é dada por:
+\begin{equation*}
+  \boldsymbol{\mu}_k = \frac{1}{N_k} \sum_{i=1}^{N} \gamma(z_{ik}) \mathbf{x}_i
+\end{equation*}
+Para o estiamdor de máxima verossimilhança para a covariância, é preciso derivar a log-likelihood em relação à covariância:
+\begin{equation*}
+  \frac{\partial}{\partial \Sigma} L = \sum_{i=1}^{N} \frac{1}{\sum_{j} \pi_j \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_j, \Sigma_j)} \frac{\partial}{\partial \Sigma} \left( \pi_k \mathcal{N}(\mathbf{x}_i|\boldsymbol{\mu}_k, \Sigma_k) \right)
+\end{equation*}
+A derivada da gaussiana multivariada em relação à covariância acarreta em:
+\begin{equation*}
+  \Sigma_k = \frac{1}{N_k} \sum_{i=1}^{N} \gamma(z_{ik}) (\mathbf{x}_i - \boldsymbol{\mu}_k)(\mathbf{x}_i - \boldsymbol{\mu}_k)^T
+\end{equation*}
+FInalmente, em relação ao coeficiente $\pi_k$, é preciso derivar a log-likelihood em relação a $\pi_k$, chega-se em:
+\begin{equation*}
+  \pi_k = \frac{N_k}{N}
+\end{equation*}
+
+
+\section*{III. Classificadores Discriminativos}
+
+\subsection*{III.I Teóricos}
+
+\subsection*{Questão 1}
+Seja um classificador de $M$ classes especificado na forma de funções parametrizadas do tipo $g(\mathbf{x}; \mathbf{w}_k)$. 
+O objetivo é estimar os parâmetros $\mathbf{w}_k$ tal que as saídas do classificador produzam as respostas desejadas, 
+de acordo com a classe de $\mathbf{x}$. Como $\mathbf{x}$ varia aleatoriamente em cada classe, as saídas do classificador 
+variam em torno dos valores de resposta desejados correspondentes, de acordo com uma distribuição Gaussiana de variância 
+conhecida, assumida a mesma para todas as saídas. Mostre que, neste caso, a soma dos erros quadráticos e a estimação ML 
+resultam em estimativas idênticas.
+
+\textbf{Dica:} Sejam $N$ amostras de dados de treino de classes com rótulos conhecidos. Para cada uma delas forme 
+$y_i = g(\mathbf{x}_i; \mathbf{w}_k) - d_i^k$, onde $d_i^k$ é a resposta desejada para a $k$-ésima classe da $i$-ésima amostra. 
+Assuma que os valores de $y_i$ são normalmente distribuídos com média zero e variância $\sigma^2$. 
+Forme a função de verossimilhança utilizando $y_i$.
+
+\textbf{Resposta:}\\[1em]
+
+\subsection*{Questão 2}
+Considere um problema de classificação de 2 classes com atributos conjuntamente gaussianos e mesma variância $\Sigma$ 
+em ambas classes. Projete um classificador MSE linear e mostre que, neste caso, o classificador Bayesiano e o classificador 
+resultante MSE apenas diferem no valor do limiar. Por simplicidade, considere as classes equiprováveis.
+
+\textbf{Dica:} Para calcular hiperplano MSE $\mathbf{w}^T\mathbf{x} + w_0 = 0$, aumente a dimensão de $\mathbf{x}$ de 1 
+e mostre que a solução é dada por:
+
+\begin{equation*}
+\begin{bmatrix} \mathbf{R} & \mathbb{E}[\mathbf{x}] \\ \mathbb{E}[\mathbf{x}]^T & 1 \end{bmatrix} \begin{bmatrix} \mathbf{w} \\ w_0 \end{bmatrix} = 
+\begin{bmatrix} \frac{1}{2}(\boldsymbol{\mu}_1 - \boldsymbol{\mu}_2) \\ 0 \end{bmatrix}
+\end{equation*}
+
+Em seguida, relacione $\mathbf{R}$ com $\Sigma$, e mostre que o classificador MSE assume a forma:
+
+\begin{equation*}
+(\boldsymbol{\mu}_1 - \boldsymbol{\mu}_2)^T \Sigma^{-1} \left(\mathbf{x} - \frac{1}{2}(\boldsymbol{\mu}_1 - \boldsymbol{\mu}_2)\right) \geq 0
+\end{equation*}
+
+\subsection*{Questão 3}
+Nesta questão são discutidas as propriedades elementares da regressão logística com regularização $l_2$. 
+Considere a minimização da seguinte função:
+
+\begin{equation*}
+J(\mathbf{w}) = -l(\mathbf{w}, D_{\text{treino}}) + \lambda \|\mathbf{w}\|_2^2
+\end{equation*}
+
+onde:
+
+\begin{equation*}
+l(\mathbf{w}, D) = \frac{1}{|D|} \sum_{i \in D} \log \sigma(y_i \mathbf{x}_i^T \mathbf{w})
+\end{equation*}
+
+é o valor médio do logaritmo da verossimilhança no conjunto $D$, para $y_i \in \{-1, +1\}$, 
+e $\sigma$ representa a função logística. Responda as seguintes questões como verdadeiras ou falsas, justificando adequadamente.
+
+\begin{enumerate}
+  \item[(a)] $J(\mathbf{w})$ possui múltiplas soluções locais ótimas?
+  \item[(b)] Seja $\hat{\mathbf{w}} = \arg\min_{\mathbf{w}} J(\mathbf{w})$ um ótimo global. O vetor $\hat{\mathbf{w}}$ é esparso (possui muitos zeros)?
+  \item[(c)] Se o conjunto de treino é linearmente separável, alguns pesos $w_j$ podem se tornar infinitos se $\lambda = 0$?
+  \item[(d)] $l(\hat{\mathbf{w}}, D_{\text{treino}})$ sempre aumenta quando $\lambda$ é aumentado?
+  \item[(e)] $l(\hat{\mathbf{w}}, D_{\text{teste}})$ sempre aumenta quando $\lambda$ é aumentado?
+\end{enumerate}
+
+\subsection*{Questão 4}
+Considere um modelo de classificador generativo para $K$ classes definido pelas probabilidades a priori $P(C_k) = \Pi_k$ 
+e densidades classe-condicionais gerais dadas por $p(\boldsymbol{\phi}|C_k)$, onde $\boldsymbol{\phi}$ é o vetor de atributos 
+de entrada. Suponha a disponibilização de um conjunto de treinamento $\{\boldsymbol{\phi}_n, \mathbf{t}_n\}$, 
+onde $n = 1, \cdots, N$, e $\mathbf{t}_n$ é um vetor binário de comprimento $K$ que usa codificação binária 1-de-$K$, 
+portanto possui componentes $t_{nj} = I_{jk}$ se o padrão $n$ é da classe $C_k$. Assumindo que as amostras dos 
+dados são sorteadas aleatoriamente deste modelo, mostre que a solução de máxima verossimilhança para as probabilidades 
+a priori são dadas por:
+
+\begin{equation*}
+\pi_k = \frac{N_k}{N}
+\end{equation*}
+
+onde $N_k$ é o número de pontos de dados atribuídos à classe $C_k$.
+
+\subsection*{Questão 5}
+Considere um problema de classificação com $K$ classes para os quais o vetor de atributos $\boldsymbol{\phi}$ possui 
+$M$ componentes e cada uma delas pode assumir $L$ valores discretos. Assuma que os valores de cada componente 
+sejam representados pela codificação binária 1-de-$L$. Adicionalmente, suponha que, condicionado à classe $C_k$, 
+as $M$ componentes de $\boldsymbol{\phi}$ são independentes, tal que as densidades classe-condicionais fatoram 
+com respeito às componentes dos atributos. Considere a função softmax no formato:
+
+\begin{equation*}
+p(C_k|\mathbf{x}) = \frac{\exp(a_k)}{\sum_j \exp(a_j)}
+\end{equation*}
+
+onde: $a_k = \log(p(\mathbf{x}|C_k)p(C_k))$. Mostre que as quantidades $a_k$ são funções lineares das componentes 
+de $\boldsymbol{\phi}$ e estabeleça a conexão destes resultados com o modelo Bayesiano ingênuo.
+
+
+
+\end{document}

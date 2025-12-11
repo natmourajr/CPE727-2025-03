@@ -1,24 +1,31 @@
 """
-Model imports and definitions for IARA experiments.
-"""
+Modelos de classificacao para Fashion MNIST e AG_NEWS
 
-from .cnn import IARACNN
-from .mlp import IARAMLP
-from .resnet import get_resnet18, get_resnet34, get_resnet50
-from .efficientnet import get_efficientnet_b0, get_efficientnet_b1
-from .convnext import get_convnext_tiny, get_convnext_small
-from .autoencoder import ConvolutionalAutoencoder, DenoisingAutoencoder
+Implementacoes de classificadores generativos e discriminativos:
+    Generativos:
+        - Naive Bayes Gaussiano (baseline, assume features contínuas)
+        - Naive Bayes Bernoulli (features binárias)
+        - Naive Bayes Multinomial (features de contagem, TF-IDF)
+        - Gaussian Mixture Model (multimodal, clusters)
+    Discriminativos:
+        - Regressao Logistica Softmax (multinomial)
+        - Regressao Logistica OvR (one-vs-rest)
+        - Random Forest (ensemble de árvores)
+"""
+from src.models.naive_bayes import NaiveBayesGaussian
+from src.models.naive_bayes_bernoulli import NaiveBayesBernoulli
+from src.models.naive_bayes_multinomial import NaiveBayesMultinomial
+from src.models.gmm import GMMClassifier
+from src.models.logistic_softmax import LogisticRegressionSoftmax
+from src.models.logistic_ovr import LogisticRegressionOvR
+from src.models.random_forest import RandomForest
 
 __all__ = [
-    "IARACNN",
-    "IARAMLP",
-    "get_resnet18",
-    "get_resnet34",
-    "get_resnet50",
-    "get_efficientnet_b0",
-    "get_efficientnet_b1",
-    "get_convnext_tiny",
-    "get_convnext_small",
-    "ConvolutionalAutoencoder",
-    "DenoisingAutoencoder",
+    "NaiveBayesGaussian",
+    "NaiveBayesBernoulli",
+    "NaiveBayesMultinomial",
+    "GMMClassifier",
+    "LogisticRegressionSoftmax",
+    "LogisticRegressionOvR",
+    "RandomForest",
 ]

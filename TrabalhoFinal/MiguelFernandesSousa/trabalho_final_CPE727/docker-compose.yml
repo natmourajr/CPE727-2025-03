@@ -1,138 +1,104 @@
 version: '3.8'
 
 services:
-  # Development environment with Jupyter
-  dev:
+  experiments:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev
-    image: iara-dl:dev
-    container_name: iara-dev
+    container_name: cpe727_experiments
     volumes:
-      - .:/workspace
-      - ./data:/workspace/data
-      - ./notebooks:/workspace/notebooks
-      - ./experiments:/workspace/experiments
-      - pip-cache:/root/.cache/pip
-    ports:
-      - "8888:8888"  # Jupyter
-      - "6006:6006"  # TensorBoard
-      - "5000:5000"  # MLflow UI
+      # Mount data directories
+      - ./data:/app/data
+      # Mount output directories
+      - ./eda/outputs:/app/eda/outputs
+      - ./results:/app/results
+      - ./confusion_matrices_baseline:/app/confusion_matrices_baseline
+      # Mount MLflow tracking
+      - ./mlruns:/app/mlruns
+      # Mount source code for development
+      - ./src:/app/src
+      - ./scripts:/app/scripts
     environment:
-      - JUPYTER_ENABLE_LAB=yes
-      - PYTHONPATH=/workspace
-    command: >
-      bash -c "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
-      --NotebookApp.token='' --NotebookApp.password=''"
-    stdin_open: true
-    tty: true
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    # Override default command - run all experiments
+    command: uv run run_experiments.py
+    # Uncomment to keep container running for debugging
+    # tty: true
+    # stdin_open: true
 
-  # GPU training environment
-  train-gpu:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: gpu
-      args:
-        CUDA_VERSION: "12.1.0"
-        CUDNN_VERSION: "8"
-    image: iara-dl:gpu
-    container_name: iara-train-gpu
-    runtime: nvidia
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - CUDA_VISIBLE_DEVICES=0
-      - PYTHONPATH=/workspace
-    volumes:
-      - .:/workspace
-      - ./data:/workspace/data
-      - ./experiments:/workspace/experiments
-      - ./checkpoints:/workspace/checkpoints
-      - pip-cache:/root/.cache/pip
-    ports:
-      - "6007:6006"  # TensorBoard
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    stdin_open: true
-    tty: true
-    command: bash
-
-  # CPU training/testing environment
-  train-cpu:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: cpu
-    image: iara-dl:cpu
-    container_name: iara-train-cpu
-    volumes:
-      - .:/workspace
-      - ./data:/workspace/data
-      - ./experiments:/workspace/experiments
-      - ./checkpoints:/workspace/checkpoints
-      - pip-cache:/root/.cache/pip
-    environment:
-      - PYTHONPATH=/workspace
-      - OMP_NUM_THREADS=4
-      - MKL_NUM_THREADS=4
-    ports:
-      - "6008:6006"  # TensorBoard
-    stdin_open: true
-    tty: true
-    command: bash
-
-  # Testing environment
-  test:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: cpu
-    image: iara-dl:test
-    container_name: iara-test
-    volumes:
-      - .:/workspace
-      - ./data:/workspace/data
-    environment:
-      - PYTHONPATH=/workspace
-    command: python test_dataset.py --mode unittest
-
-  # TensorBoard standalone
-  tensorboard:
-    image: tensorflow/tensorflow:latest
-    container_name: iara-tensorboard
-    volumes:
-      - ./experiments:/workspace/experiments
-      - ./runs:/workspace/runs
-    ports:
-      - "6009:6006"
-    command: tensorboard --logdir=/workspace/runs --host=0.0.0.0 --port=6006
-
-  # MLflow UI service
   mlflow:
     build:
       context: .
       dockerfile: Dockerfile
-      target: cpu
-    image: iara-dl:mlflow
-    container_name: iara-mlflow
-    volumes:
-      - ./experiments:/workspace/experiments
+    container_name: cpe727_mlflow
     ports:
       - "5000:5000"
-    command: mlflow ui --backend-store-uri file:///workspace/experiments/mlruns --host 0.0.0.0 --port 5000
+    volumes:
+      - ./mlruns:/app/mlruns
     environment:
-      - PYTHONPATH=/workspace
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: uv run mlflow ui --host 0.0.0.0 --port 5000
+    depends_on:
+      - experiments
 
-volumes:
-  pip-cache:
-    driver: local
+  # Service for running specific experiments
+  baseline-fashion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_baseline_fashion
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./confusion_matrices_baseline:/app/confusion_matrices_baseline
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: uv run run_experiments.py --dataset fashion_mnist --skip-deep
+    profiles: ["baseline"]
 
-networks:
-  default:
-    name: iara-network
+  baseline-agnews:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_baseline_agnews
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./confusion_matrices_baseline:/app/confusion_matrices_baseline
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: uv run run_experiments.py --dataset ag_news --skip-deep
+    profiles: ["baseline"]
+
+  deep-learning:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_deep_learning
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: uv run run_experiments.py --skip-baseline
+    profiles: ["deep"]
+
+  eda:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_eda
+    volumes:
+      - ./data:/app/data
+      - ./eda/outputs:/app/eda/outputs
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: uv run run_experiments.py --skip-baseline --skip-deep
+    profiles: ["eda"]
