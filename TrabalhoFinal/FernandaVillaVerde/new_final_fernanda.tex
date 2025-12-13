@@ -51,7 +51,7 @@
 % ---- Entrada ----
 \node[box] (x) {
   Entrada\\
-  $(\mathbf{x},\,\mathbf{c})_{1:T}$
+  $\mathbf{X} = (\mathbf{x}, \mathbf{m})_{1:T}$
 };
 
 % ---- Encoder ----
@@ -60,30 +60,19 @@
   (MLP / Embedding)
 };
 
-% ---- RNN Encoder (q(z|X)) ----
+% ---- RNN Encoder (q(h|X)) ----
 \node[enc, right=of emb] (rnn) {
   RNN Encoder\\
-  $\mu_z,\ \log\sigma_z^2$
 };
 
-% ---- Amostragem latente ----
-\node[circ, right=of rnn] (z) {$z$};
+% ---- Amostragem latente (h_T) ----
+\node[circ, right=of rnn] (hT) {$h_T$};
 
-% ---- Decoder (p(tau|z)) ----
-\node[dec, right=of z] (dec) {
+% ---- Decoder (p(tau|h)) ----
+\node[dec, right=of hT] (dec) {
   Decoder\\
   $\hat{c},\ \log\sigma_c^2$
 };
-
-% ---- Caixa do VAE latente (RNN encoder + z + decoder) ----
-% \node[
-% draw,
-%   dashed,
-%   rounded corners,
-%   inner sep=4pt,
-%   fit=(z) (dec),
-%   label=below:{\scriptsize VAE latente}
-% ] (vaebox) {};
 
 % ---- Variação arquitetural ----
 \node[extra, below=1.1cm of rnn, text width=4.4cm] (var) {#1};
@@ -92,11 +81,12 @@
 % ---- Setas ----
 \draw[arrow] (x)   -- (emb);
 \draw[arrow] (emb) -- (rnn);
-\draw[arrow] (rnn) -- (z);
-\draw[arrow] (z)   -- (dec);
+\draw[arrow] (rnn) -- (hT);
+\draw[arrow] (hT)  -- (dec);
 
 \end{tikzpicture}%
 }
+
 
 
 \titlebackground*{assets/background_alt.png}
@@ -220,16 +210,15 @@
       \]
     \item Para cada janela de histórico
       \(\mathbf{X} = (x_{t-L+1}, \dots, x_t)\),
-      condicionada ao estado atual \(s_t\),
       queremos modelar a distribuição preditiva:
       \[
-        p(\tau \mid \mathbf{X}, s_t).
+        p(\tau \mid \mathbf{X}).
       \]
-    \item O modelo produz, para cada estado \(s \in \{0,1,2\}\),
-      parâmetros \(\mu_s(\mathbf{X})\) e \(\sigma_s^2(\mathbf{X})\) que
-      definem as \textbf{PDFs do tempo até mudança de estado}.
-
-\item   Assim, tratamos o problema como um \textbf{forecast probabilístico de tempo até evento}.
+   \item O modelo produz $h_T$, que é parametrizado pelo decoder para gerar 
+$\hat{c}$ e $\log \sigma_c^2$ para cada estado $s \in \{0,1,2\}$,
+definindo assim as \textbf{PDFs do tempo até mudança de estado}.
+    
+\item Assim, tratamos o problema como um \textbf{forecast probabilístico de tempo até evento}.
 
   \end{itemize}
 
@@ -332,13 +321,13 @@
 \(
 \begin{aligned}
 \mathcal{L}_{\text{vae}}
-&= \mathbb{E}_{q(z|\tau)}
+&= \mathbb{E}_{q(h_T|\tau)}
 \!\left[
--\log p(\tau \mid z)
+-\log p(\tau \mid h_T)
 \right] 
 & + \beta\,
 \mathrm{KL}\big(
-q(z\mid\tau)\,\|\,\mathcal{N}(0,I)
+q(h_T\mid\tau)\,\|\,\mathcal{N}(0,I)
 \big)
 \end{aligned}
 \)
@@ -416,13 +405,13 @@ q(z\mid\tau)\,\|\,\mathcal{N}(0,I)
 \begin{aligned}
 NELBO
 &=
-\mathbb{E}_{q(z\mid x)}
+\mathbb{E}_{q(h_T\mid \tau )}
 \!\left[
-- \log p(x \mid z)
+-\log p(\tau \mid h_T)
 \right]
 +
 \mathrm{KL}\!\left(
-q(z\mid x)\,\|\,p(z)
+q(h_T\mid \tau )\,\|\,p(h_T )
 \right)
 \end{aligned}
 \)
@@ -444,9 +433,9 @@ q(z\mid x)\,\|\,p(z)
 \begin{aligned}
 \text{NLL}
 &=
-- \log p(x \mid \mu, \sigma^2)
+- \log p(\tau \mid \mu, \sigma^2)
 &=
-\frac{(x-\mu)^2}{2\sigma^2}
+\frac{(\tau -\mu)^2}{2\sigma^2}
 + \frac{1}{2}\log\sigma^2
 + \text{cte}
 \end{aligned}
@@ -590,6 +579,9 @@ evidenciando diferenças de incerteza e separabilidade entre arquiteturas.}
 
     \item \textbf{Impacto arquitetural}:
       \begin{itemize}
+        \item A distruibuição Gaussiana não se mostrou a melhor
+              escolha para modelar o tempo até mudança de estado,
+              sugerindo explorar outras distribuições.
         \item O BiLSTM aprende representações latentes mais suaves,
       resultando em PDFs visualmente melhor separadas,
       enquanto o LSTM unidirecional apresenta melhor calibração
