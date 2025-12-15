@@ -8,27 +8,27 @@ from torch import nn, optim
 import tqdm
 
 def train_ncf(model, train_loader, valid_loader=None, epochs=100, lr=0.001, device=None):
-    """
-    Treina o modelo NCF e opcionalmente avalia na validação a cada época.
-
-    Retorna:
-        train_losses: lista com loss média por época no treino
-        val_losses: lista com loss média por época na validação (se valid_loader fornecido)
-    """
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
 
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
 
     train_losses = []
     val_losses = []
+
+    # --- Early stopping ---
+    best_val = float("inf")
+    wait = 0
+    patience = 8
+    best_state = None
 
     for epoch in range(epochs):
         # --- Treino ---
         model.train()
         total_train_loss = 0
+
         for user, item, rating in tqdm.tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Train"):
             user, item, rating = user.to(device), item.to(device), rating.to(device)
 
@@ -36,6 +36,10 @@ def train_ncf(model, train_loader, valid_loader=None, epochs=100, lr=0.001, devi
             output = model(user, item)
             loss = criterion(output, rating)
             loss.backward()
+
+            # gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
+
             optimizer.step()
 
             total_train_loss += loss.item() * user.size(0)
@@ -53,13 +57,29 @@ def train_ncf(model, train_loader, valid_loader=None, epochs=100, lr=0.001, devi
                     output = model(user, item)
                     loss = criterion(output, rating)
                     total_val_loss += loss.item() * user.size(0)
+
             avg_val_loss = total_val_loss / len(valid_loader.dataset)
             val_losses.append(avg_val_loss)
+
             print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
+
+            # --- Early stopping check ---
+            if avg_val_loss < best_val - 1e-4:
+                best_val = avg_val_loss
+                wait = 0
+                best_state = model.state_dict()
+            else:
+                wait += 1
+                if wait >= patience:
+                    print(f"\nEarly stopping at epoch {epoch+1}")
+                    model.load_state_dict(best_state)
+                    break
+
         else:
             print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}")
 
     return train_losses, val_losses
+
 
 
 def evaluate_ncf(model, data_loader, device=None):
