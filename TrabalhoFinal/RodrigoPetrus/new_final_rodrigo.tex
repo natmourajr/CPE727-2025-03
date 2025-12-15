@@ -613,6 +613,152 @@ DEEP
 
 \end{frame}
 
+\begin{frame}{Resultados quantitativos e custo computacional}
+\centering
+
+\begin{table}[h]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Modelo} 
+& \textbf{NELBO$\downarrow$} 
+& \textbf{NLL$\downarrow$} 
+& \textbf{MSE$\downarrow$}
+& \textbf{Cov90$\rightarrow$} 
+& \textbf{W90$\downarrow$}
+& \textbf{Épocas}
+& \textbf{Tempo total (min)}
+& \textbf{tempo ($s$)/ép.} \\
+\midrule
+
+\textbf{GRU Difusão}
+& \textbf{0.510}
+& \textbf{0.456}
+& \textbf{$0.237 \pm 0.064$} 
+& \textbf{0.897}
+& \textbf{2.213}
+& \textbf{310}
+& \textbf{10.1}
+& \textbf{$1.96 \pm 0.19$} \\
+
+BiLSTM Difusão
+& 0.518
+& 0.462
+& $0.243 \pm 0.067$
+& 0.902 
+& 2.200
+& 183
+& 11.2
+& $3.67 \pm 0.34$ \\
+
+GRU 
+& 0.558 
+& 0.498 
+& $0.300 \pm 0.108$ 
+& 0.905 
+& 2.252
+& 148
+& 5.1
+& $2.06 \pm 0.36$ \\
+
+LSTM 
+& 0.588 
+& 0.513 
+& $0.332 \pm 0.129$ 
+& 0.900 
+& 2.251
+& 130
+& 4.9
+& $2.28 \pm 0.39$ \\
+
+BiGRU 
+& 0.589 
+& 0.499 
+& $0.335 \pm 0.136$ 
+& 0.909 
+& 2.267
+& 126
+& 7.7
+& $3.69 \pm 0.74$ \\
+
+BiLSTM VarDrop 0.2 
+& 0.595 
+& 0.506 
+& $0.317 \pm 0.119$ 
+& 0.898 
+& 2.240
+& 119
+& 7.5
+& $3.80 \pm 0.47$ \\
+
+BiLSTM RAdam 
+& 0.597 
+& 0.511 
+& $0.341 \pm 0.139$ 
+& 0.898 
+& 2.234
+& 115
+& 6.9
+& $3.58 \pm 0.23$ \\
+
+BiLSTM Warmup/Sched. 
+& 0.598 
+& 0.504 
+& $0.354 \pm 0.146$ 
+& 0.903 
+& 2.251
+& 107
+& 6.5
+& $3.65 \pm 0.40$ \\
+
+BiLSTM AdamW 
+& 0.601 
+& 0.506 
+& $0.341 \pm 0.141$ 
+& 0.900 
+& 2.224
+& 112
+& 7.0
+& $3.77 \pm 0.53$ \\
+
+BiLSTM 
+& 0.609 
+& 0.527 
+& $0.337 \pm 0.133$ 
+& 0.901 
+& 2.269
+& 120
+& 7.4
+& $3.70 \pm 0.43$ \\
+
+BiLSTM LayerNorm 
+& 0.617 
+& 0.514 
+& $0.342 \pm 0.140$ 
+& 0.907 
+& 2.281
+& 99
+& 5.9
+& $3.54 \pm 0.31$ \\
+
+DEEP 
+& 1.217 
+& 1.164 
+& $0.693 \pm 0.209$ 
+& 0.916 
+& 2.785
+& 359
+& 8.9
+& $1.48 \pm 0.22$ \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
 
 
 \begin{frame}{Curva de treinamento — Modelo campeão}
@@ -702,12 +848,7 @@ A abordagem probabilística captura melhor:
   \item \textbf{Modelo campeão}: \textbf{GRU + Difusão},
         com desempenho muito próximo do BiLSTM + Difusão.
 
-<<<<<<< HEAD
   \item O modelo gerou séries próximas a realidade e com calibração da distribuição probabilística adequada.
-=======
-  \item O modelo foi capaz de gerar séries realistas e calibradas
-        em relação à distribuição esperada.
->>>>>>> 181167f5ce28cc7fc4ed454e968c9beaa3045c1a
 
   \item Potencial de aplicação:
         gêmeos digitais e simulação de cenários críticos.
