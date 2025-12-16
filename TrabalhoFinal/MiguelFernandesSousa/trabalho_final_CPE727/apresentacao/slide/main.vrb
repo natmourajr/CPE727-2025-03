@@ -1,31 +1,21 @@
-\frametitle{Representação TF-IDF -- Vetores de Entrada}
-\textbf{Cada documento $\rightarrow$ vetor de 10.000 dimensões:}
-
-  \vspace{0.3cm}
-
-  \tiny
-  \begin{verbatim}
-  Documento: "Apple launches new iPhone"
-
-  Vocabulário (exemplo simplificado):
-    "apple" → posição 0
-    "launches" → posição 1
-    "new" → posição 2
-    "iphone" → posição 3
-    ... (até 10.000 palavras)
-
-  Vetor TF-IDF (denso):
-  [0.234, 0.189, 0.156, 0.201, 0.0, 0.0, ..., 0.0]
-    ↑      ↑      ↑      ↑      ↑    ↑           ↑
-   apple launches new  iphone  outras palavras (zeros)
-  \end{verbatim}
+\frametitle{Exemplo de Tokenização}
+\textbf{Texto original:}
 
   \vspace{0.2cm}
   \small
+  \texttt{"Apple launches new iPhone model"}
 
-  \textbf{Características:}
-  \begin{itemize}
-  \item Cada slot = uma palavra do vocabulário com posição fixa
-  \item Valores = scores TF-IDF são floats entre 0.0 e $\sim$1.0
-  \item Representação esparsa$\sim$98\% zeros
-  \end{itemize}
+  \vspace{0.4cm}
+  \textbf{Após tokenização (sequência de IDs):}
+
+  \vspace{0.2cm}
+  \tiny
+  \begin{verbatim}
+  [234, 1456, 89, 3421, 567, 0, 0, 0, ..., 0]
+   ↑    ↑     ↑   ↑     ↑    ↑  ↑  ↑       ↑
+  apple launch new iphone model <PAD> (até posição 200)
+  \end{verbatim}
+
+  \vspace{0.3cm}
+  \small
+  Cada palavra é mapeada para um unique ID.

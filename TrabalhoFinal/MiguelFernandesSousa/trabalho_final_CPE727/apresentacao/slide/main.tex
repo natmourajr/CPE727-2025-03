@@ -59,15 +59,6 @@
   \tableofcontents
 \end{frame}
 
-\begin{frame}{Tokenização (AG\_NEWS)}
-  \small
-  \begin{itemize}
-  \item Word-level, vocabulário de 10.000 termos (+ \texttt{<PAD>=0}, \texttt{<UNK>=1})
-  \item Sequência fixa de 200 tokens: padding/truncamento no fim
-  \item Comprimento médio \textasciitilde40 tokens (mín. 12, máx. 183) \(\rightarrow\) \textasciitilde80\% padding
-  \item Preserva ordem das palavras; adequado para LSTM capturar dependências sequenciais
-  \end{itemize}
-\end{frame}
 \section{Introdução}
 
 \begin{frame}{Introdução}
@@ -93,8 +84,10 @@
   \begin{itemize}
   \item 127.600 notícias (120k treino, 7.6k teste)
   \item 4 classes: World, Sports, Business, Sci/Tech
-  \item TF-IDF com 10.000 features
-  \item Remoção de stop words
+  \item Vocabulário total de cerca de 65k termos
+  \item 341 stopwords (TF-IDF) removidas
+  \item Filtro do TF-IDF reduz para 25.985 termos, truncados em 10k features.
+  \item Mediana e média do ano abordado nas notícias: 2004 e 2000, respectivamente (regex com ``match'' em 6,9\% das amostras)
   \end{itemize}
 \end{frame}
 
@@ -118,6 +111,8 @@
   [0.234, 0.189, 0.156, 0.201, 0.0, 0.0, ..., 0.0]
     ↑      ↑      ↑      ↑      ↑    ↑           ↑
    apple launches new  iphone  outras palavras (zeros)
+
+   Documento 2: "new iPhone launches Apple" gera o mesmo vetor.
   \end{verbatim}
   
   \vspace{0.2cm}
@@ -125,9 +120,9 @@
   
   \textbf{Características:}
   \begin{itemize}
-  \item Cada slot = uma palavra do vocabulário com posição fixa
-  \item Valores = scores TF-IDF são floats entre 0.0 e $\sim$1.0
-  \item Representação esparsa$\sim$98\% zeros 
+  \item Slot contém uma palavra do vocabulário com posição fixa, se perde na bag-of-words
+  \item scores TF-IDF são floats entre 0.0 e $\sim$1.0
+  \item 98\% de zeros 
   \end{itemize}
 \end{frame}
 
@@ -165,6 +160,42 @@
   \normalsize
 \end{frame}
 
+\begin{frame}{Tokenização (AG\_NEWS)}
+  \small
+  \begin{itemize}
+  \item vocabulário de 10.000 termos
+  \item Caracteres especiais: \texttt{<PAD>=0}, \texttt{<UNK>=1}
+  \item Sequência fixa de 200 tokens com padding no final
+  \item Comprimento médio de 40 tokens por notícia (mín. 12, máx. 183)
+  \item Considerando todos os tokens, 80.16\% são tokens de padding
+  \item Nenhuma notícia foi truncada (máx. 183 $<$ 200)
+  \item Ao contrário da bag-of-words, preserva ordem das palavras para treinamento em LSTM
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemplo de Tokenização}
+  \textbf{Texto original:}
+
+  \vspace{0.2cm}
+  \small
+  \texttt{"Apple launches new iPhone model"}
+
+  \vspace{0.4cm}
+  \textbf{Após tokenização (sequência de IDs):}
+
+  \vspace{0.2cm}
+  \tiny
+  \begin{verbatim}
+  [234, 1456, 89, 3421, 567, 0, 0, 0, ..., 0]
+   ↑    ↑     ↑   ↑     ↑    ↑  ↑  ↑       ↑
+  apple launch new iphone model <PAD> (até posição 200)
+  \end{verbatim}
+
+  \vspace{0.3cm}
+  \small
+  Cada palavra é mapeada para um unique ID.
+\end{frame}
+
 \section{Análise Exploratória -- Fashion MNIST}
 
 \begin{frame}{Distribuição de Amostras}
@@ -198,12 +229,31 @@
 
 
 
-\begin{frame}{Mapa de Calor -- Termos Mais Frequentes}
+\begin{frame}{15 Termos com maior TD-IDF médio por Classe}
   \centering
-  \includegraphics[width=0.50\textwidth]{../../eda/outputs/ag_news/top_terms_heatmap.png}
+  \includegraphics[width=0.50\textwidth]{../../eda/outputs/ag_news/top_terms_heatmap_sorted.png}
 \end{frame}
 
-\begin{frame}{Esparsidade da Matriz TF-IDF}
+
+\begin{frame}
+  \centering
+  \includegraphics[width=1\textwidth, trim=0 -15cm 0 15cm]{../../eda/outputs/ag_news/top_terms_heatmap_sorted.png}
+\end{frame}
+\begin{frame}
+  \centering
+  \includegraphics[width=1\textwidth, trim=0 -10cm 0 10cm]{../../eda/outputs/ag_news/top_terms_heatmap_sorted.png}
+\end{frame}
+\begin{frame}
+  \centering
+  \includegraphics[width=1\textwidth, trim=0 -5cm 0 5cm]{../../eda/outputs/ag_news/top_terms_heatmap_sorted.png}
+\end{frame}
+\begin{frame}
+  \centering
+  \includegraphics[width=1\textwidth]{../../eda/outputs/ag_news/top_terms_heatmap_sorted.png}
+\end{frame}
+
+
+\begin{frame}{Distribuição dos Valores na Matriz TF-IDF}
   \centering
   \includegraphics[width=0.85\textwidth]{../../eda/outputs/ag_news/tfidf_sparsity.png}
 \end{frame}
@@ -218,7 +268,7 @@
     \begin{itemize}
     \item GaussianNB: distribuição normal (features contínuas)
     \item BernoulliNB: distribuição binomial (features binárias)
-    \item MultinomialNB: distribuição multinomial (contagem/frequência)
+    \item MultinomialNB: distribuição multinomial (generalização da binomial para casos com mais de 2 resultados possíveis)
     \end{itemize}
   \item \textbf{GMM}: 1-4 componentes por classe
     \begin{itemize}
@@ -229,7 +279,7 @@
 
   \textbf{Discriminativos:}
   \begin{itemize}
-  \item \textbf{Regressão Logística}: norma L2, parâmetro C
+  \item \textbf{Regressão Logística}: regularização L2 por parâmetro C (inverso do termo da regularização)
     \begin{itemize}
     \item Softmax (multinomial)
     \item One-vs-Rest (OvR)
@@ -255,6 +305,45 @@
   \item LSTM (AG\_NEWS): variação de lr, embedding\_dim, hidden\_dim, dropout, bidirecionalidade, batch\_size
   \item MLflow para rastreamento de métricas, curvas e matrizes de confusão
   \end{itemize}
+\end{frame}
+
+\begin{frame}{Arquiteturas Deep Learning}
+
+  \textbf{CNN (Fashion MNIST):} 2 blocos convolucionais (32 e 64 filtros) e camada densa com regularização
+
+  \vspace{0.2cm}
+  \tiny
+  \begin{center}
+  \texttt{Input (28×28×1)}\\
+  $\downarrow$\\
+  \texttt{Conv2D(32, 3×3) + BatchNorm + ReLU + MaxPool(2×2)}\\
+  $\downarrow$\\
+  \texttt{Conv2D(64, 3×3) + BatchNorm + ReLU + MaxPool(2×2)}\\
+  $\downarrow$\\
+  \texttt{Flatten $\rightarrow$ Dense(128) + Dropout(0.4) $\rightarrow$ Output(10)}
+  \end{center}
+
+  \vspace{0.4cm}
+  \small
+
+  \textbf{LSTM (AG\_NEWS):} Embedding + LSTM bidirecional com dropout antes e depois
+
+  \vspace{0.2cm}
+  \tiny
+  \begin{center}
+  \texttt{Input (200 tokens)}\\
+  $\downarrow$\\
+  \texttt{Embedding(vocab=10k, dim=100)}\\
+  $\downarrow$\\
+  \texttt{Dropout(0.4)}\\
+  $\downarrow$\\
+  \texttt{BiLSTM(hidden=128) [128 forward + 128 backward = 256 features]}\\
+  $\downarrow$\\
+  \texttt{Dropout(0.4)}\\
+  $\downarrow$\\
+  \texttt{Dense(4)}
+  \end{center}
+
 \end{frame}
 
 \begin{frame}{Hiperparâmetros Finais (Deep)}
@@ -356,6 +445,11 @@
   \end{frame}
 
 
+\begin{frame}{Variância: Roupas vs Calçados}
+  \centering
+  \includegraphics[width=0.85\textwidth]{../../eda/outputs/fashion_mnist/pixel_variance_clothing_vs_footwear.png}
+\end{frame}
+
 
 % \begin{frame}{Resultados -- AG\_NEWS (Validação Cruzada)}
 %   \begin{table}
@@ -418,6 +512,17 @@
   \end{frame}
 
 
+\begin{frame}
+  \centering
+  \includegraphics[width=1\textwidth, trim=0 -15cm 0 15cm]{../../eda/outputs/ag_news/top_terms_heatmap_sorted.png}
+\end{frame}
+
+\begin{frame}
+  \centering
+  \includegraphics[width=1\textwidth]{../../eda/outputs/ag_news/top_terms_heatmap_sorted.png}
+\end{frame}
+
+
 \begin{frame}{Comparação: Naive Bayes}
   
   \begin{columns}
@@ -454,7 +559,7 @@
   
   \vspace{0.3cm}
   
-  \textbf{Observação:} Multinomial $>$ Bernoulli $>$ Gaussiano em ambos datasets
+  Multinomial $\approx$ Bernoulli $>$ Gaussiano em ambos datasets
 \end{frame}
 
 \section{Análise Comparativa}
@@ -463,10 +568,10 @@
   \begin{table}
   \begin{tabular}{lcc}
   \hline
-  \textbf{Dataset} & \textbf{Gap} & \textbf{Possível motivo} \\
+  \textbf{Dataset} & \textbf{Gap} & \textbf{Hipótese para matriz de covariância} \\
   \hline
-  Fashion MNIST & \textbf{22.29\%} & Pixels muito correlacionados \\
-  AG\_NEWS & \textbf{1.68\%} & TF-IDF gera vetor esparso \\
+  Fashion MNIST & \textbf{22.29\%} & Majoritariamente preenchida  \\
+  AG\_NEWS & \textbf{1.68\%} & Muitos zeros cortam termos\\
   \hline
   \end{tabular}
   \end{table}
@@ -481,9 +586,11 @@
   \normalsize
   
   \begin{itemize}
-  \item A modalide dos dados pode ter influenciado.
-  \item Features densas e correlacionadas como imagens violam suposição de independência do Naive Bayes
-  \item Features esparsas e menos correlacionadas são mais adequadas para modelos generativos justamente por supor a independência
+  \item NB assume independência condicional entre as features: 
+  \item $P(y|x) \propto \frac{P(x|y) \cdot P(y)}{P(x)}$
+    $P(x|y) = P(x_1|y) \times P(x_2|y) \times \cdots \times P(x_n|y)$
+  \item Matriz de covariância majoritariamente preenchida viola suposição de independência
+  \item Algoritmo iterativo da GMM depende da matriz de covariância estável para convergir apropriadamente
   \end{itemize}
 \end{frame}
 
@@ -516,7 +623,7 @@
 \end{frame}
 
 \begin{frame}{Problema no Paralelismo da Validação Cruzada}
-  \textbf{Problema:} Random Forest no AG\_NEWS consumiu \textbf{96 GB RAM}
+  \textbf{Problema:} Random Forest no AG\_NEWS indicou nominalmente 96 GB RAM em uso
   
   \vspace{0.3cm}
   
@@ -605,6 +712,18 @@
 %   \end{itemize}
 % \end{frame}
 
+\begin{frame}{Melhorias e Trabalho Futuro}
+  \begin{itemize}
+    \item Solucionar divergência da curva de erro na LSTM, uso de regularização adicional além do early stopping
+    \item Avaliar efeitos da redução de padding do ag\_news (média de 40 tokens) ou de truncamento enquanto medida de compressão.
+    \item Avaliar embeddings pré-treinados para LSTM (ex: Word2Vec) e outros tipos de tokenização.
+    \item Avaliar modelos pré-treinados mais profundos para CNN (Yolo, ResNet)
+      \vspace{1em}
+    \hrule
+    \vspace{1em}
+    \item Estudar o efeito do concept shift/dataset shift em datasets de notícias desatualizados, inclusive em LLMs.
+  \end{itemize}
+\end{frame}
 
 \begin{frame}
   \centering
