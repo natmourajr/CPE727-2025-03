@@ -13,7 +13,7 @@ class EfficientNetB0(nn.Module):
         num_features = self.model.classifier[1].in_features
         self.model.classifier[1] = nn.Linear(num_features, num_classes)
 
-        self.model.features[0][0] = nn.Conv2d(num_channels, 32, kernel_size=3, stride=2, padding=1, bias=False)
+        # self.model.features[0][0] = nn.Conv2d(num_channels, 32, kernel_size=3, stride=2, padding=1, bias=False)
 
         self.model.to(device)
 
