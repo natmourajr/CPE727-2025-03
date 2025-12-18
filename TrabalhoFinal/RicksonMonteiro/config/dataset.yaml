@@ -1,0 +1,27 @@
+dataset:
+  name: "microfossils"
+  version: "1.0"
+
+source:
+  path: "data/raw/yolo_files.zip"
+  extract_to: "data/interim/ingested/"
+  overwrite: true
+  multi_experiment: true
+
+
+"info": {
+  "year": 2025,
+  "version": "1.0",
+  "description": "Dataset of Microfossil Detections",
+  "contributor": "Rickson Monteiro",
+  "url": "https://example.com",
+  "date_created": "2025-12-01"
+}
+
+"licenses": [
+  {
+    "id": 1,
+    "name": "Attribution-NonCommercial-ShareAlike License",
+    "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/"
+  }
+]

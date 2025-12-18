@@ -1,0 +1,16 @@
+# Ambiente Python local (se existir)
+venv/
+.env/
+
+# Dados grandes – seus crops
+data/
+
+# Resultados de treino / modelos
+results/
+*.pt
+*.pth
+*.ckpt
+
+# Lixo de compilação Python
+__pycache__/
+*.py[cod]

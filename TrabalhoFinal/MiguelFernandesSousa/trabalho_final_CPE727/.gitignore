@@ -1,0 +1,109 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.venv
+
+# uv
+.uv/
+uv.lock
+__pypackages__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Data
+data/
+*.wav
+*.pkl
+*.h5
+*.hdf5
+
+# Experiments
+runs/
+logs/
+checkpoints/
+wandb/
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Outputs (keep structure, ignore content)
+outputs/
+eda/outputs/*.png
+eda/outputs/*.jpg
+eda/outputs/*.pdf
+results/plots/*.png
+results/plots/*.jpg
+confusion_matrices_baseline/*.png
+confusion_matrices_baseline/*.jpg
+
+# Cache
+experiments/cache/
+*.json
+!pyproject.json
+!tsconfig.json
+!package.json
+
+# Temporary and debug files
+debug_env.py
+test_subprocess.py
+experiments_state.json
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Model files
+*.pth
+*.pt
+*.ckpt
+
+# Plots
+*.png
+*.pdf
+*.jpg
+!docs/*.png
+
+# LaTeX
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# Docker
+.dockerignore.bak
+docker-compose.override.yml
+.env
+*.env.local

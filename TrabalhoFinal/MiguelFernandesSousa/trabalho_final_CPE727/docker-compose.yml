@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  experiments:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_experiments
+    volumes:
+      # Mount data directories
+      - ./data:/app/data
+      # Mount output directories
+      - ./eda/outputs:/app/eda/outputs
+      - ./results:/app/results
+      - ./confusion_matrices_baseline:/app/confusion_matrices_baseline
+      # Mount MLflow tracking
+      - ./mlruns:/app/mlruns
+      # Mount source code for development
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    # Override default command - run all experiments
+    command: uv run run_experiments.py
+    # Uncomment to keep container running for debugging
+    # tty: true
+    # stdin_open: true
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+    environment:
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: uv run mlflow ui --host 0.0.0.0 --port 5000
+    depends_on:
+      - experiments
+
+  # Service for running specific experiments
+  baseline-fashion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_baseline_fashion
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./confusion_matrices_baseline:/app/confusion_matrices_baseline
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: uv run run_experiments.py --dataset fashion_mnist --skip-deep
+    profiles: ["baseline"]
+
+  baseline-agnews:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_baseline_agnews
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./confusion_matrices_baseline:/app/confusion_matrices_baseline
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: uv run run_experiments.py --dataset ag_news --skip-deep
+    profiles: ["baseline"]
+
+  deep-learning:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_deep_learning
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: uv run run_experiments.py --skip-baseline
+    profiles: ["deep"]
+
+  eda:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpe727_eda
+    volumes:
+      - ./data:/app/data
+      - ./eda/outputs:/app/eda/outputs
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: uv run run_experiments.py --skip-baseline --skip-deep
+    profiles: ["eda"]

@@ -1,0 +1,10 @@
+# Parameters for EuroSAT DL Comparison Project
+# This file now references individual parameter files for better organization
+
+# Note: Parameters have been separated into individual files:
+# - parameters_dataset.yml: Dataset configuration
+# - parameters_data_processing.yml: Data splitting, cross-validation, and data loaders
+# - parameters_models.yml: Model architectures (VGG16, ResNet50, ViT)
+# - parameters_training.yml: Training, optimizer, loss, and tensorboard settings
+# - parameters_evaluation.yml: Evaluation metrics and inference settings
+# - parameters_visualization.yml: Visualization options

@@ -1,0 +1,63 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Experiment outputs (will be mounted as volumes)
+mlruns/
+mlartifacts/
+eda/outputs/
+results/
+confusion_matrices_baseline/
+experiments/cache/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+documentation/
+apresentacao/
+v2_deep_apresentacao/
+*.md
+!README.md
+
+# Data (should be downloaded or mounted)
+data/
+
+# Temporary files
+*.log
+*.tmp
+*.bak
+experiments_state.json
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Model files (will be generated)
+*.pth
+*.pt
+*.ckpt
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

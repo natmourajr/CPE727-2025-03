@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  marina:
+    build: .
+    image: marina
+    container_name: marina
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./src:/app/src
+      - ./experiments:/app/experiments
+      - ./config:/app/config
+      - ./data:/app/data
+    shm_size: 16g
+    mem_limit: 64g
+    gpus: all

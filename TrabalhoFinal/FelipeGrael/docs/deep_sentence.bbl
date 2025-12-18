@@ -1,0 +1,47 @@
+\begin{thebibliography}{1}
+
+\bibitem{mikolov2013}
+T.~Mikolov, K.~Chen, G.~S. Corrado, and J.~Dean, ``Efficient estimation of word
+  representations in vector space,'' in {\em International Conference on
+  Learning Representations}, 2013.
+
+\bibitem{bojanowski2016}
+P.~Bojanowski, E.~Grave, A.~Joulin, and T.~Mikolov, ``Enriching word vectors
+  with subword information,'' {\em Transactions of the Association for
+  Computational Linguistics}, vol.~5, 07 2016.
+
+\bibitem{demulder2015}
+W.~{De Mulder}, S.~Bethard, and M.-F. Moens, ``A survey on the application of
+  recurrent neural networks to statistical language modeling,'' {\em Computer
+  Speech and Language}, vol.~30, no.~1, pp.~61--98, 2015.
+
+\bibitem{kim2014}
+Y.~Kim, ``Convolutional neural networks for sentence classification,'' in {\em
+  Proceedings of the 2014 Conference on Empirical Methods in Natural Language
+  Processing ({EMNLP})} (A.~Moschitti, B.~Pang, and W.~Daelemans, eds.), (Doha,
+  Qatar), pp.~1746--1751, Association for Computational Linguistics, Oct. 2014.
+
+\bibitem{neculoiu2016}
+P.~Neculoiu, M.~Versteegh, and M.~Rotaru, ``Learning text similarity with
+  {S}iamese recurrent networks,'' in {\em Proceedings of the 1st Workshop on
+  Representation Learning for {NLP}} (P.~Blunsom, K.~Cho, S.~Cohen,
+  E.~Grefenstette, K.~M. Hermann, L.~Rimell, J.~Weston, and S.~W.-t. Yih,
+  eds.), (Berlin, Germany), pp.~148--157, Association for Computational
+  Linguistics, Aug. 2016.
+
+\bibitem{cer2017}
+D.~Cer, M.~Diab, E.~Agirre, I.~Lopez-Gazpio, and L.~Specia, ``{S}em{E}val-2017
+  task 1: Semantic textual similarity multilingual and crosslingual focused
+  evaluation,'' in {\em Proceedings of the 11th International Workshop on
+  Semantic Evaluation ({S}em{E}val-2017)} (S.~Bethard, M.~Carpuat,
+  M.~Apidianaki, S.~M. Mohammad, D.~Cer, and D.~Jurgens, eds.), (Vancouver,
+  Canada), pp.~1--14, Association for Computational Linguistics, Aug. 2017.
+
+\bibitem{akiba2019}
+T.~Akiba, S.~Sano, T.~Yanase, T.~Ohta, and M.~Koyama, ``Optuna: A
+  next-generation hyperparameter optimization framework,'' in {\em Proceedings
+  of the 25th ACM SIGKDD International Conference on Knowledge Discovery \&
+  Data Mining}, KDD '19, (New York, NY, USA), p.~2623–2631, Association for
+  Computing Machinery, 2019.
+
+\end{thebibliography}

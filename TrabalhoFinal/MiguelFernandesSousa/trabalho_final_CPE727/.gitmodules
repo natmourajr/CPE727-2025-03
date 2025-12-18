@@ -1,0 +1,3 @@
+[submodule "IARA"]
+	path = IARA
+	url = https://github.com/labsonar/IARA.git

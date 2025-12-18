@@ -228,3 +228,12 @@ Seminarios/6 - RNN/tsdiffusion.pt
 # tmp
 tmp/
 
+data/
+
+*.sif
+
+results/
+
+# Deep Learning Models (Large Files)
+*.pth
+TrabalhoFinal/evandrorocha/models/*.pth

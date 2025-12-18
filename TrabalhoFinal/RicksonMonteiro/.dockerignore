@@ -1,0 +1,91 @@
+# ==========================
+# 🐍 Python bytecode & caches
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ==========================
+# 📦 Virtual environments
+# ==========================
+venv/
+env/
+.venv/
+.env/       # Folder (if used as directory)
+.env        # File with environment variables
+
+# ==========================
+# 📁 Datasets, models, training artifacts
+# ==========================
+*.ckpt
+*.pt
+*.bin
+*.h5
+*.onnx
+*.npz
+*.npy
+datasets/
+checkpoints/
+outputs/
+results/
+wandb/
+runs/
+mlruns/
+lightning_logs/
+
+# ==========================
+# 📦 Compressed files & archives
+# ==========================
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# ==========================
+# 🧠 IDE/editor settings
+# ==========================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ==========================
+# 📄 Logs & temp files
+# ==========================
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# ==========================
+# ⚙️ Compiled files & binaries
+# ==========================
+*.so
+*.pyd
+*.dll
+*.exe
+*.o
+*.a
+*.dylib
+
+# ==========================
+# 🧱 Python build artifacts
+# ==========================
+build/
+dist/
+*.egg-info/
+
+# ==========================
+# 🧭 Git & version control
+# ==========================
+.git/
+.gitignore
+
+# ==========================
+# 🖥️ OS-generated files
+# ==========================
+.DS_Store
+Thumbs.db

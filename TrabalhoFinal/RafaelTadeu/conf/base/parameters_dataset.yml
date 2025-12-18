@@ -1,0 +1,4 @@
+# Dataset parameters
+dataset:
+  root: "data/01_raw"
+  download: true

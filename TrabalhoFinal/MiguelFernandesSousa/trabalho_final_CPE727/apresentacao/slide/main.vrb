@@ -1,0 +1,21 @@
+\frametitle{Exemplo de Tokenização}
+\textbf{Texto original:}
+
+  \vspace{0.2cm}
+  \small
+  \texttt{"Apple launches new iPhone model"}
+
+  \vspace{0.4cm}
+  \textbf{Após tokenização (sequência de IDs):}
+
+  \vspace{0.2cm}
+  \tiny
+  \begin{verbatim}
+  [234, 1456, 89, 3421, 567, 0, 0, 0, ..., 0]
+   ↑    ↑     ↑   ↑     ↑    ↑  ↑  ↑       ↑
+  apple launch new iphone model <PAD> (até posição 200)
+  \end{verbatim}
+
+  \vspace{0.3cm}
+  \small
+  Cada palavra é mapeada para um unique ID.

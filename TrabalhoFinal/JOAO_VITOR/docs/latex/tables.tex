@@ -1,0 +1,149 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{adjustbox} % Adicione este pacote
+
+\begin{document}
+
+\begin{table}[h]
+    \centering
+    \caption{Configurações Gerais do Experimento}
+    \label{tab:dataset}
+    \begin{center}
+    \begin{tabular}{|l|l|}
+    \hline
+    \textbf{Parâmetro} & \textbf{Valor} \\ \hline
+    Dataset & AFHQ \\ \hline
+    Número de classes & 3 \\ \hline
+    Cenários & 
+    real\_only, generated\_only, real\_plus\_gan, real\_aug\_standard \\ \hline
+    Device & CUDA \\ \hline
+    \end{tabular}
+    \end{center}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Modelos}
+    \label{tab:models}
+    \begin{center}
+    \begin{tabular}{|l|l|}
+        \hline
+        \textbf{Modelo} & \textbf{Configuração} \\ \hline
+        StyleGAN2-ADA & Pesos AFHQ \\ \hline
+        ResNet50 & Pesos ImageNet (IMAGENET1K\_V2), camada FC substituída \\ \hline
+        EfficientNet-B0 & Pesos ImageNet (IMAGENET1K\_V1), classifier[1] substituído \\ 
+        \hline
+    \end{tabular}
+    \end{center} 
+\end{table}
+  
+\begin{table}[h]
+    \centering
+    \caption{Hiperparâmetros de Treinamento da StyleGAN2-ADA}
+    \label{tab:hyperparameters}
+    \begin{tabular}{|l|l|}
+    \hline
+        \textbf{Parâmetro} & \textbf{Valor} \\ \hline
+        Resolução da Imagem & 512 × 512 \\ \hline
+        Épocas & 10 \\ \hline
+        Minibatch size & 64 \\ \hline
+        Minibatch stdev & 8 \\ \hline
+        Dataset x-flips & True \\ \hline
+        Feature maps & $1\times$ \\ \hline
+        Learning rate $\eta \times {10^{-3}}$ & 2.5 \\ \hline
+        $R_1$ regularization $\lambda$ & 0.5 \\ \hline
+        G moving average  & 20k \\ \hline
+        Mixed-precision & True \\ \hline
+        Mapping net depth  & 8 \\ \hline
+        Style mixing reg.  & True \\ \hline
+        Path length reg. & True \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Hiperparâmetros de Treinamento dos classificadores}
+    \label{tab:hyperparameters}
+    \begin{tabular}{|l|l|}
+    \hline
+        \textbf{Parâmetro} & \textbf{Valor} \\ \hline
+        Épocas & 5 \\ \hline
+        Batch size & 32 \\ \hline
+        Otimizador & AdamW \\ \hline
+        Learning rate & $1\times10^{-4}$ \\ \hline
+        Loss function & CrossEntropyLoss \\ \hline
+        Num. workers (DataLoader) & 4 \\ \hline
+        Normalização & mean = (0.5,0.5,0.5), std = (0.5,0.5,0.5) \\ \hline
+    \end{tabular}
+\end{table}
+
+
+\vspace{-0.4cm}
+\begin{table}[h]
+    \centering
+    \caption{Transformações aplicadas}
+    \label{tab:transformations}
+    \begin{tabular}{|l|l|}
+    \hline
+        Resize & 256 × 256 \\ \hline
+        RandomHorizontalFlip & 50\% \\ \hline
+        RandomRotation & 15° \\ \hline
+        ColorJitter & brightness=0.2, contrast=0.2, saturation=0.1, hue=0.05 \\ \hline
+        Normalize & mean=0.5, std=0.5 \\ \hline
+    \end{tabular}
+\end{table}
+\vspace{-0.4cm}
+\begin{table}[h]
+    \centering
+    \caption{Cenários Experimentais}
+    \label{tab:transformations}
+    \begin{tabular}{|l|l|}
+    \hline
+        \textbf{Cenário} & \textbf{Descrição} \\ \hline
+        real\_only & Apenas imagens reais \\ \hline
+        generated\_only & Apenas imagens sintéticas (StyleGAN2-ADA) \\ \hline
+        real\_plus\_gan & Reais + sintéticas \\ \hline
+        real\_aug\_standard & Apenas reais + data augmentation tradicional \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Métricas do treinamento da StyleGAN2-DAN}
+    \label{tab:afhq_results_clean}
+    \begin{center} 
+    \begin{tabular}{|l|l|l|l|} 
+        \toprule
+        \textbf{Categoria} & \textbf{FID 50k} & \textbf{Tempo total(min/s)} \\
+        \midrule
+        cat &  4.292 & 19m 46s \\
+        dog &  8.230 & 19m 45s \\
+        wild & 3.251 & 19m 47s \\
+        \bottomrule
+    \end{tabular}
+    \end{center} 
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Resultados dos Experimentos}
+    \begin{center}
+    \begin{tabular}{lcccccc}
+    \hline
+    \textbf{Experimento} & \textbf{Train Loss} & \textbf{Train Acc} & \textbf{Test Acc} & \textbf{F1} & \textbf{Precision} & \textbf{Recall} \\
+    \hline
+        resnet50\_generated\_only      & 0.014 & 0.995 & 0.943 & 0.942 & 0.949 & 0.943 \\
+        resnet50\_real\_aug\_standard  & 0.021 & 0.993 & 0.997 & 0.997 & 0.997 & 0.997 \\
+        resnet50\_real\_only           & 0.021 & 0.993 & 0.997 & 0.997 & 0.997 & 0.997 \\
+        resnet50\_real\_plus\_gan      & 0.022 & 0.992 & 0.983 & 0.983 & 0.983 & 0.983 \\
+        efficientnet\_b0\_generated\_only & 0.006 & \textbf{0.999} & 0.981 & 0.981 & 0.982 & 0.981 \\
+        efficientnet\_b0\_real\_aug\_standard & 0.011 & 0.996 & \textbf{0.997} & \textbf{0.997} & \textbf{0.997} & \textbf{0.997} \\
+        efficientnet\_b0\_real\_only   & 0.007 & 0.998 & 0.996 & 0.996 & 0.996 & 0.996 \\
+        efficientnet\_b0\_real\_plus\_gan & \textbf{0.005} & 0.998 & \textbf{0.997} & 0.997 & 0.997 & \textbf{0.997} \\
+    \hline
+    \end{center}
+    \end{tabular}
+\end{table}
+
+
+\end{document}

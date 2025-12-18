@@ -1,0 +1,34 @@
+{
+    "SimpleCNN": {
+        "auc_roc": 0.9064,
+        "accuracy": 0.85,
+        "sensitivity": 0.8,
+        "specificity": 0.9,
+        "false_positives": 5,
+        "false_negatives": 10
+    },
+    "ResNet50": {
+        "auc_roc": 0.9603999999999999,
+        "accuracy": 0.91,
+        "sensitivity": 0.9,
+        "specificity": 0.92,
+        "false_positives": 4,
+        "false_negatives": 5
+    },
+    "DenseNet121": {
+        "auc_roc": 0.8632,
+        "accuracy": 0.85,
+        "sensitivity": 0.82,
+        "specificity": 0.88,
+        "false_positives": 6,
+        "false_negatives": 9
+    },
+    "EfficientNet-B0": {
+        "auc_roc": 0.8948000000000002,
+        "accuracy": 0.87,
+        "sensitivity": 0.8,
+        "specificity": 0.94,
+        "false_positives": 3,
+        "false_negatives": 10
+    }
+}

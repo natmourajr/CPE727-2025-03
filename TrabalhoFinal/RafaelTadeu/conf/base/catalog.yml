@@ -1,0 +1,102 @@
+# Data Catalog for EuroSAT DL Comparison Project
+# Documentation: https://docs.kedro.org/en/stable/data/data_catalog.html
+
+# Raw dataset (EuroSAT)
+raw_dataset:
+  type: pickle.PickleDataset
+  filepath: data/01_raw/eurosat_dataset.pkl
+  backend: pickle
+
+# Split datasets
+dev_dataset:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/dev_dataset.pkl
+
+test_dataset:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/test_dataset.pkl
+
+# Cross-validation dataset
+cross_val_table:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/cross_val_table.parquet
+
+# Data loaders
+test_loader:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/test_loader.pkl
+
+# Cross-validation fold loaders (for training with CV)
+cv_train_loader:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/cv_train_loader.pkl
+
+cv_val_loader:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/cv_val_loader.pkl
+
+cv_test_loader:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/cv_test_loader.pkl
+
+# Dataset statistics
+dataset_statistics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/dataset_statistics.json
+
+# Models
+vgg16_model:
+  type: pickle.PickleDataset
+  filepath: data/06_models/vgg16_model.pkl
+
+resnet50_model:
+  type: pickle.PickleDataset
+  filepath: data/06_models/resnet50_model.pkl
+
+vit_model:
+  type: pickle.PickleDataset
+  filepath: data/06_models/vit_model.pkl
+
+# Training metrics
+vgg16_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/vgg16_metrics.json
+
+resnet50_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/resnet50_metrics.json
+
+vit_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/vit_metrics.json
+
+# Evaluation results
+evaluation_results:
+  type: json.JSONDataset
+  filepath: data/08_reporting/evaluation_results.json
+
+comparison_report:
+  type: json.JSONDataset
+  filepath: data/08_reporting/comparison_report.json
+
+# Best models configuration
+best_models_config:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/best_models.csv
+
+# Individual model evaluation results
+mlp_evaluation_results:
+  type: json.JSONDataset
+  filepath: data/08_reporting/mlp_evaluation_results.json
+
+vgg16_evaluation_results:
+  type: json.JSONDataset
+  filepath: data/08_reporting/vgg16_evaluation_results.json
+
+resnet50_evaluation_results:
+  type: json.JSONDataset
+  filepath: data/08_reporting/resnet50_evaluation_results.json
+
+vit_evaluation_results:
+  type: json.JSONDataset
+  filepath: data/08_reporting/vit_evaluation_results.json

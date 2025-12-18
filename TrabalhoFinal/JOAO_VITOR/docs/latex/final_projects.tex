@@ -1,0 +1,276 @@
+\documentclass{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage[backend=biber,style=ieee]{biblatex}
+\graphicspath{{./images/}}
+\addbibresource{references.bib}
+\usetheme{Madrid}
+\usecolortheme{dolphin}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}{\raggedright\insertcaption\par}
+\setbeamertemplate{headline}{
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[anchor=north east, xshift=-0.3cm, yshift=-0.2cm]
+            at (current page.north east)
+            {\includegraphics[width=1.5cm]{ufrj_logo_horizontal.png}};
+    \end{tikzpicture}
+}
+
+\title{Uma investigação comparativa entre dados sintéticos vs aumento de dados tradicional em problemas de classificação de imagens}
+\author{João Vítor Correia Pessoa}
+\institute{Universidade Federal do Rio de Janeiro (UFRJ)}
+
+\makeatletter
+\setbeamertemplate{footline}
+{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=3ex,dp=1.5ex]{date in head/foot}%
+    \hspace*{1ex}
+    \usebeamerfont{date in head/foot}
+    \hfill
+    \insertshortdate{}%
+    \hspace*{2em}%
+    \insertframenumber{} / \inserttotalframenumber\hspace*{1ex}%
+  \end{beamercolorbox}}%
+  \vskip0pt
+}
+\makeatother
+
+\begin{document}
+% TITLEPAGE
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% INTRODUCTION
+\section{Motivação}
+
+\begin{frame}{Motivação}
+\begin{itemize}
+    \item Muitos domínios possuem poucas amostras rotuladas
+    \item Técnicas convencionais de aumentos de dados podem ser insuficientes
+    \item GANs modernos, como StyleGAN2-ADA, permitem gerar imagens sintéticas realistas
+    \item Objetivo: avaliar impacto do uso de dados sintéticos vs. aumento tradicional no treinamento de classificadores
+\end{itemize}
+\end{frame}
+
+\section{Arquitetura}
+
+\begin{frame}{StyleGAN2-ADA}
+\begin{itemize}
+    \item Modelo generativo baseado em StyleGAN2 com foco em datasets pequenos
+    \item ADA (Adaptive Discriminator Augmentation): aplica aumento adaptativo para evitar overfitting
+    \item Permite treinar com poucas centenas de imagens mantendo qualidade
+    \item Usado aqui para gerar imagens sintéticas que expandem o conjunto de dados real
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Arquitetura geral da StyleGAN2-ADA}
+   \begin{figure} 
+    \centering
+    \includegraphics[width=0.50\textwidth]{images/stylegan2_ada_arch.png}
+    \caption{Arquitetura geral do modelo StyleGAN2-ADA}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{ADA}
+   \begin{figure} 
+    \centering
+    \includegraphics[width=0.80\textwidth]{images/da.png}
+    \caption{Tipos de aumento de imagens realizados pelo algoritmo ADA}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{ResNet50}
+Introduz \textbf{blocos residuais} com conexões de atalho (\textit{skip connections}) que permitem:
+\begin{itemize}
+    \item Treinamento de redes muito profundas
+    \item Redução da degradação de performance à medida que profundidade aumenta
+\end{itemize}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.70\textwidth]{images/resnet50_arch.png}
+    \caption{Arquitetura geral do modelo ResNet50}
+\end{figure}
+\end{frame}
+
+\begin{frame}{EfficientNet-B0}
+Baseada em blocos \textbf{MBConv} (Mobile Inverted Bottleneck), eficientes e leves, possui com características principais:
+\begin{itemize}
+    \item Alto desempenho com baixo custo computacional
+    \item Ótima escolha para datasets pequenos e treinamento rápido
+    \item Favorece generalização devido ao design eficiente
+\end{itemize}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.60\textwidth]{images/efficientNet_B0_arch.png}
+    \caption{Arquitetura geral do modelo EfficientNet-B0}
+\end{figure}
+\end{frame}
+
+\section{Experimentos}
+
+\begin{frame}{Parâmetros importantes}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.60\textwidth]{images/table1.png}
+\end{figure}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.60\textwidth]{images/table2.png}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Parâmetros importantes}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.60\textwidth]{images/table3.png}
+\end{figure}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.60\textwidth]{images/table4.png}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Parâmetros importantes}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.60\textwidth]{images/table5.png}
+\end{figure}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.60\textwidth]{images/table6.png}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Geração das imagens}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/real_images.png}
+    \caption{Imagens reais}
+\end{figure}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/gen_images.png}
+    \caption{Imagens geradas}
+\end{figure}
+\end{frame}
+
+\section{Resultados}
+
+\begin{frame}{Resumo dos experimentos}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.60\textwidth]{images/table7.png}
+\end{figure}
+\begin{figure} 
+    \centering
+    \includegraphics[width=0.90\textwidth]{images/table8.png}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Curvas de Acurácia}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{images/comparativo_resnet50_acc.png}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{images/comparativo_efficientnet_b0_acc.png}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Curvas de Perda}
+    \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/comparativo_resnet50_loss.png}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/comparativo_efficientnet_b0_loss.png}
+    \end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Matrizes de confusão}
+    \begin{columns}[T]
+        \begin{column}{0.25\textwidth}
+            \centering
+            \includegraphics[width=\textwidth, trim=20 20 20 20, clip]{images/confusion_resnet50_generated_only.png}
+        \end{column}
+        
+        \begin{column}{0.25\textwidth}
+            \centering
+            \includegraphics[width=\textwidth, trim=20 20 20 20, clip]{images/confusion_resnet50_real_aug_standard.png}
+        \end{column}
+        
+        \begin{column}{0.25\textwidth}
+            \centering
+            \includegraphics[width=\textwidth, trim=20 20 20 20, clip]{images/confusion_resnet50_real_only.png}
+        \end{column}
+        
+        \begin{column}{0.25\textwidth}
+            \centering
+            \includegraphics[width=\textwidth, trim=20 20 20 20, clip]{images/confusion_resnet50_real_plus_gan.png}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.3cm}
+
+    \begin{columns}[T]
+        \begin{column}{0.25\textwidth}
+            \centering
+            \includegraphics[width=\textwidth, trim=20 20 20 20, clip]{images/confusion_efficientnet_b0_generated_only.png}
+        \end{column}
+
+        \begin{column}{0.25\textwidth}
+            \centering
+            \includegraphics[width=\textwidth, trim=20 20 20 20, clip]{images/confusion_efficientnet_b0_real_aug_standard.png}
+        \end{column}
+
+        \begin{column}{0.25\textwidth}
+            \centering
+            \includegraphics[width=\textwidth, trim=20 20 20 20, clip]{images/confusion_efficientnet_b0_real_only.png}
+        \end{column}
+
+        \begin{column}{0.25\textwidth}
+            \centering
+            \includegraphics[width=\textwidth, trim=20 20 20 20, clip]{images/confusion_efficientnet_b0_real_plus_gan.png}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Análise dos resultados}
+\begin{itemize}
+    \item Os dados sintéticos contribuíram para reduzir overfitting nos modelos profundos
+    \item O treinamento apenas com dados sintéticos apresentou melhor desempenho na rede EfficientNet-B0
+    \item Para o conjunto de dados analisado, o aumento de dados tradicional continua relevante
+\end{itemize}
+\end{frame}
+
+\section{Considerações finais}
+
+\begin{frame}{Considerações finais}
+\begin{itemize}
+    \item Modelos GAN avançados como StyleGAN2-ADA se mostram eficazes em alguns cenários de poucos dados
+    \item Dados sintéticos podem complementar a augmentation tradicional
+    \item As melhorias dependem da qualidade das imagens geradas
+    \item Trabalhos futuros: 
+    \begin{itemize}
+        \item Avaliar datasets em que augmentation tradicional não gera impacto significativo
+        \item Avaliar a relação entre quantidade máxima de dados sintéticos no treinamento com a qualidade do gerador
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\end{document}
