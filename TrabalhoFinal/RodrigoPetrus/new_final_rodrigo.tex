@@ -1,0 +1,872 @@
+\documentclass{beamer}
+\usepackage{etoolbox}
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usetheme{sintef}
+\usepackage[portuguese]{babel}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{relsize}
+\usepackage{algorithmic}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{textgreen}{RGB}{106, 168, 79}
+\definecolor{ForestGreen}{RGB}{34,139,34} % X11/SVG
+\usefonttheme[onlymath]{serif}
+\usepackage{adjustbox}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{tabularx}
+\usepackage[absolute,overlay]{textpos}
+\usepackage{multicol}
+\usepackage[dvipsnames]{xcolor}   % Adds more colors
+\usepackage{bookmark}
+\usepackage{tikz}
+\usepackage{booktabs} % para \toprule, \midrule, \bottomrule
+\newcommand{\meanpm}[2]{#1 $\pm$ #2}
+\usetikzlibrary{shapes.geometric, arrows, positioning, fit}
+\tikzstyle{simple_rec} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+% -------- Pipeline base: Encoder + RNN + VAE (mesmo tamanho da variação) --------
+\newcommand{\pipelinebase}[1]{%
+\centering
+\scriptsize
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  node distance=1.6cm and 1.2cm,
+  every node/.style={transform shape},
+  scale=0.85
+]
+
+\tikzstyle{box}=[%
+  draw, thick, rounded corners=3pt,
+  minimum width=2.2cm, minimum height=0.75cm,
+  align=center, fill=gray!10
+];
+\tikzstyle{enc}=[box, fill=blue!12];
+\tikzstyle{dec}=[box, fill=orange!18];
+\tikzstyle{extra}=[box, fill=green!12];
+\tikzstyle{circ}=[draw, thick, circle, minimum size=0.6cm];
+\tikzstyle{arrow}=[->, thick];
+
+% ---- arquitetura base (IGUAL PARA TODOS) ----
+\node[box] (x) {
+  Entrada\\
+  $\mathbf{X}=(\mathbf{x},\mathbf{m})_{1:T}$
+};
+
+\node[enc, right=of x] (emb) {
+  Encoder\\
+  (MLP / Embedding)
+};
+
+\node[enc, right=of emb] (rnn) {
+  RNN Encoder\\
+  $\mu_z,\ \log\sigma_z^2$
+};
+
+\node[circ, right=of rnn] (z) {$z$};
+
+\node[dec, right=of z] (dec) {
+  Decoder\\
+  $\hat{\mathbf{X}}_{\text{recon}},\ \log\sigma_x^2$
+};
+
+
+% ---- variação (sempre extra) ----
+\node[extra, below=1.1cm of rnn, text width=4.2cm] (var) {#1};
+\draw[arrow, dashed] (var) -- (rnn);
+
+% ---- setas principais ----
+\draw[arrow] (x)   -- (emb);
+\draw[arrow] (emb) -- (rnn);
+\draw[arrow] (rnn) -- (z);
+\draw[arrow] (z)   -- (dec);
+
+\end{tikzpicture}%
+}
+
+\titlebackground*{assets/background_alt.png}
+\title[Modo gerador]{Desenvolvimento de um modelo gerador de séries temporais multivariadas
+          para um compressor industrial offshore baseado em RNN e VAEs.}
+\course{CPE727 -- Deep Learning}
+\author{Rodrigo Petrus Domingues}
+\IDnumber{\href{mailto:rodrigo.domingues@lps.ufrj.br}{rodrigo.domingues@lps.ufrj.br}} 
+
+
+\begin{document}
+\maketitle
+
+% \begin{frame}
+
+% This template is a based on \hrefcol{https://www.overleaf.com/latex/templates/sintef-presentation/jhbhdffczpnx}{SINTEF Presentation} from \hrefcol{mailto:federico.zenith@sintef.no}{Federico Zenith} and its derivation \hrefcol{https://github.com/TOB-KNPOB/Beamer-LaTeX-Themes}{Beamer-LaTeX-Themes} from Liu Qilong and Andrea Gasparini
+
+% \vspace{\baselineskip}
+
+% In the following you find a brief introduction on how to use \LaTeX\ and the beamer package to prepare slides, based on the one written by \hrefcol{mailto:federico.zenith@sintef.no}{Federico Zenith} for \hrefcol{https://www.overleaf.com/latex/templates/sintef-presentation/jhbhdffczpnx}{SINTEF Presentation}
+
+% % This template is released under \hrefcol{https://creativecommons.org/licenses/by-nc/4.0/legalcode}{Creative Commons CC BY 4.0} license
+
+% \end{frame}
+
+% \begin{chapter}[assets/background]{}{Special Slides}
+% \begin{itemize}
+% \item Chapter slides
+% \item Side-picture slides
+% \end{itemize}
+% \end{chapter}
+
+
+% =======================
+% Seção: Motivação
+% =======================
+\section{Motivação e Objetivos}
+\begin{frame}{Motivação e Objetivos}
+
+\textbf{Motivação}
+\begin{itemize}
+  \item Compressores são ativos críticos com sinais temporais complexos.
+  \item Modelos gerativos permitem simular cenários operacionais realistas.
+  \item Gêmeos digitais apoiam manutenção e análise operacional.
+\end{itemize}
+
+\vspace{0.25cm}
+
+\textbf{Objetivo}
+\begin{itemize}
+  \item Desenvolver modelos geradores de séries temporais multivariadas
+        para um compressor industrial.
+\end{itemize}
+
+\vspace{0.25cm}
+
+\textbf{Avaliação}
+\begin{itemize}
+  \item Comparar RNNs (LSTM, GRU, BiRNN) e estratégias de treinamento com regularização e otimização.
+\end{itemize}
+
+\end{frame}
+
+
+% =======================
+% Seção: Base de dados e pré-processamento
+% =======================
+\section{Base de dados e pré-processamento}
+
+
+\begin{frame}{Base de dados e pré-processamento}
+
+\begin{columns}[t]
+  
+  \begin{column}[t]{0.48\textwidth}
+    \textbf{Base de dados}
+
+    \vspace{0.2cm}
+    Cognite — sinais reais de sensores de um compressor industrial offshore.
+
+    \vspace{0.3cm}
+    \centering
+    \includegraphics[width=\linewidth]{12series.png}
+
+    \vspace{0.2cm}
+    \scriptsize
+    \textit{Exemplo de séries reais utilizadas no estudo (12 sinais simultâneos).}
+  \end{column}
+
+  \begin{column}[t]{0.48\textwidth}
+    \textbf{Pré-processamento}
+
+    \vspace{0.2cm}
+    \begin{itemize}
+      \item Estados operacionais:
+        \begin{itemize}
+          \item Estados originais: 6 (\(0\) a \(5\));
+          \item Estados finais: 3 (normal, alerta, falha).
+        \end{itemize}
+
+      \item Normalização robusta (RobustScaler) por sensor;
+      \item Série temporal com amostras a cada 5 minutos.
+      \item Segmentação em janelas:
+        \begin{itemize}
+          \item \texttt{window\_size = 10}, \texttt{window\_step = 10}
+          \item janelas não sobrepostas (modo gerador local).
+        \end{itemize}
+    \end{itemize}
+  \end{column}
+
+\end{columns}
+\end{frame}
+
+
+% =======================
+% Seção: Formulação Teórica
+% =======================
+\section{Formulação do Problema}
+
+\begin{frame}{Definição do problema - Modo Gerador}
+
+  \begin{itemize}
+    \item Série multivariada: \(\mathbf{x}_t \in \mathbb{R}^{d}\), \(t = 1,\dots,T\), com \(d = 11\) sensores.
+    \item Construímos janelas temporais:
+      \[
+        \mathbf{X} = (x_{t-L+1}, \dots, x_t) \in \mathbb{R}^{L \times d}
+      \]
+      com \(L = 10\) passos de tempo.
+    \item Objetivo: aprender um \textbf{modelo gerador} para as janelas \(\mathbf{X}\):
+      \[
+        p_{\theta}(\mathbf{X}) \approx p_{\text{dados}}(\mathbf{X})
+      \]
+ \item \textbf{Modelo latente (VAE + Difusão):}
+      Aprende um espaço latente regularizado que permite
+      gerar novas janelas sintéticas a partir de amostras de \(z\).
+    \item Uso principal:
+      \begin{itemize}
+        \item Geração de séries realistas para simulação de cenários
+              e testes de algoritmos de monitoramento.
+      \end{itemize}
+ 
+\item O modelo aprende a \textbf{recriar e amostrar} janelas de sensores compatíveis
+  com o comportamento real do compressor.
+   \end{itemize}
+\end{frame}
+
+
+\section{Revisão Bibliográfica}
+
+\begin{frame}{Revisão Bibliográfica}
+\small
+
+\textbf{Trabalhos relacionados}:
+\begin{itemize}
+  \item \textbf{VAEs} amplamente usados para geração de dados sintéticos
+        e aprendizado não supervisionado \cite{kingma2014vae};
+  \item RNNs combinadas com VAEs para modelagem temporal de séries
+        multivariadas industriais \cite{chung2015vrnn};
+  \item Métodos para séries com \textbf{missing data} que incorporam
+        máscaras no estado recorrente \cite{che2018grud};
+  \item \textbf{Modelos de difusão} para geração probabilística de dados
+        complexos \cite{ho2020ddpm}.
+\end{itemize}
+
+\vspace{0.2cm}
+
+\textbf{Lacuna abordada neste trabalho}:
+\begin{itemize}
+  \item Poucos estudos exploram a \textbf{geração probabilística de séries
+        temporais industriais multivariadas} \cite{esteban2019timegan};
+  \item Não encontramos aplicações em \textbf{compressores industriais}
+        combinando RNNs, VAEs e difusão;
+  \item Avaliamos geração via NELBO, calibração e \textit{sharpness}.
+\end{itemize}
+
+\end{frame}
+
+% =======================
+% Seção: Arquiteturas
+% =======================
+\section{Arquiteturas e Variações}
+
+
+\begin{frame}{Arquitetura base e arquiteturas avaliadas}
+
+  \vspace{0.6cm}
+   \pipelinebase{
+    \textbf{LSTM / GRU / BiLSTM / BiGRU}
+  }
+  \vspace{0.35cm}
+ % ----------- TEXTO -----------
+\small
+\begin{itemize}
+\item \textbf{Arquitetura base}: Encoder recorrente acoplado a
+      um VAE latente para geração de séries.
+  \item \textbf{Arquiteturas avaliadas}:
+  \begin{itemize}
+    \item \textbf{Deep MLP}: baseline feedforward (sem recorrência);
+    \item \textbf{LSTM}: LSTM unidirecional e \textbf{BiLSTM};
+    \item \textbf{GRU}: GRU unidirecional e \textbf{BiGRU}.
+    \item \textbf{VAE}: Variational Autoencoder.
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+
+
+
+\begin{frame}{Variações de treinamento}
+
+\small
+\textbf{Base fixa:} BiLSTM + VAE latente.
+
+\vspace{0.3cm}
+
+\textbf{Otimização}
+\begin{itemize}
+  \item \textbf{Warmup \& Scheduler}: estabiliza as primeiras épocas.
+  \item \textbf{RAdam}: reduz instabilidade do Adam no início do treino.
+\end{itemize}
+
+\vspace{0.25cm}
+
+\textbf{Regularização}
+\begin{itemize}
+  \item \textbf{Variational Dropout}: reduz overfitting temporal.
+  \item \textbf{Difusão (missingness)}: melhora robustez e calibração.
+  \item \textbf{LayerNorm}: estabiliza ativações internas.
+  \item \textbf{AdamW}: L2 desacoplado para melhor generalização.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Função de custo}
+\small
+
+\begin{itemize}
+\item 
+\(
+\begin{aligned}
+\mathcal{L}_{\text{vae}}
+&= \mathbb{E}_{q(z|\mathbf{X})}
+\!\left[
+-\log p(\mathbf{X}\mid z)
+\right] 
+& + \beta\,
+\mathrm{KL}\big(q(z\mid\mathbf{X}) \,\|\, \mathcal{N}(0,I)\big)
+\end{aligned}
+\)
+
+
+
+\vspace{0.2cm}
+  \item O primeiro termo corresponde à verossimilhança negativa
+        do erro de reconstrução  enquanto o segundo termo regulariza o espaço latente
+        via divergência KL ponderada por $\beta$.
+\end{itemize}
+
+\vspace{0.25cm}
+
+\begin{itemize}
+  \item Para o modelo com difusão de missingness, a função de custo é:
+\[
+\mathcal{L}_{\text{difusão}} =
+\lambda_m \mathcal{L}_{\text{miss}} 
++ \lambda_v \mathcal{L}_{\text{vae}}
+\]
+
+\[
+\mathcal{L}_{\text{miss}} = \mathrm{BCE}(m,\hat{m}),
+\quad
+\hat{m} = \sigma(f_{\text{miss}}(h))
+\]
+\end{itemize}
+
+\vspace{0.2cm}
+
+\begin{itemize}
+    \item O modelo permite \textbf{gerar novas janelas sintéticas} de sensores
+        com propriedades estatísticas similares às observadas.
+   \end{itemize}
+
+\end{frame}
+
+
+% =======================
+% Seção: Configuração Experimental
+% =======================
+\section{Configuração Experimental}
+
+\begin{frame}{Configuração Experimental}
+  \begin{itemize}
+    \item Divisão treino/teste: 80\% / 20\%.
+    \item Dimensões do espaço latente foram validadas com a divisão 60\% / 20\% / 20\%.
+    \item Treinamento por 500 épocas, batch size 256.
+    \item Paciênica de 50 épocas para early stopping.
+    \item Função de perda multi-tarefa conforme descrito.
+    \item Otimização e Regularização tratadas como diferentes modelos.
+    \item Otimizador: Adam (exceto variações).
+    \item Taxa de aprendizado inicial: \(3 \times 10^{-4}\).
+    \item Early stopping baseado no NELBO do teste.
+    \item Avaliação final no conjunto de teste.
+  \end{itemize}
+\end{frame}
+
+
+
+
+
+
+
+% =======================
+% Seção: Resultados
+% =======================
+\section{Figuras de Mérito}
+
+
+\begin{frame}{Figuras de Mérito utilizadas}
+  \begin{itemize}
+   \item \textbf{NELBO} (Negative Evidence Lower Bound):
+\begin{itemize}
+  \item Loss probabilística minimizada no treinamento;
+  \item Maximiza implicitamente a verossimilhança (ELBO);
+  \item Balanceia reconstrução e regularização latente (KL).
+  \vspace{0.6em}
+\item 
+\(
+\begin{aligned}
+NELBO
+&=
+\mathbb{E}_{q(z\mid x)}
+\!\left[
+- \log p(x \mid z)
+\right]
++
+\mathrm{KL}\!\left(
+q(z\mid x)\,\|\,p(z)
+\right)
+\end{aligned}
+\)
+
+
+\end{itemize}
+
+\vspace{0.8em}
+
+\item \textbf{NLL} (Negative Log-Likelihood):
+  \begin{itemize}
+    \item Generaliza o MSE ao modelar explicitamente a variância
+          da distribuição predita;
+    \item Penaliza erros grandes \emph{e} variâncias mal calibradas
+          (super ou subestimação de incerteza).
+    \vspace{0.6em}
+    \item
+\(
+\begin{aligned}
+\text{NLL}
+&=
+- \log p(x \mid \mu, \sigma^2)
+&=
+\frac{(x-\mu)^2}{2\sigma^2}
++ \frac{1}{2}\log\sigma^2
++ \text{cte}
+\end{aligned}
+\)
+
+
+
+  \end{itemize}
+    \end{itemize}
+\end{frame}
+
+
+  \begin{frame}{Figuras de Mérito utilizadas}
+     \begin{itemize}
+    \item \textbf{MSE} (Mean Squared Error):
+      \begin{itemize}
+         \item Erro médio de reconstrução das séries;
+    \item Mede fidelidade gerativa.
+      \end{itemize}
+    \vspace{0.6em}
+  \item \textbf{Cobertura 90\%} (\texttt{cov\_90}):
+  \begin{itemize}
+    \item Mede a fração de amostras reais que caem dentro do
+          intervalo preditivo teórico $[5\%,\,95\%]$;
+    \item Avalia se o desvio padrão estimado produz uma
+          \textbf{calibração probabilística consistente}
+          com a cobertura nominal de 90\%.
+  \end{itemize}
+    \vspace{0.6em}
+\item \textbf{Largura do intervalo 90\%} (\texttt{width\_90}):
+  \begin{itemize}
+    \item Corresponde à largura teórica do intervalo $[5\%,\,95\%]$
+          derivado da distribuição predita;
+    \item Quantifica a \textbf{sharpness} do modelo:
+          intervalos menores indicam maior confiança,
+          desde que a cobertura permaneça bem calibrada.
+  \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% =======================
+% Seção: Resultados
+% =======================
+\section{Resultados}
+
+\begin{frame}{Resultados quantitativos}
+
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Modelo} 
+& \textbf{NELBO$\downarrow$} 
+& \textbf{NLL$\downarrow$} 
+& \textbf{MSE$\downarrow$}
+& \textbf{Cov90$\rightarrow$} 
+& \textbf{W90$\downarrow$}
+& \textbf{Tempo (min)} \\
+\midrule
+
+\textbf{GRU Difusão}
+& \textbf{0.510}
+& \textbf{0.456}
+& \textbf{$0.237 \pm 0.064$} 
+& \textbf{0.897}
+& \textbf{2.213}
+& \textbf{10.1} \\
+
+BiLSTM Difusão
+& 0.518
+& 0.462
+& $0.243 \pm 0.067$
+& 0.902 
+& 2.200
+& 11.2 \\
+
+GRU 
+& 0.558 
+& 0.498 
+& $0.300 \pm 0.108$ 
+& 0.905 
+& 2.252
+& 7.7 \\
+
+LSTM 
+& 0.588 
+& 0.513 
+& $0.332 \pm 0.129$ 
+& 0.900 
+& 2.251
+& 7.4 \\
+
+BiGRU 
+& 0.589 
+& 0.499 
+& $0.335 \pm 0.136$ 
+& 0.909 
+& 2.267
+& 7.7 \\
+
+BiLSTM VarDrop 0.2 
+& 0.595 
+& 0.506 
+& $0.317 \pm 0.119$ 
+& 0.898 
+& 2.240
+& 7.5 \\
+
+BiLSTM RAdam 
+& 0.597 
+& 0.511 
+& $0.341 \pm 0.139$ 
+& 0.898 
+& 2.234
+& 15.1 \\
+
+BiLSTM Warmup/Sched. 
+& 0.598 
+& 0.504 
+& $0.354 \pm 0.146$ 
+& 0.903 
+& 2.251
+& 6.5 \\
+
+BiLSTM AdamW 
+& 0.601 
+& 0.506 
+& $0.341 \pm 0.141$ 
+& 0.900 
+& 2.224
+& 7.0 \\
+
+BiLSTM 
+& 0.609 
+& 0.527 
+& $0.337 \pm 0.133$ 
+& 0.901 
+& 2.269
+& 7.4 \\
+
+BiLSTM LayerNorm 
+& 0.617 
+& 0.514 
+& $0.342 \pm 0.140$ 
+& 0.907 
+& 2.281
+& 5.9 \\
+
+DEEP 
+& 1.217 
+& 1.164 
+& $0.693 \pm 0.209$ 
+& 0.916 
+& 2.785
+& 8.9 \\
+
+\bottomrule
+\end{tabular}
+
+
+
+\vspace{0.3em}
+{\tiny Comparação probabilística entre modelos.}
+
+\end{frame}
+
+\begin{frame}{Resultados quantitativos e custo computacional}
+\centering
+
+\begin{table}[h]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Modelo} 
+& \textbf{NELBO$\downarrow$} 
+& \textbf{NLL$\downarrow$} 
+& \textbf{MSE$\downarrow$}
+& \textbf{Cov90$\rightarrow$} 
+& \textbf{W90$\downarrow$}
+& \textbf{Épocas}
+& \textbf{Tempo total (min)}
+& \textbf{tempo ($s$)/ép.} \\
+\midrule
+
+\textbf{GRU Difusão}
+& \textbf{0.510}
+& \textbf{0.456}
+& \textbf{$0.237 \pm 0.064$} 
+& \textbf{0.897}
+& \textbf{2.213}
+& \textbf{310}
+& \textbf{10.1}
+& \textbf{$1.96 \pm 0.19$} \\
+
+BiLSTM Difusão
+& 0.518
+& 0.462
+& $0.243 \pm 0.067$
+& 0.902 
+& 2.200
+& 183
+& 11.2
+& $3.67 \pm 0.34$ \\
+
+GRU 
+& 0.558 
+& 0.498 
+& $0.300 \pm 0.108$ 
+& 0.905 
+& 2.252
+& 148
+& 5.1
+& $2.06 \pm 0.36$ \\
+
+LSTM 
+& 0.588 
+& 0.513 
+& $0.332 \pm 0.129$ 
+& 0.900 
+& 2.251
+& 130
+& 4.9
+& $2.28 \pm 0.39$ \\
+
+BiGRU 
+& 0.589 
+& 0.499 
+& $0.335 \pm 0.136$ 
+& 0.909 
+& 2.267
+& 126
+& 7.7
+& $3.69 \pm 0.74$ \\
+
+BiLSTM VarDrop 0.2 
+& 0.595 
+& 0.506 
+& $0.317 \pm 0.119$ 
+& 0.898 
+& 2.240
+& 119
+& 7.5
+& $3.80 \pm 0.47$ \\
+
+BiLSTM RAdam 
+& 0.597 
+& 0.511 
+& $0.341 \pm 0.139$ 
+& 0.898 
+& 2.234
+& 115
+& 6.9
+& $3.58 \pm 0.23$ \\
+
+BiLSTM Warmup/Sched. 
+& 0.598 
+& 0.504 
+& $0.354 \pm 0.146$ 
+& 0.903 
+& 2.251
+& 107
+& 6.5
+& $3.65 \pm 0.40$ \\
+
+BiLSTM AdamW 
+& 0.601 
+& 0.506 
+& $0.341 \pm 0.141$ 
+& 0.900 
+& 2.224
+& 112
+& 7.0
+& $3.77 \pm 0.53$ \\
+
+BiLSTM 
+& 0.609 
+& 0.527 
+& $0.337 \pm 0.133$ 
+& 0.901 
+& 2.269
+& 120
+& 7.4
+& $3.70 \pm 0.43$ \\
+
+BiLSTM LayerNorm 
+& 0.617 
+& 0.514 
+& $0.342 \pm 0.140$ 
+& 0.907 
+& 2.281
+& 99
+& 5.9
+& $3.54 \pm 0.31$ \\
+
+DEEP 
+& 1.217 
+& 1.164 
+& $0.693 \pm 0.209$ 
+& 0.916 
+& 2.785
+& 359
+& 8.9
+& $1.48 \pm 0.22$ \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+
+
+\begin{frame}{Curva de treinamento — Modelo campeão}
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\linewidth]{nelbo.png}
+  \caption{Evolução do NELBO no conjunto de teste do modelo
+  BiLSTM Difusão.}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Geração de séries — Avaliação qualitativa}
+
+\begin{columns}[c]
+
+% -------- Figura --------
+\begin{column}{0.62\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{distribuicao.png}
+\end{column}
+
+% -------- Texto --------
+\begin{column}{0.38\textwidth}
+\small
+\textbf{Comparação qualitativa}
+
+\vspace{0.5em}
+
+Séries temporais reais versus séries geradas pelo modelo variacional,
+comparadas a ajustes ponto-a-ponto baseados em MSE.
+
+\vspace{0.5em}
+
+A abordagem probabilística captura melhor:
+\begin{itemize}
+  \item a distribuição marginal dos sinais;
+  \item a variabilidade temporal;
+  \item a incerteza intrínseca dos dados.
+\end{itemize}
+\end{column}
+
+\end{columns}
+
+\end{frame}
+
+
+% =======================
+% Seção: Discussão e Conclusões
+% =======================
+\section{Discussão e Conclusões}
+\begin{frame}{Discussão dos resultados}
+
+\small
+\begin{itemize}
+  \item \textbf{Qualidade gerativa}:
+        Modelos variacionais recorrentes superam o baseline;
+        \textbf{GRU + Difusão} atinge o menor NELBO.
+
+  \item \textbf{Calibração vs. sharpness}:
+        Difusão produz intervalos mais estreitos,
+        com cobertura próxima do alvo (Cov90 $\approx$ 0.9).
+
+  \item \textbf{Impacto arquitetural}:
+        GRU + Difusão oferece o melhor compromisso entre
+        NELBO, NLL e MSE, com boa calibração.
+
+  \item \textbf{Regularização}:
+        Difusão é o principal mecanismo eficaz;
+        dropout tem efeito secundário e LayerNorm degrada resultados.
+\end{itemize}
+
+\end{frame}
+
+
+
+
+\begin{frame}{Conclusões}
+
+\small
+\begin{itemize}
+  \item Modelos recorrentes com difusão são mais eficazes
+        para geração probabilística de séries industriais.
+
+  \item \textbf{Modelo campeão}: \textbf{GRU + Difusão},
+        com desempenho muito próximo do BiLSTM + Difusão.
+
+  \item O modelo gerou séries próximas a realidade e com calibração da distribuição probabilística adequada.
+
+  \item Potencial de aplicação:
+        gêmeos digitais e simulação de cenários críticos.
+\end{itemize}
+
+\end{frame}
+
+
+    
+
+
+\section{Referências Bibliográficas} 
+\begin{frame}[allowframebreaks]
+        \frametitle{Referências Bibliográficas} 
+        \bibliographystyle{ieeetr}
+        \bibliography{presentation_bib.bib}
+\end{frame}
+
+%\backmatter
+
+\end{document}

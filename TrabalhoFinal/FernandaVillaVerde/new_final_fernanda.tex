@@ -1,0 +1,707 @@
+\documentclass{beamer}
+\usepackage{etoolbox}
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+\usepackage{amsfonts,amsmath,oldgerm}
+\usetheme{sintef}
+\usepackage[portuguese]{babel}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{relsize}
+\usepackage{algorithmic}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{textgreen}{RGB}{106, 168, 79}
+\definecolor{ForestGreen}{RGB}{34,139,34} % X11/SVG
+\usefonttheme[onlymath]{serif}
+\usepackage{adjustbox}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{tabularx}
+\usepackage[absolute,overlay]{textpos}
+\usepackage{multicol}
+\usepackage[dvipsnames]{xcolor}   % Adds more colors
+\usepackage{bookmark}
+\usepackage{tikz}
+\usepackage{booktabs} % para \toprule, \midrule, \bottomrule
+\newcommand{\meanpm}[2]{#1 $\pm$ #2}
+\usetikzlibrary{shapes.geometric, arrows, positioning, fit}
+\tikzstyle{simple_rec} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+% -------- Pipeline base: Change Prediction --------
+\newcommand{\pipelinebase}[1]{%
+\centering
+\scriptsize
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  node distance=1.6cm and 1.2cm,
+  every node/.style={transform shape},
+  scale=0.85
+]
+
+\tikzstyle{box}=[%
+  draw, thick, rounded corners=3pt,
+  minimum width=2.4cm, minimum height=0.75cm,
+  align=center, fill=gray!10
+];
+\tikzstyle{enc}=[box, fill=blue!12];
+\tikzstyle{dec}=[box, fill=orange!18];
+\tikzstyle{extra}=[box, fill=green!12];
+\tikzstyle{circ}=[draw, thick, circle, minimum size=0.6cm];
+\tikzstyle{arrow}=[->, thick];
+
+% ---- Entrada ----
+\node[box] (x) {
+  Entrada\\
+  $\mathbf{X} = (\mathbf{x}, \mathbf{m})_{1:T}$
+};
+
+% ---- Encoder ----
+\node[enc, right=of x] (emb) {
+  Encoder\\
+  (MLP / Embedding)
+};
+
+% ---- RNN Encoder (q(h|X)) ----
+\node[enc, right=of emb] (rnn) {
+  RNN Encoder\\
+};
+
+% ---- Amostragem latente (h_T) ----
+\node[circ, right=of rnn] (hT) {$h_T$};
+
+% ---- Decoder (p(tau|h)) ----
+\node[dec, right=of hT] (dec) {
+  Decoder\\
+  $\hat{c},\ \log\sigma_c^2$
+};
+
+% ---- Variação arquitetural ----
+\node[extra, below=1.1cm of rnn, text width=4.4cm] (var) {#1};
+\draw[arrow, dashed] (var) -- (rnn);
+
+% ---- Setas ----
+\draw[arrow] (x)   -- (emb);
+\draw[arrow] (emb) -- (rnn);
+\draw[arrow] (rnn) -- (hT);
+\draw[arrow] (hT)  -- (dec);
+
+\end{tikzpicture}%
+}
+
+
+
+\titlebackground*{assets/background_alt.png}
+\title[Predição Probabilística de Mudança de Estado]{Predição probabilística do tempo até mudança de estado em compressores industriais usando RNNs e VAEs}
+\course{CPE727 -- Deep Learning}
+\author{Fernanda Mickosz Villa Verde}
+\IDnumber{\href{mailto:fernandamvv@lps.ufrj.br}{fernandamvv@lps.ufrj.br}} 
+
+
+\begin{document}
+\maketitle
+
+% \begin{frame}
+
+% This template is a based on \hrefcol{https://www.overleaf.com/latex/templates/sintef-presentation/jhbhdffczpnx}{SINTEF Presentation} from \hrefcol{mailto:federico.zenith@sintef.no}{Federico Zenith} and its derivation \hrefcol{https://github.com/TOB-KNPOB/Beamer-LaTeX-Themes}{Beamer-LaTeX-Themes} from Liu Qilong and Andrea Gasparini
+
+% \vspace{\baselineskip}
+
+% In the following you find a brief introduction on how to use \LaTeX\ and the beamer package to prepare slides, based on the one written by \hrefcol{mailto:federico.zenith@sintef.no}{Federico Zenith} for \hrefcol{https://www.overleaf.com/latex/templates/sintef-presentation/jhbhdffczpnx}{SINTEF Presentation}
+
+% % This template is released under \hrefcol{https://creativecommons.org/licenses/by-nc/4.0/legalcode}{Creative Commons CC BY 4.0} license
+
+% \end{frame}
+
+% \begin{chapter}[assets/background]{}{Special Slides}
+% \begin{itemize}
+% \item Chapter slides
+% \item Side-picture slides
+% \end{itemize}
+% \end{chapter}
+
+\section{Motivação e Objetivos}
+
+\begin{frame}{Motivação e Objetivos do trabalho}
+
+\textbf{Motivação}
+\begin{itemize}
+  \item Mudanças de estado em compressores impactam
+        segurança, desempenho e manutenção.
+  \item Prever o \textbf{tempo até a próxima mudança},
+        com incerteza, apoia decisões operacionais.
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Objetivo}
+\begin{itemize}
+  \item Modelar probabilisticamente o tempo até a próxima
+        mudança de estado usando RNNs e VAEs.
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Avaliação}
+\begin{itemize}
+  \item Comparar RNNs (LSTM, GRU, BiRNN) e estratégias de treinamento com regularização e otimização.
+\end{itemize}
+
+\end{frame}
+
+\section{Base de dados e pré-processamento}
+
+\begin{frame}{Base de dados e pré-processamento}
+
+\begin{columns}[t]
+  
+  \begin{column}[t]{0.48\textwidth}
+    \textbf{Base de dados}
+
+    \vspace{0.2cm}
+    Cognite — sinais reais de sensores de um compressor industrial offshore.
+
+    \vspace{0.3cm}
+    \centering
+    \includegraphics[width=\linewidth]{12series.png}
+
+    \vspace{0.2cm}
+    \scriptsize
+    \textit{Exemplo de séries reais utilizadas no estudo (12 sinais simultâneos).}
+  \end{column}
+
+  \begin{column}[t]{0.48\textwidth}
+    \textbf{Pré-processamento}
+
+    \vspace{0.2cm}
+    \begin{itemize}
+      \item Estados operacionais:
+        \begin{itemize}
+          \item Estados originais: 6 (\(0\) a \(5\));
+          \item Estados finais: 3 (normal (0), falha (1), anômalo (2)).
+        \end{itemize}
+
+     \item Normalização robusta (RobustScaler) por sensor;
+       \item Série temporal com amostras a cada 5 minutos.
+       \item Segmentação em janelas:
+        \begin{itemize}
+          \item \texttt{window\_size = 40}, \texttt{window\_step = 40}
+          \item janelas não sobrepostas.
+        \end{itemize}
+    \end{itemize}
+  \end{column}
+
+\end{columns}
+\end{frame}
+
+% =======================
+% Seção: Formulação Teórica
+% =======================
+\section{Formulação do Problema}
+
+\begin{frame}{Definição do problema}
+  \small
+  \begin{itemize}
+    \item Série temporal multivariada:
+      \(\mathbf{x}_t \in \mathbb{R}^{d}\), \(t = 1,\dots,T\), com \(d = 11\) sensores.
+    \item Estados discretos:
+      \(s_t \in \{0,1,2\}\) (após fusão dos 6 estados iniciais).
+    \item Definimos o \textbf{tempo até a próxima mudança de estado}:
+      \[
+        \tau_t = \min\{\Delta > 0 \;:\; s_{t+\Delta} \neq s_t\}.
+      \]
+    \item Para cada janela de histórico
+      \(\mathbf{X} = (x_{t-L+1}, \dots, x_t)\),
+      queremos modelar a distribuição preditiva:
+      \[
+        p(\tau \mid \mathbf{X}).
+      \]
+   \item O modelo produz $h_T$, que é parametrizado pelo decoder para gerar 
+$\hat{c}$ e $\log \sigma_c^2$ para cada estado $s \in \{0,1,2\}$,
+definindo assim as \textbf{PDFs do tempo até mudança de estado}.
+    
+\item Assim, tratamos o problema como um \textbf{forecast probabilístico de tempo até evento}.
+
+  \end{itemize}
+
+\end{frame}
+
+
+\section{Revisão Bibliográfica}
+\begin{frame}{Revisão Bibliográfica}
+  \small
+  \textbf{O que já existe na área:}
+  \begin{itemize}
+    \item Deep learning para RUL (Remaining Useful Life) de máquinas rotativas e motores \cite{wa2025dlrul};
+ 
+    \item RNNs para séries multivariadas com dados ausentes \cite{che2018grud};
+    \item Estimativa de RUL (Remaining Useful Life) com incerteza via redes Bayesianas e
+          métodos probabilísticos \cite{rivas2022rul}  e
+          \textit{neural temporal point processes} \cite{shchur2021tpp}.
+         
+  \end{itemize}
+
+  \vspace{0.2cm}
+  \textbf{Lacuna atacada neste trabalho:}
+  \begin{itemize}
+    \item Poucos trabalhos modelam explicitamente a
+          \textbf{distribuição do tempo até a próxima mudança de estado}
+          em equipamentos industriais, sendo a maioria focada em estimativas
+      pontuais de tempo até falha (RUL) \cite{zheng2017rul,rivas2022bnnrul};
+    \item Não encontramos, na literatura, aplicações com
+          \textbf{RNN + VAE} que estimem \textbf{PDFs condicionais por
+          estado} e avaliem \textbf{calibração probabilística}
+          (cov90, width90) em compressores industriais.
+  \end{itemize}
+\end{frame}
+
+
+
+% =======================
+% Seção: Arquiteturas
+% =======================
+
+\section{Arquiteturas e Variações}
+
+
+
+\begin{frame}{Arquitetura base e arquiteturas avaliadas}
+
+  \vspace{0.6cm}
+   \pipelinebase{
+    \textbf{LSTM / GRU / BiLSTM / BiGRU}
+  }
+  \vspace{0.35cm}
+ % ----------- TEXTO -----------
+\small
+\begin{itemize}
+    \item \textbf{Arquitetura base}: Encoder recorrente acoplado a
+      um VAE latente para previsão probabilística de mudanças de estado.
+  \item \textbf{Arquiteturas avaliadas}:
+  \begin{itemize}
+    \item \textbf{Deep MLP}: baseline feedforward (sem recorrência);
+    \item \textbf{LSTM}: LSTM unidirecional e \textbf{BiLSTM};
+    \item \textbf{GRU}: GRU unidirecional e \textbf{BiGRU}.
+    \item \textbf{VAE}: Variational Autoencoder.
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Variações de treinamento}
+
+\small
+\textbf{Base fixa:} BiLSTM + VAE latente.
+
+\vspace{0.3cm}
+
+\textbf{Otimização}
+\begin{itemize}
+  \item \textbf{Warmup \& Scheduler}: estabiliza as primeiras épocas.
+  \item \textbf{RAdam}: reduz instabilidade do Adam no início do treino.
+\end{itemize}
+
+\vspace{0.25cm}
+
+\textbf{Regularização}
+\begin{itemize}
+  \item \textbf{Variational Dropout}: reduz overfitting temporal.
+  \item \textbf{Difusão (missingness)}: melhora robustez e calibração.
+  \item \textbf{LayerNorm}: estabiliza ativações internas.
+  \item \textbf{AdamW}: L2 desacoplado para melhor generalização.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Função de custo}
+\small
+
+\begin{itemize}
+\item 
+\(
+\begin{aligned}
+\mathcal{L}_{\text{vae}}
+&= \mathbb{E}_{q(h_T|\tau)}
+\!\left[
+-\log p(\tau \mid h_T)
+\right] 
+& + \beta\,
+\mathrm{KL}\big(
+q(h_T\mid\tau)\,\|\,\mathcal{N}(0,I)
+\big)
+\end{aligned}
+\)
+
+\vspace{0.2cm}
+  \item O primeiro termo corresponde à verossimilhança negativa
+        do tempo até a mudança de estado, modelado como Gaussiana,
+        enquanto o segundo termo regulariza o espaço latente
+        via divergência KL ponderada por $\beta$.
+\end{itemize}
+
+\vspace{0.25cm}
+
+\begin{itemize}
+  \item Para o modelo com difusão de missingness, a função de custo é:
+\[
+\mathcal{L}_{\text{difusão}} =
+\lambda_m \mathcal{L}_{\text{miss}} 
++ \lambda_v \mathcal{L}_{\text{vae}}
+\]
+
+\[
+\mathcal{L}_{\text{miss}} = \mathrm{BCE}(m,\hat{m}),
+\quad
+\hat{m} = \sigma(f_{\text{miss}}(h))
+\]
+\end{itemize}
+
+\vspace{0.2cm}
+
+\begin{itemize}
+  \item O modelo permite estimar \textbf{incerteza} e
+       a \textbf{cobertura probabilística} do tempo até mudança de estado.
+\end{itemize}
+
+\end{frame}
+% =======================
+% Seção: Configuração Experimental
+% =======================
+\section{Configuração Experimental}
+
+\begin{frame}{Configuração Experimental}
+  \begin{itemize}
+    \item Divisão treino/teste: 80\% / 20\%.
+    \item Dimensões do espaço latente foram validadas com a divisão 60\% / 20\% / 20\%.
+    \item Treinamento por 500 épocas, batch size 256.
+    \item Paciênica de 50 épocas para early stopping.
+    \item Função de perda multi-tarefa conforme descrito.
+    \item Otimização e Regularização tratadas como diferentes modelos.
+    \item Otimizador: Adam (exceto variações).
+    \item Taxa de aprendizado inicial: \(3 \times 10^{-4}\).
+    \item Early stopping baseado no NELBO do teste.
+    \item Avaliação final no conjunto de teste.
+  \end{itemize}
+\end{frame}
+
+
+% =======================
+% Seção: Figuras de Mérito
+% =======================
+\section{Figuras de Mérito}
+
+
+
+\begin{frame}{Figuras de Mérito utilizadas}
+  \begin{itemize}
+   \item \textbf{NELBO} (Negative Evidence Lower Bound):
+\begin{itemize}
+  \item Loss probabilística minimizada no treinamento;
+  \item Maximiza implicitamente a verossimilhança (ELBO);
+  \item Balanceia reconstrução e regularização latente (KL).
+  \vspace{0.6em}
+\item 
+\(
+\begin{aligned}
+NELBO
+&=
+\mathbb{E}_{q(h_T\mid \tau )}
+\!\left[
+-\log p(\tau \mid h_T)
+\right]
++
+\mathrm{KL}\!\left(
+q(h_T\mid \tau )\,\|\,p(h_T )
+\right)
+\end{aligned}
+\)
+
+
+\end{itemize}
+
+\vspace{0.8em}
+
+\item \textbf{NLL} (Negative Log-Likelihood):
+  \begin{itemize}
+    \item Generaliza o MSE ao modelar explicitamente a variância
+          da distribuição predita;
+    \item Penaliza erros grandes \emph{e} variâncias mal calibradas
+          (super ou subestimação de incerteza).
+    \vspace{0.6em}
+    \item
+\(
+\begin{aligned}
+\text{NLL}
+&=
+- \log p(\tau \mid \mu, \sigma^2)
+&=
+\frac{(\tau -\mu)^2}{2\sigma^2}
++ \frac{1}{2}\log\sigma^2
++ \text{cte}
+\end{aligned}
+\)
+
+
+
+  \end{itemize}
+    \end{itemize}
+\end{frame}
+
+
+  \begin{frame}{Figuras de Mérito utilizadas}
+     \begin{itemize}
+    \item \textbf{MSE} (Mean Squared Error):
+      \begin{itemize}
+         \item Erro médio de reconstrução das séries;
+    \item Mede fidelidade gerativa.
+      \end{itemize}
+    \vspace{0.6em}
+  \item \textbf{Cobertura 90\%} (\texttt{cov\_90}):
+  \begin{itemize}
+    \item Mede a fração de amostras reais que caem dentro do
+          intervalo preditivo teórico $[5\%,\,95\%]$;
+    \item Avalia se o desvio padrão estimado produz uma
+          \textbf{calibração probabilística consistente}
+          com a cobertura nominal de 90\%.
+  \end{itemize}
+    \vspace{0.6em}
+\item \textbf{Largura do intervalo 90\%} (\texttt{width\_90}):
+  \begin{itemize}
+    \item Corresponde à largura teórica do intervalo $[5\%,\,95\%]$
+          derivado da distribuição predita;
+    \item Quantifica a \textbf{sharpness} do modelo:
+          intervalos menores indicam maior confiança,
+          desde que a cobertura permaneça bem calibrada.
+  \end{itemize}
+    \end{itemize}
+\end{frame}
+% =======================
+% Seção: Resultados
+% =======================
+\section{Resultados}
+
+
+\begin{frame}{Resultados quantitativos}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.05}
+
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Modelo} 
+& \textbf{NELBO$\downarrow$} 
+& \textbf{NLL$\downarrow$} 
+& \textbf{MSE$\downarrow$} 
+& \textbf{Cov90$\rightarrow$} 
+& \textbf{W90$\downarrow$}
+& \textbf{Épocas}
+& \textbf{Tempo total (min)}
+& \textbf{tempo ($s$)/ép.} \\
+\midrule
+
+\textbf{LSTM RAdam}   
+& \textbf{0.010} & \textbf{0.000} & \textbf{$0.001\!\pm\!0.000$} 
+& \textbf{1.000} & \textbf{0.270} 
+& \textbf{176}
+& \textbf{5.32}
+& \textbf{$1.81 \pm 0.07$} \\
+
+BiLSTM RAdam        
+& 0.023 & 0.023 & $0.002\!\pm\!0.000$ 
+& 0.946 & 0.270 
+& 272
+& 3.91
+& $2.19 \pm 0.49$ \\
+
+BiLSTM Warmup        
+& 0.033 & 0.033 & $0.002\!\pm\!0.000$ 
+& 0.946 & 0.270 
+& 61
+& 2.40
+& $2.36 \pm 0.19$ \\
+
+LSTM                 
+& 0.064 & 0.063 & $0.002\!\pm\!0.000$ 
+& 0.937 & 0.270 
+& 69
+& 1.25
+& $1.09 \pm 0.27$ \\
+
+BiLSTM               
+& 0.150 & 0.150 & $0.002\!\pm\!0.000$ 
+& 0.920 & 0.270 
+& 111
+& 5.14
+& $2.78 \pm 0.43$ \\
+
+BiGRU                
+& 0.203 & 0.202 & $0.001\!\pm\!0.000$ 
+& 0.875 & 0.270 
+& 105
+& 4.37
+& $2.49 \pm 0.43$ \\
+
+BiLSTM AdamW         
+& 0.230 & 0.229 & $0.001\!\pm\!0.001$ 
+& 0.866 & 0.270 
+& 106
+& 4.35
+& $2.32 \pm 0.59$ \\
+
+BiLSTM Difusão       
+& 0.329 & 0.328 & $0.002\!\pm\!0.001$ 
+& 0.839 & 0.270 
+& 56
+& 2.53
+& $2.71 \pm 0.19$ \\
+
+BiLSTM LayerNorm     
+& 0.383 & 0.332 & $0.054\!\pm\!0.001$ 
+& 0.839 & 0.270 
+& 194
+& 9.40
+& $2.91 \pm 0.39$ \\
+
+GRU                  
+& 0.464 & 0.463 & $0.003\!\pm\!0.001$ 
+& 0.812 & 0.270 
+& 72
+& 1.34
+& $1.12 \pm 0.11$ \\
+
+BiLSTM VarDrop       
+& 0.992 & 0.991 & $0.002\!\pm\!0.001$ 
+& 0.705 & 0.270 
+& 53
+& 2.35
+& $2.66 \pm 0.32$ \\
+
+DEEP                 
+& 8016.76 & 33.71 & $0.819\!\pm\!0.011$ 
+& 0.250 & 0.270 
+& 92
+& 0.62
+& $0.40 \pm 0.06$ \\
+
+\bottomrule
+\end{tabular}}
+\end{frame}
+
+
+\begin{frame}{Curva de treinamento — Modelo \textbf{LSTM RAdam}}
+  \centering
+  \begin{figure}
+  \includegraphics[width=0.85\linewidth]{nelbo.png}
+  \caption{Evolução do NELBO no conjunto de teste do modelo
+  LSTM RAdam.}
+  \end{figure}
+\end{frame}
+
+
+
+
+\begin{frame}{Distribuições preditivas do tempo até mudança de estado}
+
+\vspace{0.15cm}
+
+\begin{columns}[T,onlytextwidth]
+
+% ----------- Coluna LSTM -----------
+\column{0.5\textwidth}
+\centering
+\textbf{LSTM (RAdam)}
+\vspace{0.1cm}
+
+\includegraphics[width=0.99\linewidth]{pdfs.png}
+
+% ----------- Coluna BiLSTM -----------
+\column{0.5\textwidth}
+\centering
+\textbf{BiLSTM (RAdam)}
+\vspace{0.1cm}
+
+\includegraphics[width=0.99\linewidth]{pdfs_bilstm.png}
+
+\end{columns}
+
+\vspace{0.15cm}
+
+\scriptsize
+\textit{Distribuições preditivas do tempo até mudança de estado condicionadas ao histórico observado,
+evidenciando diferenças de incerteza e separabilidade entre arquiteturas.}
+
+
+\end{frame}
+
+
+% =======================
+% Seção: Discussão e Conclusões
+% =======================
+\section{Discussão e Conclusões}
+
+\begin{frame}{Discussão dos resultados}
+  \begin{itemize}
+    \item \textbf{Qualidade probabilística}:
+        \textbf{LSTM RAdam} apresenta o menor NELBO,
+        indicando melhor ajuste probabilístico ao tempo até mudança de estado.
+
+  \item \textbf{Calibração das incertezas}:
+        Cobertura próxima de 1.0 (Cov90),
+        com intervalos estáveis entre arquiteturas.
+
+    \item \textbf{Impacto arquitetural}:
+      \begin{itemize}
+        \item A distruibuição Gaussiana não se mostrou a melhor
+              escolha para modelar o tempo até mudança de estado,
+              sugerindo explorar outras distribuições.
+        \item O BiLSTM aprende representações latentes mais suaves,
+      resultando em PDFs visualmente melhor separadas,
+      enquanto o LSTM unidirecional apresenta melhor calibração
+      e desempenho probabilístico global.
+        \item Em cenários fortemente desbalanceados, o principal desafio é a
+              \textbf{otimização sob gradientes raros}, e não o overfitting;
+       
+      \end{itemize}
+     
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}{Conclusões}
+
+\small
+\begin{itemize}
+  \item Predição de mudança de estado é um problema
+        desbalanceado e sensível à calibração probabilística.
+
+  \item Modelos recorrentes probabilísticos são essenciais
+        para capturar dependências temporais e incerteza.
+
+  \item \textbf{LSTM RAdam} é o modelo mais adequado neste estudo:
+        melhor NELBO, boa calibração e alinhamento causal.
+
+  \item Aplicações potenciais:
+        monitoramento antecipado e suporte à decisão industrial.
+
+  \item Trabalhos futuros:
+        modelos multimodais (Mixture of Gaussians, VAMP Prior).
+\end{itemize}
+
+\end{frame}
+
+
+
+
+\section{Referências Bibliográficas} 
+\begin{frame}[allowframebreaks]
+        \frametitle{Referências Bibliográficas} 
+        \bibliographystyle{ieeetr}
+        \bibliography{presentation_bib.bib}
+\end{frame}
+
+%\backmatter
+
+\end{document}
